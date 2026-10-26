@@ -310,7 +310,7 @@ function selectionChanged() {
   history.replaceState(null, '', url);
   renderChips();
   if (!$('menu').hidden) renderMenu();
-  loadLog();
+  return loadLog();
 }
 
 function openMenu() {
@@ -338,6 +338,7 @@ async function loadRefs() {
   });
   const names = new Set(refs.map(r => r.name));
   GROUPS.forEach(g => names.add(g.name));
+  names.add('HEAD');
   selected = selected.filter(n => names.has(n));
   renderChips();
 }
@@ -585,6 +586,24 @@ async function gitAction(endpoint, name, busy) {
   await reload({ anchor: true, fresh: true });
 }
 
+function focusCommit(hash) {
+  const i = commits.findIndex(c => c.h === hash);
+  if (i < 0) return;
+  const list = $('list');
+  cursor = i;
+  list.scrollTop = Math.max(0, i * ROW - list.clientHeight / 2 + ROW / 2);
+  render();
+}
+
+async function checkout(name, label) {
+  await gitAction('/api/checkout', name, `checking out ${label}…`);
+  if (repo.head && !commits.some(c => c.h === repo.head) && !selected.includes('HEAD')) {
+    selected = [...selected, 'HEAD'];
+    await selectionChanged();
+  }
+  focusCommit(repo.head);
+}
+
 async function deleteRemote(name) {
   const ok = await confirmAction(`Delete ${name} on the remote? Everyone who uses it loses the branch; BranchSight cannot undo it.`, 'Delete');
   if (ok) await gitAction('/api/delete-remote', name, `deleting ${name}…`);
@@ -602,12 +621,16 @@ function openContext(e) {
   const ref = e.target.closest('.ref')?.dataset;
   const items = [];
   if (ref?.kind === 'head' || ref?.kind === 'remote') {
-    items.push([`Checkout ${ref.name}`, () => gitAction('/api/checkout', ref.name, `checking out ${ref.name}…`)]);
+    items.push([`Checkout ${ref.name}`, () => checkout(ref.name, ref.name)]);
     items.push(['Copy branch name', () => copyHash(ref.kind === 'remote' ? ref.name.slice(ref.name.indexOf('/') + 1) : ref.name)]);
     ref.remotes.split(' ').filter(Boolean).forEach(r => items.push([`Delete remote branch ${r}`, () => deleteRemote(r), 'danger']));
   }
-  if (ref?.kind === 'tag') items.push(['Copy tag name', () => copyHash(ref.name)]);
+  if (ref?.kind === 'tag') {
+    items.push([`Checkout tag ${ref.name} (detached)`, () => checkout(ref.name, ref.name)]);
+    items.push(['Copy tag name', () => copyHash(ref.name)]);
+  }
   if (items.length) items.push(null);
+  items.push([`Checkout commit ${c.h.slice(0, 7)} (detached)`, () => checkout(c.h, c.h.slice(0, 7))]);
   items.push(['Copy commit hash', () => copyHash(c.h)]);
   const menu = $('ctx');
   menu.innerHTML = items.map((it, i) => it ? `<button data-i="${i}"${it[2] ? ` class="${it[2]}"` : ''}>${esc(it[0])}</button>` : '<hr>').join('');

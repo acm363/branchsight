@@ -109,6 +109,15 @@ impl Repo {
             self.git(&["switch", "--quiet", "--no-guess", name])?;
             return Ok(format!("switched to {name}"));
         }
+        let tag = format!("refs/tags/{name}");
+        if self.has_ref(&tag) {
+            self.git(&["switch", "--quiet", "--detach", &tag])?;
+            return Ok(format!("detached HEAD at tag {name}"));
+        }
+        if is_hash(name) && self.git(&["cat-file", "-e", &format!("{name}^{{commit}}")]).is_ok() {
+            self.git(&["switch", "--quiet", "--detach", name])?;
+            return Ok(format!("detached HEAD at {}", &name[..name.len().min(10)]));
+        }
         let (_, branch) = self.split_remote_branch(name)?;
         if self.has_ref(&format!("refs/heads/{branch}")) {
             self.git(&["switch", "--quiet", "--no-guess", branch])?;
@@ -171,7 +180,7 @@ impl Repo {
     }
 
     pub fn show(&self, hash: &str) -> Result<String, String> {
-        if !(4..=64).contains(&hash.len()) || !hash.chars().all(|c| c.is_ascii_hexdigit()) {
+        if !is_hash(hash) {
             return Err("invalid hash".into());
         }
         let mut text = self.git(&[
@@ -195,6 +204,10 @@ impl Repo {
         }
         Ok(text)
     }
+}
+
+fn is_hash(s: &str) -> bool {
+    (4..=64).contains(&s.len()) && s.chars().all(|c| c.is_ascii_hexdigit())
 }
 
 #[cfg(windows)]

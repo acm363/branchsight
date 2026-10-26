@@ -35,7 +35,7 @@ deep), or type a path. `branchsight-app <dir>` opens a repository directly.
 | **Branches** | starts on all local + all remote branches; type to filter, `enter` or click to toggle |
 | **Columns** | drag a column edge to resize it, double-click it to reset |
 | **Commit** | click or `enter`: files and diff (merges against their first parent); fold each file, or all of them; double-click closes it |
-| **Right-click** | on a branch: checkout (a remote one gets a local tracking branch), copy its name, delete it on the remote |
+| **Right-click** | checkout a branch (a remote one gets a local tracking branch), a tag or a commit (detached); copy a name or hash; delete a remote branch. The view keeps its filter and scrolls to the new HEAD |
 | **Limit** | show the last 10 to 20,000 commits, or all |
 | **Hash** | click it, or press `c`, to copy the full hash |
 | **Fetch** | `git fetch --all --prune`; tick **auto** to repeat it every 2 minutes |

@@ -404,3 +404,33 @@ fn delete_remote_branch_removes_it_on_the_remote_only() {
     let (status, _) = post(port, &format!("/api/delete-remote?{q}&ref=main"));
     assert_eq!(status, 400, "a local branch is not a remote one");
 }
+
+#[test]
+fn checkout_detaches_head_on_a_tag_or_a_commit() {
+    // Given.
+    let sb = Sandbox::new();
+    let repo = sb.path("repo");
+    init(&repo);
+    let first = commit(&repo, "a", "A");
+    git(&repo, &["tag", "-a", "v1.0.0", "-m", "release"]);
+    let second = commit(&repo, "b", "B");
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&repo);
+
+    // When.
+    let (status, body) = post(port, &format!("/api/checkout?{q}&ref=v1.0.0"));
+
+    // Then.
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(git(&repo, &["rev-parse", "HEAD"]), first);
+    assert_eq!(git(&repo, &["branch", "--show-current"]), "", "HEAD is detached");
+
+    // When.
+    let (status, body) = post(port, &format!("/api/checkout?{q}&ref={}", &second[..12]));
+
+    // Then.
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(git(&repo, &["rev-parse", "HEAD"]), second);
+    let (status, _) = post(port, &format!("/api/checkout?{q}&ref=deadbeefdeadbeef"));
+    assert_eq!(status, 400, "an unknown hash is refused");
+}
