@@ -82,6 +82,15 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 .chip { font: calc(var(--fs) - 2px)/calc(var(--row) - 5px) var(--mono); padding: 0 5px; border-radius: 3px; border: 1px solid currentColor; white-space: nowrap; flex: none; }
 .k-head { color: var(--head); } .k-remote { color: var(--remote); } .k-tag { color: var(--tag); }
 .chip.is-head { background: var(--head); color: var(--bg); border-color: var(--head); }
+.row .ref { display: inline-flex; align-items: center; gap: 4px; flex: none; height: calc(var(--row) - 5px); padding: 0 6px 0 4px; border: 1px solid var(--c); border-radius: 4px; font-size: calc(var(--fs) - 1.5px); line-height: 1; white-space: nowrap; }
+.row .ref svg { width: calc(var(--fs) - 1px); height: calc(var(--fs) - 1px); flex: none; }
+.row .ref.local { background: color-mix(in srgb, var(--c) 82%, #000); border-color: var(--c); color: #fff; }
+.row .ref.local.current { font-weight: 700; box-shadow: 0 0 0 1px var(--c); }
+.row .ref.local .remote { margin-left: 2px; padding-left: 5px; border-left: 1px solid rgba(255,255,255,.45); font-style: italic; opacity: .85; font-weight: 400; }
+.row .ref.remote-only { color: var(--fg); background: color-mix(in srgb, var(--c) 12%, transparent); }
+.row .ref.remote-only svg { color: var(--c); }
+.row .ref.tag { border-color: var(--dim); color: var(--fg); border-style: dashed; }
+.row .ref.tag svg { color: var(--tag); }
 #main { flex: 1; display: flex; min-height: 0; }
 #pane { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; --w-graph: 120px; --w-author: 130px; --w-date: 108px; --w-hash: 56px; }
 #cols { position: relative; flex: none; display: flex; align-items: center; gap: 10px; height: calc(var(--row) + 2px); padding: 0 10px 0 var(--w-graph); border-bottom: 1px solid var(--line); background: var(--bg2); color: var(--dim); font-size: calc(var(--fs) - 1px); overflow: hidden; white-space: nowrap; user-select: none; }

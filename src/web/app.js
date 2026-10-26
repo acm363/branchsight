@@ -77,12 +77,27 @@ function applyCols() {
   pane.style.setProperty('--w-graph', `${graphWidth()}px`);
 }
 
-function chipsFor(c) {
+const ICONS = {
+  branch: '<svg viewBox="0 0 16 16"><path d="M5 3.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 9a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm9-6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0ZM3.5 5v6M12.5 8c0 2-2 3-4 3H3.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
+  tag: '<svg viewBox="0 0 16 16"><path d="M2 2.5h5.6l6.4 6.4-5.1 5.1L2.5 7.6V2.5Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="5.2" cy="5.7" r="1.1" fill="currentColor"/></svg>',
+};
+
+function refLabels(c, laneColor) {
   const list = refsByHash.get(c.h) || [];
-  return list.map(r => {
-    const head = r.kind === 'head' && r.name === repo.branch;
-    return `<span class="chip k-${r.kind}${head ? ' is-head' : ''}">${esc(r.name)}</span>`;
-  }).join('') + (c.h === repo.head && !repo.branch ? '<span class="chip is-head">HEAD</span>' : '');
+  const heads = list.filter(r => r.kind === 'head');
+  const remotes = list.filter(r => r.kind === 'remote');
+  const merged = new Set();
+  const label = (cls, icon, body) => `<span class="ref ${cls}" style="--c:${laneColor}">${ICONS[icon]}${body}</span>`;
+  const local = heads.map(h => {
+    const tracking = remotes.filter(r => r.name.endsWith(`/${h.name}`));
+    tracking.forEach(r => merged.add(r.name));
+    const suffix = tracking.map(r => `<span class="remote">${esc(r.name.slice(0, -h.name.length - 1))}</span>`).join('');
+    return label(`local${h.name === repo.branch ? ' current' : ''}`, 'branch', `<span class="name">${esc(h.name)}</span>${suffix}`);
+  });
+  const remoteOnly = remotes.filter(r => !merged.has(r.name)).map(r => label('remote-only', 'branch', `<span class="name">${esc(r.name)}</span>`));
+  const tags = list.filter(r => r.kind === 'tag').map(r => label('tag', 'tag', `<span class="name">${esc(r.name)}</span>`));
+  const detached = c.h === repo.head && !repo.branch ? [label('local current', 'branch', '<span class="name">HEAD</span>')] : [];
+  return [...detached, ...local, ...remoteOnly, ...tags].join('');
 }
 
 function render() {
@@ -94,7 +109,7 @@ function render() {
   for (let i = first; i < last; i++) {
     const c = commits[i];
     html += `<div class="row${i === cursor ? ' sel' : ''}${c.p.length > 1 ? ' merge' : ''}" data-i="${i}" style="top:${i * ROW}px">`
-      + `<span class="s">${chipsFor(c)}<span class="t">${esc(c.s)}</span></span>`
+      + `<span class="s">${refLabels(c, color(rows[i].color))}<span class="t">${esc(c.s)}</span></span>`
       + `<span class="a">${esc(c.a)}</span><span class="d">${fmtDate(c.t)}</span>`
       + `<span class="h" title="Copy ${c.h}">${c.h.slice(0, 7)}</span></div>`;
   }
