@@ -142,6 +142,15 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 .row .a { flex: none; width: var(--w-author); overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
 .row .d { flex: none; width: var(--w-date); overflow: hidden; color: var(--dim); font-variant-numeric: tabular-nums; }
 .row.merge .t { color: var(--dim); }
+.row.wt .t { font-style: italic; color: var(--fg); }
+.row .wtc { margin-left: 8px; color: var(--dim); white-space: nowrap; }
+.row.cmp { background: color-mix(in srgb, var(--sel) 55%, transparent); box-shadow: inset 3px 0 0 var(--remote); }
+.wt-title, .cmp-label { font-style: italic; margin-right: 8px; }
+#detail-title .arrow { margin: 0 6px; color: var(--dim); }
+.grp { padding: 10px 10px 4px; color: var(--dim); font-weight: 700; font-size: calc(var(--fs) - 1.5px); text-transform: uppercase; letter-spacing: .04em; }
+.file-grp { padding: 6px 10px 2px; color: var(--dim); font-weight: 700; font-size: calc(var(--fs) - 2px); text-transform: uppercase; letter-spacing: .04em; }
+.st-U { color: var(--add); }
+.fsec.untracked > .fh { cursor: default; }
 #split { width: 5px; cursor: col-resize; background: var(--line); flex: none; }
 #detail { width: 48%; display: flex; flex-direction: column; min-width: 240px; background: var(--bg); }
 #detail[hidden], #split[hidden] { display: none; }

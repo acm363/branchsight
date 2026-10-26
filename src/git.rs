@@ -95,8 +95,10 @@ impl Repo {
     pub fn fingerprint(&self) -> Result<String, String> {
         let refs = self.git(&["for-each-ref", "--format=%(HEAD)%(objectname)%(refname)"])?;
         let head = self.git(&["rev-parse", "--verify", "-q", "HEAD"]).unwrap_or_default();
+        let status = self.git(&["status", "--porcelain=v1", "-z", "--untracked-files=normal"])?;
+        let edits = self.git(&["diff", "--no-ext-diff", "--shortstat"]).unwrap_or_default();
         let mut hasher = DefaultHasher::new();
-        (refs, head).hash(&mut hasher);
+        (refs, head, status, edits).hash(&mut hasher);
         Ok(format!("{:016x}", hasher.finish()))
     }
 
@@ -179,11 +181,51 @@ impl Repo {
         if status.success() { Ok(stderr.trim().to_owned()) } else { Err(stderr.trim().to_owned()) }
     }
 
+    pub fn status(&self) -> Result<Value, String> {
+        let out = self.git(&["status", "--porcelain=v1", "-z", "--untracked-files=normal"])?;
+        let (mut staged, mut unstaged, mut untracked) = (0, 0, 0);
+        let mut entries = out.split('\0').filter(|e| e.len() > 2);
+        while let Some(entry) = entries.next() {
+            let (x, y) = (entry.as_bytes()[0], entry.as_bytes()[1]);
+            if x == b'?' {
+                untracked += 1;
+                continue;
+            }
+            staged += usize::from(x != b' ');
+            unstaged += usize::from(y != b' ');
+            if x == b'R' || x == b'C' {
+                entries.next();
+            }
+        }
+        Ok(json!({ "staged": staged, "unstaged": unstaged, "untracked": untracked }))
+    }
+
+    pub fn worktree(&self) -> Result<Value, String> {
+        let diff = ["--no-ext-diff", "--stat=200", "--summary", "--patch", "-M"];
+        let staged = self.git(&[&["diff", "--cached"][..], &diff].concat())?;
+        let unstaged = self.git(&[&["diff"][..], &diff].concat())?;
+        let untracked = self.git(&["ls-files", "--others", "--exclude-standard", "-z"])?;
+        Ok(json!({
+            "staged": cap(staged),
+            "unstaged": cap(unstaged),
+            "untracked": untracked.split('\0').filter(|p| !p.is_empty()).collect::<Vec<_>>(),
+        }))
+    }
+
+    pub fn compare(&self, from: &str, to: &str) -> Result<String, String> {
+        for hash in [from, to] {
+            if !is_hash(hash) || self.git(&["cat-file", "-e", &format!("{hash}^{{commit}}")]).is_err() {
+                return Err(format!("unknown commit {hash}"));
+            }
+        }
+        self.git(&["diff", "--no-ext-diff", "--stat=200", "--summary", "--patch", "-M", from, to, "--"]).map(cap)
+    }
+
     pub fn show(&self, hash: &str) -> Result<String, String> {
         if !is_hash(hash) {
             return Err("invalid hash".into());
         }
-        let mut text = self.git(&[
+        let text = self.git(&[
             "show",
             "--diff-merges=first-parent",
             "--format=fuller",
@@ -194,16 +236,20 @@ impl Repo {
             hash,
             "--",
         ])?;
-        if text.len() > MAX_DIFF_BYTES {
-            let mut cut = MAX_DIFF_BYTES;
-            while !text.is_char_boundary(cut) {
-                cut -= 1;
-            }
-            text.truncate(cut);
-            text.push_str("\n\n[branchsight: diff truncated]\n");
-        }
-        Ok(text)
+        Ok(cap(text))
     }
+}
+
+fn cap(mut text: String) -> String {
+    if text.len() > MAX_DIFF_BYTES {
+        let mut cut = MAX_DIFF_BYTES;
+        while !text.is_char_boundary(cut) {
+            cut -= 1;
+        }
+        text.truncate(cut);
+        text.push_str("\n\n[branchsight: diff truncated]\n");
+    }
+    text
 }
 
 fn is_hash(s: &str) -> bool {

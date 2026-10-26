@@ -10,7 +10,7 @@ const color = n => COLORS[n % COLORS.length];
 
 let repo = {}, refs = [], selected = [], commits = [], rows = [], lanes = 1, cursor = -1, openHash = null;
 let refsByHash = new Map(), menuItems = [], menuCursor = 0, detailTimer = 0;
-let logRequest = null;
+let logRequest = null, compareWith = -1;
 const logCache = new Map(), LOG_CACHE_SIZE = 16;
 let ctx = { roots: [] }, repoPath = null, projectList = [], pItems = [], pCursor = 0;
 
@@ -122,10 +122,13 @@ function render() {
   let html = '';
   for (let i = first; i < last; i++) {
     const c = commits[i];
-    html += `<div class="row${i === cursor ? ' sel' : ''}${c.p.length > 1 ? ' merge' : ''}" data-i="${i}" style="top:${i * ROW}px">`
-      + `<span class="s">${refLabels(c, color(rows[i].color))}<span class="t">${esc(c.s)}</span></span>`
-      + `<span class="a">${esc(c.a)}</span><span class="d">${fmtDate(c.t)}</span>`
-      + `<span class="h" title="Copy ${c.h}">${c.h.slice(0, 7)}</span></div>`;
+    const cls = `${i === cursor ? ' sel' : ''}${i === compareWith ? ' cmp' : ''}${c.p.length > 1 ? ' merge' : ''}${c.wt ? ' wt' : ''}`;
+    html += `<div class="row${cls}" data-i="${i}" style="top:${i * ROW}px">`
+      + (c.wt
+        ? `<span class="s"><span class="t">Uncommitted changes</span><span class="wtc">${esc(wtSummary(c.wt))}</span></span><span class="a"></span><span class="d"></span><span class="h">*</span></div>`
+        : `<span class="s">${refLabels(c, color(rows[i].color))}<span class="t">${esc(c.s)}</span></span>`
+          + `<span class="a">${esc(c.a)}</span><span class="d">${fmtDate(c.t)}</span>`
+          + `<span class="h" title="Copy ${c.h}">${c.h.slice(0, 7)}</span></div>`);
   }
   $('rows').innerHTML = html;
   draw(first, last, gw);
@@ -161,7 +164,18 @@ function draw(first, last, gw) {
       if (h === c.h) seg(X(j), y0, X(r.col), mid, color(r.bc[j]));
       else seg(X(j), y0, X(j), y1, color(r.bc[j]));
     });
-    r.out.forEach(([t, n, known]) => seg(X(r.col), mid, X(t), y1, color(n), !known));
+    const dim = getComputedStyle(document.documentElement).getPropertyValue('--dim');
+    r.out.forEach(([t, n, known]) => seg(X(r.col), mid, X(t), y1, c.wt ? dim : color(n), c.wt || !known));
+    if (c.wt) {
+      g.setLineDash([2, 2]);
+      g.beginPath();
+      g.arc(X(r.col), mid, ROW * 0.24, 0, Math.PI * 2);
+      g.fillStyle = bg;
+      g.strokeStyle = dim;
+      g.fill();
+      g.stroke();
+      continue;
+    }
     g.setLineDash([]);
     g.beginPath();
     g.arc(X(r.col), mid, ROW * (c.p.length > 1 ? 0.2 : 0.24), 0, Math.PI * 2);
@@ -192,21 +206,86 @@ function setCursor(i, { scroll = true, open = false } = {}) {
   }
 }
 
+const hashSpan = (h, n = 10) => `<span class="h" data-h="${h}" title="Copy ${h}">${h.slice(0, n)}</span>`;
+
+function wtSummary(wt) {
+  return [[wt.staged, 'staged'], [wt.unstaged, 'modified'], [wt.untracked, 'untracked']]
+    .filter(([n]) => n).map(([n, what]) => `${n} ${what}`).join(' · ');
+}
+
+function openPanel(key, titleHtml, title) {
+  openHash = key;
+  $('detail').hidden = $('split').hidden = false;
+  $('detail-title').innerHTML = titleHtml;
+  $('detail-title').title = title;
+}
+
+function fillPanel({ head = '', groups }) {
+  const label = f => esc(f.from ? `${f.from} → ${f.path}` : f.path);
+  const count = (f) => f.untracked ? '<span class="n">new</span>' : `<span class="n"><b>+${f.add}</b> <i>−${f.del}</i></span>`;
+  const section = f => `<div class="fsec${f.untracked ? ' closed untracked' : ''}" id="${f.id}"><div class="fh"><span class="st st-${f.st}">${f.st}</span>`
+    + `<span class="p">${label(f)}</span>${count(f)}`
+    + `${f.untracked ? '' : '<button class="fold" title="Fold or unfold this file">▾</button>'}</div><div class="fbody">${f.body}</div></div>`;
+  const titled = groups.length > 1 || groups[0]?.title;
+  const all = groups.flatMap(g => g.files);
+  $('diff').innerHTML = head + groups.map(g => (titled ? `<div class="grp">${esc(g.title)} · ${g.files.length}</div>` : '')
+    + g.files.map(section).join('') + (g.more || '')).join('');
+  $('diff').scrollTop = 0;
+  $('files-count').textContent = `${all.length} file${all.length === 1 ? '' : 's'}`;
+  updateFoldAll();
+  $('files').innerHTML = groups.map(g => (titled && g.files.length ? `<div class="file-grp">${esc(g.title)}</div>` : '')
+    + g.files.map(f => `<div class="file" data-id="${f.id}" title="${label(f)}">`
+      + `<span class="st st-${f.st}">${f.st}</span><span class="p">${label(f)}</span>${count(f)}</div>`).join('')).join('')
+    || '<div class="file"><span class="p">no file changes</span></div>';
+  render();
+}
+
 async function showDetail(c) {
   if (!c) return;
-  openHash = c.h;
-  $('detail').hidden = $('split').hidden = false;
-  $('detail-title').innerHTML = `<span class="h" title="Copy ${c.h}">${c.h.slice(0, 10)}</span>${esc(c.s)}`;
-  $('detail-title').title = c.s;
+  if (c.wt) return showWorktree();
+  compareWith = -1;
+  openPanel(c.h, `${hashSpan(c.h)}${esc(c.s)}`, c.s);
   const text = await (await api(withRepo('/api/commit', new URLSearchParams({ h: c.h })))).text();
   if (openHash !== c.h) return;
+  const { head, files, more } = parseDiff(text, 'c');
+  fillPanel({ head, groups: [{ files, more }] });
+}
+
+async function showWorktree() {
+  compareWith = -1;
+  openPanel('worktree', '<span class="wt-title">Uncommitted changes</span>', 'Uncommitted changes');
+  const wt = await (await api(withRepo('/api/worktree'))).json();
+  if (openHash !== 'worktree') return;
+  const staged = parseDiff(wt.staged, 's'), unstaged = parseDiff(wt.unstaged, 'u');
+  const untracked = wt.untracked.map((path, i) => ({ path, st: 'U', id: `n${i}`, body: '', untracked: true }));
+  fillPanel({ groups: [
+    { title: 'Staged', files: staged.files, more: staged.more },
+    { title: 'Not staged', files: unstaged.files, more: unstaged.more },
+    { title: 'Untracked', files: untracked },
+  ].filter(g => g.files.length) });
+}
+
+async function showCompare(i, j) {
+  const [newer, older] = i < j ? [commits[i], commits[j]] : [commits[j], commits[i]];
+  if (newer.wt || older.wt) return showToast('compare two commits, not the uncommitted changes', 3000);
+  compareWith = j;
+  const key = `${older.h}..${newer.h}`;
+  openPanel(key, `<span class="cmp-label">Compare</span>${hashSpan(older.h, 7)}<span class="arrow">→</span>${hashSpan(newer.h, 7)}`, `${older.s} → ${newer.s}`);
+  render();
+  const text = await (await api(withRepo('/api/compare', new URLSearchParams({ from: older.h, to: newer.h })))).text();
+  if (openHash !== key) return;
+  const { head, files, more } = parseDiff(text, 'x');
+  fillPanel({ head, groups: [{ files, more }] });
+}
+
+function parseDiff(text, prefix) {
   const lines = text.split('\n');
   const files = [];
   let head = '', file = null;
   lines.slice(0, MAX_DIFF_LINES).forEach(line => {
     let cls = '';
     if (line.startsWith('diff --git ')) {
-      file = { path: diffPath(line), st: 'M', add: 0, del: 0, id: `f${files.length}`, body: '' };
+      file = { path: diffPath(line), st: 'M', add: 0, del: 0, id: `${prefix}${files.length}`, body: '' };
       files.push(file);
       return;
     }
@@ -223,19 +302,8 @@ async function showDetail(c) {
     if (file) file.body += span;
     else head += span;
   });
-  const label = f => esc(f.from ? `${f.from} → ${f.path}` : f.path);
-  const sections = files.map(f => `<div class="fsec" id="${f.id}"><div class="fh"><span class="st st-${f.st}">${f.st}</span>`
-    + `<span class="p">${label(f)}</span><span class="n"><b>+${f.add}</b> <i>−${f.del}</i></span>`
-    + `<button class="fold" title="Fold or unfold this file">▾</button></div><div class="fbody">${f.body}</div></div>`).join('');
   const more = lines.length > MAX_DIFF_LINES ? `<span class="mt">… ${lines.length - MAX_DIFF_LINES} more lines</span>` : '';
-  $('diff').innerHTML = head + sections + more;
-  $('diff').scrollTop = 0;
-  $('files-count').textContent = `${files.length} file${files.length === 1 ? '' : 's'}`;
-  updateFoldAll();
-  $('files').innerHTML = files.map(f => `<div class="file" data-id="${f.id}" title="${esc(f.from ? `${f.from} → ${f.path}` : f.path)}">`
-    + `<span class="st st-${f.st}">${f.st}</span><span class="p">${label(f)}</span>`
-    + `<span class="n"><b>+${f.add}</b> <i>−${f.del}</i></span></div>`).join('') || '<div class="file"><span class="p">no file changes</span></div>';
-  render();
+  return { head, files, more };
 }
 
 function updateFoldAll() {
@@ -255,6 +323,7 @@ function diffPath(line) {
 function closeDetail() {
   clearTimeout(detailTimer);
   openHash = null;
+  compareWith = -1;
   $('detail').hidden = $('split').hidden = true;
   requestAnimationFrame(render);
 }
@@ -374,9 +443,15 @@ async function loadLog({ anchor = false, fresh = false } = {}) {
   const request = logRequest = new AbortController();
   const pending = setTimeout(() => { if (!anchor) $('count').textContent = 'loading…'; }, 120);
   try {
-    const entry = await fetchLog(params, request.signal, fresh);
+    const [entry, status] = await Promise.all([fetchLog(params, request.signal, fresh), api(withRepo('/api/status')).then(r => r.json())]);
     if (request !== logRequest) return;
     ({ list: commits, rows, lanes } = entry);
+    const dirty = status.staged + status.unstaged + status.untracked > 0;
+    if (dirty && repo.head && commits.some(c => c.h === repo.head)) {
+      const wt = { h: 'worktree', p: [repo.head], a: '', t: Date.now() / 1000, s: 'Uncommitted changes', wt: status };
+      commits = [wt, ...commits];
+      ({ rows, lanes } = layout(commits));
+    }
   } catch (e) {
     if (e.name === 'AbortError') return;
     commits = [];
@@ -392,13 +467,15 @@ async function loadLog({ anchor = false, fresh = false } = {}) {
   applyCols();
   $('spacer').style.height = `${commits.length * ROW}px`;
   const limit = +$('limit').value;
-  $('count').textContent = `${commits.length.toLocaleString()} commits${commits.length >= limit ? ' (limit)' : ''}`;
+  const shown = commits.filter(c => !c.wt).length;
+  $('count').textContent = `${shown.toLocaleString()} commits${shown >= limit ? ' (limit)' : ''}`;
   const i = keep ? commits.findIndex(c => c.h === keep) : -1;
   cursor = i;
   const topAgain = top?.h ? commits.findIndex(c => c.h === top.h) : -1;
   if (topAgain >= 0) list.scrollTop = topAgain * ROW + top.offset;
   else if (i < 0) list.scrollTop = 0;
   render();
+  if (openHash === 'worktree') commits[0]?.wt ? showWorktree() : closeDetail();
 }
 
 async function reload({ anchor = false, fresh = false } = {}) {
@@ -633,9 +710,12 @@ function openContext(e) {
   const row = e.target.closest('.row');
   if (!row) return;
   e.preventDefault();
-  const c = commits[+row.dataset.i];
+  const i = +row.dataset.i, c = commits[i];
+  if (c.wt) return;
   const ref = e.target.closest('.ref')?.dataset;
   const items = [];
+  const base = commits[cursor];
+  if (base && cursor !== i && !base.wt) items.push([`Compare with selected ${base.h.slice(0, 7)}`, () => showCompare(cursor, i)], null);
   if (ref?.kind === 'head' || ref?.kind === 'remote') {
     items.push([`Checkout ${ref.name}`, () => checkout(ref.name, ref.name)]);
     items.push(['Copy branch name', () => copyHash(ref.kind === 'remote' ? ref.name.slice(ref.name.indexOf('/') + 1) : ref.name)]);
@@ -645,7 +725,7 @@ function openContext(e) {
     items.push([`Checkout tag ${ref.name} (detached)`, () => checkout(ref.name, ref.name)]);
     items.push(['Copy tag name', () => copyHash(ref.name)]);
   }
-  if (items.length) items.push(null);
+  if (items.length && items.at(-1) !== null) items.push(null);
   items.push([`Checkout commit ${c.h.slice(0, 7)} (detached)`, () => checkout(c.h, c.h.slice(0, 7))]);
   items.push(['Copy commit hash', () => copyHash(c.h)]);
   const menu = $('ctx');
@@ -672,6 +752,10 @@ function showToast(text, ms = 1400) {
 $('rows').addEventListener('click', e => {
   const row = e.target.closest('.row');
   if (!row || e.detail > 1) return;
+  if ((e.ctrlKey || e.metaKey) && cursor >= 0 && cursor !== +row.dataset.i) {
+    showCompare(cursor, +row.dataset.i);
+    return;
+  }
   if (e.target.closest('.h')) {
     copyHash(commits[+row.dataset.i].h);
     setCursor(+row.dataset.i, { scroll: false });
@@ -682,7 +766,10 @@ $('rows').addEventListener('dblclick', e => {
   if (e.target.closest('.row') && !e.target.closest('.h')) closeDetail();
 });
 $('list').addEventListener('scroll', closeContext, { passive: true });
-$('detail-title').addEventListener('click', e => { if (e.target.closest('.h') && openHash) copyHash(openHash); });
+$('detail-title').addEventListener('click', e => {
+  const h = e.target.closest('.h[data-h]')?.dataset.h;
+  if (h) copyHash(h);
+});
 $('pick-btn').addEventListener('click', () => $('menu').hidden ? openMenu() : closeMenu());
 $('filter').addEventListener('input', () => { menuCursor = 0; renderMenu(); });
 $('filter').addEventListener('keydown', e => {
@@ -831,7 +918,7 @@ $('split').addEventListener('mousedown', e => {
   window.addEventListener('mouseup', up);
 });
 document.addEventListener('keydown', e => {
-  if (e.target.closest('input, select') || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target.closest?.('input, select') || e.ctrlKey || e.metaKey || e.altKey) return;
   const page = Math.max(1, Math.floor($('list').clientHeight / ROW) - 1);
   const keys = {
     ArrowDown: () => setCursor(cursor + 1), j: () => setCursor(cursor + 1),
@@ -845,7 +932,7 @@ document.addEventListener('keydown', e => {
       if (!$('menu').hidden) closeMenu();
       else closeDetail();
     },
-    b: openMenu, '/': openMenu, p: openProjects, r: () => reload({ anchor: true, fresh: true }), f: fetchRemotes, c: () => commits[cursor] && copyHash(commits[cursor].h),
+    b: openMenu, '/': openMenu, p: openProjects, r: () => reload({ anchor: true, fresh: true }), f: fetchRemotes, c: () => commits[cursor] && !commits[cursor].wt && copyHash(commits[cursor].h),
   };
   if (keys[e.key]) { keys[e.key](); e.preventDefault(); }
 });

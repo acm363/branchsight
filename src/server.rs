@@ -122,6 +122,11 @@ fn route(cfg: &Config, post: bool, url: &str) -> Option<Result<Routed, String>> 
             repo().and_then(|r| r.log(&refs, limit)).map(json_reply)
         }
         "/api/state" => repo().and_then(|r| r.fingerprint()).map(|v| json_reply(json!({ "v": v }))),
+        "/api/status" => repo().and_then(|r| r.status()).map(json_reply),
+        "/api/worktree" => repo().and_then(|r| r.worktree()).map(json_reply),
+        "/api/compare" => repo()
+            .and_then(|r| r.compare(param("from").unwrap_or(""), param("to").unwrap_or("")))
+            .map(|t| (t, "text/plain; charset=utf-8")),
         "/api/fetch" if post => repo().and_then(|r| fetch(&r)).map(|out| json_reply(json!({ "out": out }))),
         "/api/checkout" if post => repo().and_then(|r| r.checkout(param("ref").unwrap_or(""))).map(|out| json_reply(json!({ "out": out }))),
         "/api/delete-remote" if post => repo()

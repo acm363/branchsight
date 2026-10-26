@@ -434,3 +434,77 @@ fn checkout_detaches_head_on_a_tag_or_a_commit() {
     let (status, _) = post(port, &format!("/api/checkout?{q}&ref=deadbeefdeadbeef"));
     assert_eq!(status, 400, "an unknown hash is refused");
 }
+
+#[test]
+fn status_and_worktree_split_staged_unstaged_and_untracked_changes() {
+    // Given.
+    let sb = Sandbox::new();
+    let repo = sb.path("repo");
+    init(&repo);
+    commit(&repo, "staged.txt", "one");
+    commit(&repo, "edited.txt", "two");
+    fs::write(repo.join("staged.txt"), "one, staged\n").unwrap();
+    git(&repo, &["add", "staged.txt"]);
+    fs::write(repo.join("edited.txt"), "two, not staged\n").unwrap();
+    fs::write(repo.join("new.txt"), "brand new\n").unwrap();
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&repo);
+
+    // When.
+    let status = json(port, &format!("/api/status?{q}"));
+    let worktree = json(port, &format!("/api/worktree?{q}"));
+
+    // Then.
+    assert_eq!((status["staged"].as_u64(), status["unstaged"].as_u64(), status["untracked"].as_u64()), (Some(1), Some(1), Some(1)));
+    let (staged, unstaged) = (worktree["staged"].as_str().unwrap(), worktree["unstaged"].as_str().unwrap());
+    assert!(staged.contains("+one, staged") && !staged.contains("edited.txt"), "{staged}");
+    assert!(unstaged.contains("+two, not staged") && !unstaged.contains("staged.txt |"), "{unstaged}");
+    assert_eq!(worktree["untracked"], serde_json::json!(["new.txt"]));
+}
+
+#[test]
+fn state_fingerprint_changes_when_a_file_is_edited() {
+    // Given.
+    let sb = Sandbox::new();
+    let repo = sb.path("repo");
+    init(&repo);
+    commit(&repo, "a.txt", "A");
+    let port = start(vec![sb.0.clone()], None);
+    let path = format!("/api/state?{}", repo_query(&repo));
+    let clean = json(port, &path)["v"].clone();
+
+    // When.
+    fs::write(repo.join("a.txt"), "first edit\n").unwrap();
+    let first_edit = json(port, &path)["v"].clone();
+    fs::write(repo.join("a.txt"), "first edit\nsecond edit\n").unwrap();
+    let second_edit = json(port, &path)["v"].clone();
+
+    // Then.
+    assert_ne!(first_edit, clean);
+    assert_ne!(second_edit, first_edit, "a further edit of an already modified file must be seen too");
+}
+
+#[test]
+fn compare_shows_every_change_between_two_commits() {
+    // Given.
+    let sb = Sandbox::new();
+    let repo = sb.path("repo");
+    init(&repo);
+    let from = commit(&repo, "a.txt", "A");
+    commit(&repo, "b.txt", "B");
+    let to = commit(&repo, "c.txt", "C");
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&repo);
+
+    // When.
+    let (status, body) = get(port, &format!("/api/compare?{q}&from={from}&to={to}"));
+
+    // Then.
+    assert_eq!(status, 200, "{body}");
+    assert!(body.contains("diff --git a/b.txt b/b.txt") && body.contains("diff --git a/c.txt b/c.txt"), "{body}");
+    assert!(!body.contains("a/a.txt"), "the starting commit's own change is not part of the comparison");
+    for bad in ["--output=x", "HEAD", "deadbeefdeadbeef"] {
+        let (status, _) = get(port, &format!("/api/compare?{q}&from={from}&to={}", encode(bad)));
+        assert_eq!(status, 400, "{bad}");
+    }
+}
