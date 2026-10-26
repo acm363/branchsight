@@ -12,29 +12,43 @@
   <nav id="mainmenu">
     <img class="logo" src="/favicon.svg" alt="BranchSight">
     <div class="mb">
-      <button class="mb-btn">File</button>
+      <button class="mb-btn" title="Menu" aria-label="Menu"><svg viewBox="0 0 16 16" width="16" height="16"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       <div class="mb-menu" hidden>
-        <button data-cmd="open">Open project…</button>
-        <button data-cmd="close">Close project</button>
-      </div>
-    </div>
-    <div class="mb">
-      <button class="mb-btn">View</button>
-      <div class="mb-menu" hidden>
-        <div class="mrow">Text size
-          <span class="spacer"></span>
-          <button data-cmd="smaller" title="Smaller text">−</button><span id="fs-val"></span><button data-cmd="bigger" title="Larger text">+</button>
-          <button data-cmd="reset-size" title="Default size">reset</button>
+        <div class="sub"><div class="sub-label">File<span>›</span></div>
+          <div class="sub-menu">
+            <button data-cmd="open">Open project…<kbd>p</kbd></button>
+            <button data-cmd="close">Close project</button>
+          </div>
+        </div>
+        <div class="sub"><div class="sub-label">View<span>›</span></div>
+          <div class="sub-menu">
+            <div class="mrow">Text size
+              <span class="spacer"></span>
+              <button data-cmd="smaller" title="Smaller text">−</button><span id="fs-val"></span><button data-cmd="bigger" title="Larger text">+</button>
+              <button data-cmd="reset-size" title="Default size">reset</button>
+            </div>
+          </div>
+        </div>
+        <div class="sub"><div class="sub-label">Help<span>›</span></div>
+          <div class="sub-menu help">
+            <div class="keys">
+              <kbd>p</kbd><span>open a project</span>
+              <kbd>b</kbd><span>pick branches</span>
+              <kbd>↑ ↓</kbd><span>move between commits</span>
+              <kbd>enter</kbd><span>files and diff of the commit</span>
+              <kbd>c</kbd><span>copy the commit hash</span>
+              <kbd>f</kbd><span>fetch all remotes</span>
+              <kbd>r</kbd><span>reload</span>
+              <kbd>esc</kbd><span>close a menu or the diff</span>
+            </div>
+            <div class="about" id="about"></div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="mb">
-      <button class="mb-btn">Help</button>
-      <div class="mb-menu" hidden><div class="about" id="about"></div></div>
-    </div>
   </nav>
   <div id="projects">
-    <strong id="repo"></strong>
+    <button id="proj-chip" title="Switch project (p)"><span class="avatar" id="avatar"></span><span id="repo"></span><span class="caret">▾</span></button>
     <div id="pmenu" hidden>
       <div id="start-title"><img src="/favicon.svg" alt=""><span>Open a project</span></div>
       <input id="pfilter" placeholder="Filter projects, or type a path…" autocomplete="off" spellcheck="false">

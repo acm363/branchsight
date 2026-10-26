@@ -509,7 +509,9 @@ async function init() {
   prefs.set('recent', [repo.path, ...(prefs.get('recent') || []).filter(p => p !== repo.path)].slice(0, 30));
   document.title = `${repo.name} · BranchSight`;
   $('repo').textContent = repo.name;
-  $('repo').title = repo.path;
+  $('proj-chip').title = `${repo.path} — switch project (p)`;
+  $('avatar').textContent = (repo.name[0] || '?').toUpperCase();
+  $('avatar').style.background = color([...repo.name].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 0));
   const fromUrl = new URLSearchParams(location.search).getAll('ref');
   selected = fromUrl.length ? fromUrl : store.get('sel') ?? DEFAULT_SELECTION;
   $('opt-remote').checked = store.get('remote') ?? true;
@@ -675,10 +677,7 @@ function closeMenubar() {
   return true;
 }
 
-$('mainmenu').addEventListener('mouseover', e => {
-  const mb = e.target.closest('.mb');
-  if (mb && !mb.classList.contains('open') && $('mainmenu').querySelector('.mb.open')) openMenubar(mb);
-});
+$('proj-chip').addEventListener('click', () => $('pmenu').hidden ? openProjects() : closeProjects());
 $('mainmenu').addEventListener('click', e => {
   const btn = e.target.closest('.mb-btn');
   if (btn) {
