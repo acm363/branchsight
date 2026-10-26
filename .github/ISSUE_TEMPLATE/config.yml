@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/acm363/branchsight/tree/main/docs
+    about: How-to guides and the reference of every key, menu and setting.

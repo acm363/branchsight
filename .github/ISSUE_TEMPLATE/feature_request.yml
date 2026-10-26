@@ -1,0 +1,20 @@
+name: Feature request
+description: Something BranchSight should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and why it is hard today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you suggest
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How you do it today
+      description: Another tool, a git command, a workaround.

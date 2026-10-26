@@ -60,6 +60,13 @@ scripts/check.sh      # unit and end-to-end tests, graph layout tests, desktop a
 CI runs the tests on Linux and Windows on every push; pushing a `v*` tag tests on macOS too and drafts a release
 with the installers.
 
+## Contributing
+
+Bug reports, ideas and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md). Every pull request is
+reviewed by the maintainer, [@acm363](https://github.com/acm363), before it lands in `main`.
+
+<a href="https://github.com/acm363/branchsight/graphs/contributors"><img src="https://contrib.rocks/image?repo=acm363/branchsight" alt="Contributors"></a>
+
 ## License
 
 [MIT](LICENSE) © 2026 Acm_363 — free to download, use, modify and fork; keep the copyright notice.

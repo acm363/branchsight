@@ -1,0 +1,49 @@
+name: Bug report
+description: Something does not work as described in the documentation.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a repository with …
+        2. Right-click …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: BranchSight version
+      description: ☰ › Help shows it.
+      placeholder: "0.2.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where you run it
+      options:
+        - Desktop app on Linux
+        - Desktop app on Windows
+        - Desktop app on macOS
+        - branchsight serve, in a browser
+    validations:
+      required: true
+  - type: input
+    id: git
+    attributes:
+      label: git version
+      placeholder: "git version 2.56.0"
+  - type: textarea
+    id: more
+    attributes:
+      label: Screenshots or error messages
+      description: Leave out anything private, such as repository or branch names.
