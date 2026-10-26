@@ -4,10 +4,21 @@
   "mainBinaryName": "branchsight-app",
   "identifier": "com.acm363.branchsight",
   "build": {
-    "frontendDist": "dist"
+    "frontendDist": "../src/web"
   },
   "app": {
-    "windows": [],
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "BranchSight",
+        "url": "index.html",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 640,
+        "minHeight": 400
+      }
+    ],
     "security": {
       "csp": null
     }
@@ -29,8 +40,16 @@
       "icons/icon.ico"
     ],
     "linux": {
-      "deb": { "depends": ["git"] },
-      "rpm": { "depends": ["git"] }
+      "deb": {
+        "depends": [
+          "git"
+        ]
+      },
+      "rpm": {
+        "depends": [
+          "git"
+        ]
+      }
     }
   }
 }

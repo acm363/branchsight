@@ -1,6 +1,7 @@
 import { DEFAULT_SELECTION, GROUPS, layout } from './graph.js';
 
-const ROW = 20, LANE = 16, MAX_DIFF_LINES = 40000;
+const MAX_DIFF_LINES = 40000, FONT_SIZES = { min: 10, max: 20, default: 13 };
+let ROW = 21, LANE = 17;
 const POLL_MS = 5000, AUTO_FETCH_MS = 120000;
 const COLORS = ['#3b82f6', '#e5484d', '#30a46c', '#f5a524', '#8e4ec6', '#12a594', '#d6409f', '#0090ff', '#ad7f58', '#7c66dc', '#e16f24', '#5bb98b'];
 const $ = id => document.getElementById(id);
@@ -28,10 +29,34 @@ function withRepo(path, params = new URLSearchParams()) {
   return `${path}?${params}`;
 }
 
-async function api(path, signal) {
-  const r = await fetch(path, { signal });
+const tauri = window.__TAURI__?.core;
+
+async function api(path, signal, method = 'GET') {
+  if (tauri) {
+    const [status, body] = await tauri.invoke('api', { method, path });
+    if (signal?.aborted) throw new DOMException('superseded', 'AbortError');
+    if (status !== 200) throw new Error(body);
+    return { json: async () => JSON.parse(body), text: async () => body };
+  }
+  const r = await fetch(path, { signal, method });
   if (!r.ok) throw new Error(await r.text());
   return r;
+}
+
+function setFontSize(px) {
+  const size = Math.max(FONT_SIZES.min, Math.min(FONT_SIZES.max, px));
+  ROW = Math.round(size * 1.6);
+  LANE = Math.round(ROW * 0.8);
+  const root = document.documentElement.style;
+  root.setProperty('--fs', `${size}px`);
+  root.setProperty('--row', `${ROW}px`);
+  $('fs-val').textContent = `${size}px`;
+  prefs.set('fontSize', size);
+  if (commits.length) {
+    $('spacer').style.height = `${commits.length * ROW}px`;
+    applyCols();
+    render();
+  }
 }
 
 function fmtDate(t) {
@@ -42,7 +67,7 @@ function fmtDate(t) {
 const AUTO_LANES = 10;
 const COLS = { graph: [30, 640], author: [40, 400], date: [60, 220], hash: [40, 200] };
 let colWidths = {};
-const graphWidth = () => colWidths.graph || 18 + Math.min(lanes, AUTO_LANES) * LANE;
+const graphWidth = () => colWidths.graph || Math.round(LANE * 1.1) + Math.min(lanes, AUTO_LANES) * LANE;
 
 function applyCols() {
   const pane = $('pane');
@@ -86,9 +111,9 @@ function draw(first, last, gw) {
   cv.height = hpx * dpr;
   const g = cv.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.lineWidth = 2.4;
+  g.lineWidth = ROW * 0.12;
   g.lineCap = 'round';
-  const X = j => 9 + j * LANE;
+  const X = j => Math.round(LANE * 0.55) + j * LANE;
   const seg = (x1, y1, x2, y2, stroke, dashed) => {
     g.strokeStyle = stroke;
     g.setLineDash(dashed ? [2, 3] : []);
@@ -110,14 +135,14 @@ function draw(first, last, gw) {
     r.out.forEach(([t, n, known]) => seg(X(r.col), mid, X(t), y1, color(n), !known));
     g.setLineDash([]);
     g.beginPath();
-    g.arc(X(r.col), mid, c.p.length > 1 ? 4 : 4.8, 0, Math.PI * 2);
+    g.arc(X(r.col), mid, ROW * (c.p.length > 1 ? 0.2 : 0.24), 0, Math.PI * 2);
     g.fillStyle = c.p.length > 1 ? bg : color(r.color);
     g.strokeStyle = color(r.color);
     g.fill();
     g.stroke();
     if (c.h === repo.head) {
       g.beginPath();
-      g.arc(X(r.col), mid, 7.8, 0, Math.PI * 2);
+      g.arc(X(r.col), mid, ROW * 0.39, 0, Math.PI * 2);
       g.stroke();
     }
   }
@@ -148,17 +173,15 @@ async function showDetail(c) {
   if (openHash !== c.h) return;
   const lines = text.split('\n');
   const files = [];
-  let html = '', inDiff = false, file = null;
+  let head = '', file = null;
   lines.slice(0, MAX_DIFF_LINES).forEach(line => {
     let cls = '';
     if (line.startsWith('diff --git ')) {
-      inDiff = true;
-      file = { path: diffPath(line), st: 'M', add: 0, del: 0, id: `f${files.length}` };
+      file = { path: diffPath(line), st: 'M', add: 0, del: 0, id: `f${files.length}`, body: '' };
       files.push(file);
-      html += `<span class="fh" id="${file.id}">${esc(file.path)}</span>`;
       return;
     }
-    if (inDiff && file) {
+    if (file) {
       if (/^(new file mode)/.test(line)) file.st = 'A';
       else if (/^(deleted file mode)/.test(line)) file.st = 'D';
       else if (/^rename from /.test(line)) { file.st = 'R'; file.from = line.slice(12); }
@@ -167,15 +190,29 @@ async function showDetail(c) {
       else if (line[0] === '+') { cls = 'ad'; file.add++; }
       else if (line[0] === '-') { cls = 'rm'; file.del++; }
     }
-    html += `<span${cls ? ` class="${cls}"` : ''}>${esc(line) || ' '}</span>`;
+    const span = `<span${cls ? ` class="${cls}"` : ''}>${esc(line) || ' '}</span>`;
+    if (file) file.body += span;
+    else head += span;
   });
-  if (lines.length > MAX_DIFF_LINES) html += `<span class="mt">… ${lines.length - MAX_DIFF_LINES} more lines</span>`;
-  $('diff').innerHTML = html;
+  const label = f => esc(f.from ? `${f.from} → ${f.path}` : f.path);
+  const sections = files.map(f => `<div class="fsec" id="${f.id}"><div class="fh"><span class="st st-${f.st}">${f.st}</span>`
+    + `<span class="p">${label(f)}</span><span class="n"><b>+${f.add}</b> <i>−${f.del}</i></span>`
+    + `<button class="fold" title="Fold or unfold this file">▾</button></div><div class="fbody">${f.body}</div></div>`).join('');
+  const more = lines.length > MAX_DIFF_LINES ? `<span class="mt">… ${lines.length - MAX_DIFF_LINES} more lines</span>` : '';
+  $('diff').innerHTML = head + sections + more;
   $('diff').scrollTop = 0;
+  $('files-count').textContent = `${files.length} file${files.length === 1 ? '' : 's'}`;
+  updateFoldAll();
   $('files').innerHTML = files.map(f => `<div class="file" data-id="${f.id}" title="${esc(f.from ? `${f.from} → ${f.path}` : f.path)}">`
-    + `<span class="st st-${f.st}">${f.st}</span><span class="p">${esc(f.from ? `${f.from} → ${f.path}` : f.path)}</span>`
+    + `<span class="st st-${f.st}">${f.st}</span><span class="p">${label(f)}</span>`
     + `<span class="n"><b>+${f.add}</b> <i>−${f.del}</i></span></div>`).join('') || '<div class="file"><span class="p">no file changes</span></div>';
   render();
+}
+
+function updateFoldAll() {
+  const sections = [...$('diff').querySelectorAll('.fsec')];
+  $('fold-all').textContent = sections.some(s => !s.classList.contains('closed')) ? 'Collapse all' : 'Expand all';
+  $('fold-all').disabled = !sections.length;
 }
 
 function diffPath(line) {
@@ -362,8 +399,7 @@ async function fetchRemotes() {
   btn.disabled = true;
   btn.textContent = '⇣ fetching…';
   try {
-    const r = await fetch(withRepo('/api/fetch'), { method: 'POST' });
-    if (!r.ok) throw new Error(await r.text());
+    await api(withRepo('/api/fetch'), undefined, 'POST');
     lastFetch = Date.now();
     btn.title = `Fetch all remotes (f) · last ${new Date().toLocaleTimeString()}`;
     btn.classList.remove('err');
@@ -428,12 +464,23 @@ function closeProjects() {
 
 function switchProject(path) {
   if (path === repo.path) return closeProjects();
-  prefs.set('last', path);
   location.href = `${location.pathname}?repo=${encodeURIComponent(path)}`;
+}
+
+function closeProject() {
+  location.href = `${location.pathname}?start`;
+}
+
+function showStart() {
+  document.body.classList.add('start');
+  document.title = 'BranchSight';
+  $('repo').textContent = 'no project';
+  return openProjects();
 }
 
 async function resolveRepo() {
   const params = new URLSearchParams(location.search);
+  if (params.has('start')) return null;
   if (params.get('repo')) return params.get('repo');
   const host = location.hostname.endsWith('.localhost') ? location.hostname.slice(0, -'.localhost'.length) : '';
   if (host) {
@@ -441,11 +488,13 @@ async function resolveRepo() {
     const match = projectList.find(p => p.name.toLowerCase() === host);
     if (match) return match.path;
   }
-  return ctx.default || prefs.get('last');
+  return ctx.default;
 }
 
 async function init() {
+  setFontSize(prefs.get('fontSize') ?? FONT_SIZES.default);
   ctx = await (await api('/api/context')).json();
+  $('about').textContent = `BranchSight ${ctx.version} · MIT · github.com/acm363/branchsight`;
   repoPath = await resolveRepo();
   if (repoPath) {
     try {
@@ -455,12 +504,8 @@ async function init() {
       repoPath = null;
     }
   }
-  if (!repoPath) {
-    $('repo').textContent = 'choose a project';
-    return openProjects();
-  }
+  if (!repoPath) return showStart();
   repoPath = repo.path;
-  prefs.set('last', repo.path);
   prefs.set('recent', [repo.path, ...(prefs.get('recent') || []).filter(p => p !== repo.path)].slice(0, 30));
   document.title = `${repo.name} · BranchSight`;
   $('repo').textContent = repo.name;
@@ -541,10 +586,10 @@ $('menu').addEventListener('click', e => {
 });
 ['remote', 'tag'].forEach(k => $(`opt-${k}`).addEventListener('change', e => { store.set(k, e.target.checked); renderMenu(); $('filter').focus(); }));
 document.addEventListener('mousedown', e => {
+  if (!$('mainmenu').contains(e.target)) closeMenubar();
   if (!$('menu').hidden && !$('picker').contains(e.target)) closeMenu();
   if (!$('pmenu').hidden && !$('projects').contains(e.target)) closeProjects();
 });
-$('proj-btn').addEventListener('click', () => $('pmenu').hidden ? openProjects() : closeProjects());
 $('pfilter').addEventListener('input', () => { pCursor = 0; renderProjects(); });
 $('pfilter').addEventListener('keydown', e => {
   if (e.key === 'ArrowDown') { pCursor = Math.min(pItems.length - 1, pCursor + 1); renderProjects(); e.preventDefault(); }
@@ -595,7 +640,61 @@ document.addEventListener('visibilitychange', () => { poll(); autoFetchTick(); }
 $('close').addEventListener('click', closeDetail);
 $('files').addEventListener('click', e => {
   const el = e.target.closest('.file[data-id]');
-  if (el) document.getElementById(el.dataset.id)?.scrollIntoView({ block: 'start' });
+  const sec = el && document.getElementById(el.dataset.id);
+  if (!sec) return;
+  sec.classList.remove('closed');
+  updateFoldAll();
+  const diff = $('diff');
+  diff.scrollTop += sec.getBoundingClientRect().top - diff.getBoundingClientRect().top;
+});
+$('diff').addEventListener('click', e => {
+  const fh = e.target.closest('.fsec > .fh');
+  if (!fh) return;
+  fh.parentElement.classList.toggle('closed');
+  updateFoldAll();
+});
+$('fold-all').addEventListener('click', () => {
+  const sections = [...$('diff').querySelectorAll('.fsec')];
+  const fold = sections.some(s => !s.classList.contains('closed'));
+  sections.forEach(s => s.classList.toggle('closed', fold));
+  updateFoldAll();
+});
+function openMenubar(mb) {
+  closeMenubar();
+  closeMenu();
+  mb.classList.add('open');
+  mb.querySelector('.mb-menu').hidden = false;
+  mb.querySelector('[data-cmd="close"]')?.toggleAttribute('disabled', !repo.path);
+}
+
+function closeMenubar() {
+  const open = $('mainmenu').querySelector('.mb.open');
+  if (!open) return false;
+  open.classList.remove('open');
+  open.querySelector('.mb-menu').hidden = true;
+  return true;
+}
+
+$('mainmenu').addEventListener('mouseover', e => {
+  const mb = e.target.closest('.mb');
+  if (mb && !mb.classList.contains('open') && $('mainmenu').querySelector('.mb.open')) openMenubar(mb);
+});
+$('mainmenu').addEventListener('click', e => {
+  const btn = e.target.closest('.mb-btn');
+  if (btn) {
+    const mb = btn.parentElement;
+    if (mb.classList.contains('open')) closeMenubar();
+    else openMenubar(mb);
+    return;
+  }
+  const cmd = e.target.closest('[data-cmd]')?.dataset.cmd;
+  const size = prefs.get('fontSize') ?? FONT_SIZES.default;
+  if (cmd === 'open' || cmd === 'close') closeMenubar();
+  if (cmd === 'open') openProjects();
+  if (cmd === 'close') closeProject();
+  if (cmd === 'smaller') setFontSize(size - 1);
+  if (cmd === 'bigger') setFontSize(size + 1);
+  if (cmd === 'reset-size') setFontSize(FONT_SIZES.default);
 });
 $('split').addEventListener('mousedown', e => {
   e.preventDefault();
@@ -617,7 +716,11 @@ document.addEventListener('keydown', e => {
     PageDown: () => setCursor(cursor + page), PageUp: () => setCursor(cursor - page),
     Home: () => setCursor(0), End: () => setCursor(commits.length - 1),
     Enter: () => setCursor(cursor < 0 ? 0 : cursor, { open: true }),
-    Escape: () => $('menu').hidden ? closeDetail() : closeMenu(),
+    Escape: () => {
+      if (closeMenubar()) return;
+      if (!$('menu').hidden) closeMenu();
+      else closeDetail();
+    },
     b: openMenu, '/': openMenu, p: openProjects, r: () => reload({ anchor: true, fresh: true }), f: fetchRemotes, c: () => commits[cursor] && copyHash(commits[cursor].h),
   };
   if (keys[e.key]) { keys[e.key](); e.preventDefault(); }

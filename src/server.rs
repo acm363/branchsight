@@ -27,7 +27,13 @@ pub struct Config {
     pub default_repo: Option<PathBuf>,
 }
 
-type Reply = (String, &'static str);
+pub struct Reply {
+    pub status: u16,
+    pub content_type: &'static str,
+    pub body: String,
+}
+
+type Routed = (String, &'static str);
 type BindError = Box<dyn std::error::Error + Send + Sync>;
 
 static FETCHING: LazyLock<Mutex<HashSet<PathBuf>>> = LazyLock::new(Default::default);
@@ -73,17 +79,23 @@ pub fn handle(cfg: &Config, req: Request) {
         let _ = req.respond(Response::from_string("forbidden host").with_status_code(403));
         return;
     }
-    let response = match route(cfg, req.method(), req.url()) {
-        Some(Ok((body, ctype))) => Response::from_string(body)
-            .with_header(header("Content-Type", ctype))
-            .with_header(header("Cache-Control", "no-store")),
-        Some(Err(e)) => Response::from_string(e).with_status_code(400),
-        None => Response::from_string("not found").with_status_code(404),
-    };
+    let reply = respond(cfg, *req.method() == Method::Post, req.url());
+    let response = Response::from_string(reply.body)
+        .with_status_code(reply.status)
+        .with_header(header("Content-Type", reply.content_type))
+        .with_header(header("Cache-Control", "no-store"));
     let _ = req.respond(response);
 }
 
-fn route(cfg: &Config, method: &Method, url: &str) -> Option<Result<Reply, String>> {
+pub fn respond(cfg: &Config, post: bool, url: &str) -> Reply {
+    match route(cfg, post, url) {
+        Some(Ok((body, content_type))) => Reply { status: 200, content_type, body },
+        Some(Err(body)) => Reply { status: 400, content_type: "text/plain; charset=utf-8", body },
+        None => Reply { status: 404, content_type: "text/plain; charset=utf-8", body: "not found".into() },
+    }
+}
+
+fn route(cfg: &Config, post: bool, url: &str) -> Option<Result<Routed, String>> {
     let path = url.split('?').next().unwrap_or("/");
     let params = query(url);
     let param = |k: &str| params.iter().find(|(n, _)| n == k).map(|(_, v)| v.as_str());
@@ -97,6 +109,7 @@ fn route(cfg: &Config, method: &Method, url: &str) -> Option<Result<Reply, Strin
         "/favicon.svg" => Ok((FAVICON_SVG.to_owned(), "image/svg+xml")),
         "/api/ping" => Ok((PING.to_owned(), "text/plain")),
         "/api/context" => Ok(json_reply(json!({
+            "version": env!("CARGO_PKG_VERSION"),
             "default": cfg.default_repo.as_ref().map(|p| p.to_string_lossy()),
             "roots": cfg.roots.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>(),
         }))),
@@ -109,7 +122,7 @@ fn route(cfg: &Config, method: &Method, url: &str) -> Option<Result<Reply, Strin
             repo().and_then(|r| r.log(&refs, limit)).map(json_reply)
         }
         "/api/state" => repo().and_then(|r| r.fingerprint()).map(|v| json_reply(json!({ "v": v }))),
-        "/api/fetch" if *method == Method::Post => repo().and_then(|r| fetch(&r)).map(|out| json_reply(json!({ "out": out }))),
+        "/api/fetch" if post => repo().and_then(|r| fetch(&r)).map(|out| json_reply(json!({ "out": out }))),
         "/api/fetch" => Err("POST required".into()),
         "/api/commit" => repo()
             .and_then(|r| r.show(param("h").unwrap_or("")))
@@ -169,7 +182,7 @@ fn is_local_host(host: &str) -> bool {
     matches!(name, "localhost" | "127.0.0.1" | "::1") || name.ends_with(".localhost")
 }
 
-fn json_reply(v: Value) -> Reply {
+fn json_reply(v: Value) -> Routed {
     (v.to_string(), "application/json")
 }
 
