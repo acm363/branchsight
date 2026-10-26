@@ -80,7 +80,8 @@ sudo apt install libwebkit2gtk-4.1-dev libssl-dev librsvg2-dev libxdo-dev       
 cd app && npx @tauri-apps/cli@2 build                                            # bundles in target/release/bundle
 ```
 
-CI runs the tests on Linux, macOS and Windows and compile-checks the app on every push. Installers are built on
+CI runs the tests on Linux and Windows and compile-checks the app on every push; macOS is tested by the release
+workflow, where its free runners' queue does not hold up every push. Installers are built on
 demand (Actions → ci → Run workflow → bundles) and by pushing a `v*` tag, which drafts a release with them.
 
 ## License
