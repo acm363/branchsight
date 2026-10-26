@@ -87,16 +87,19 @@ function refLabels(c, laneColor) {
   const heads = list.filter(r => r.kind === 'head');
   const remotes = list.filter(r => r.kind === 'remote');
   const merged = new Set();
-  const label = (cls, icon, body) => `<span class="ref ${cls}" style="--c:${laneColor}">${ICONS[icon]}${body}</span>`;
+  const label = (cls, icon, body, data) => `<span class="ref ${cls}" style="--c:${laneColor}"`
+    + ` data-kind="${data.kind}" data-name="${esc(data.name)}" data-remotes="${esc((data.remotes || []).join(' '))}">${ICONS[icon]}${body}</span>`;
   const local = heads.map(h => {
     const tracking = remotes.filter(r => r.name.endsWith(`/${h.name}`));
     tracking.forEach(r => merged.add(r.name));
     const suffix = tracking.map(r => `<span class="remote">${esc(r.name.slice(0, -h.name.length - 1))}</span>`).join('');
-    return label(`local${h.name === repo.branch ? ' current' : ''}`, 'branch', `<span class="name">${esc(h.name)}</span>${suffix}`);
+    return label(`local${h.name === repo.branch ? ' current' : ''}`, 'branch', `<span class="name">${esc(h.name)}</span>${suffix}`,
+      { kind: 'head', name: h.name, remotes: tracking.map(r => r.name) });
   });
-  const remoteOnly = remotes.filter(r => !merged.has(r.name)).map(r => label('remote-only', 'branch', `<span class="name">${esc(r.name)}</span>`));
-  const tags = list.filter(r => r.kind === 'tag').map(r => label('tag', 'tag', `<span class="name">${esc(r.name)}</span>`));
-  const detached = c.h === repo.head && !repo.branch ? [label('local current', 'branch', '<span class="name">HEAD</span>')] : [];
+  const remoteOnly = remotes.filter(r => !merged.has(r.name))
+    .map(r => label('remote-only', 'branch', `<span class="name">${esc(r.name)}</span>`, { kind: 'remote', name: r.name, remotes: [r.name] }));
+  const tags = list.filter(r => r.kind === 'tag').map(r => label('tag', 'tag', `<span class="name">${esc(r.name)}</span>`, { kind: 'tag', name: r.name }));
+  const detached = c.h === repo.head && !repo.branch ? [label('local current', 'branch', '<span class="name">HEAD</span>', { kind: 'detached', name: 'HEAD' })] : [];
   return [...detached, ...local, ...remoteOnly, ...tags].join('');
 }
 
@@ -239,6 +242,7 @@ function diffPath(line) {
 }
 
 function closeDetail() {
+  clearTimeout(detailTimer);
   openHash = null;
   $('detail').hidden = $('split').hidden = true;
   requestAnimationFrame(render);
@@ -548,17 +552,75 @@ async function init() {
 $('list').addEventListener('scroll', () => requestAnimationFrame(render), { passive: true });
 window.addEventListener('resize', () => requestAnimationFrame(render));
 let toastTimer = 0;
-async function copyHash(h) {
+async function copyHash(text) {
   try {
-    await navigator.clipboard.writeText(h);
+    await navigator.clipboard.writeText(text);
   } catch {
-    const ta = Object.assign(document.createElement('textarea'), { value: h });
+    const ta = Object.assign(document.createElement('textarea'), { value: text });
     document.body.append(ta);
     ta.select();
     document.execCommand('copy');
     ta.remove();
   }
-  showToast(`copied ${h}`);
+  showToast(`copied ${text}`);
+}
+
+function confirmAction(text, okLabel) {
+  const dialog = $('confirm');
+  $('confirm-text').textContent = text;
+  dialog.querySelector('[value="ok"]').textContent = okLabel;
+  dialog.returnValue = '';
+  dialog.showModal();
+  return new Promise(resolve => dialog.addEventListener('close', () => resolve(dialog.returnValue === 'ok'), { once: true }));
+}
+
+async function gitAction(endpoint, name, busy) {
+  showToast(busy, 60000);
+  try {
+    const { out } = await (await api(withRepo(endpoint, new URLSearchParams({ ref: name })), undefined, 'POST')).json();
+    showToast(out, 3000);
+  } catch (e) {
+    showToast(e.message.split('\n')[0], 7000);
+  }
+  await reload({ anchor: true, fresh: true });
+}
+
+async function deleteRemote(name) {
+  const ok = await confirmAction(`Delete ${name} on the remote? Everyone who uses it loses the branch; BranchSight cannot undo it.`, 'Delete');
+  if (ok) await gitAction('/api/delete-remote', name, `deleting ${name}…`);
+}
+
+function closeContext() {
+  $('ctx').hidden = true;
+}
+
+function openContext(e) {
+  const row = e.target.closest('.row');
+  if (!row) return;
+  e.preventDefault();
+  const c = commits[+row.dataset.i];
+  const ref = e.target.closest('.ref')?.dataset;
+  const items = [];
+  if (ref?.kind === 'head' || ref?.kind === 'remote') {
+    items.push([`Checkout ${ref.name}`, () => gitAction('/api/checkout', ref.name, `checking out ${ref.name}…`)]);
+    items.push(['Copy branch name', () => copyHash(ref.kind === 'remote' ? ref.name.slice(ref.name.indexOf('/') + 1) : ref.name)]);
+    ref.remotes.split(' ').filter(Boolean).forEach(r => items.push([`Delete remote branch ${r}`, () => deleteRemote(r), 'danger']));
+  }
+  if (ref?.kind === 'tag') items.push(['Copy tag name', () => copyHash(ref.name)]);
+  if (items.length) items.push(null);
+  items.push(['Copy commit hash', () => copyHash(c.h)]);
+  const menu = $('ctx');
+  menu.innerHTML = items.map((it, i) => it ? `<button data-i="${i}"${it[2] ? ` class="${it[2]}"` : ''}>${esc(it[0])}</button>` : '<hr>').join('');
+  menu.onclick = ev => {
+    const btn = ev.target.closest('button[data-i]');
+    if (!btn) return;
+    closeContext();
+    items[+btn.dataset.i][1]();
+  };
+  menu.hidden = false;
+  const { innerWidth: w, innerHeight: h } = window, r = menu.getBoundingClientRect();
+  menu.style.left = `${Math.min(e.clientX, w - r.width - 4)}px`;
+  menu.style.top = `${Math.min(e.clientY, h - r.height - 4)}px`;
 }
 
 function showToast(text, ms = 1400) {
@@ -570,12 +632,17 @@ function showToast(text, ms = 1400) {
 
 $('rows').addEventListener('click', e => {
   const row = e.target.closest('.row');
-  if (!row) return;
+  if (!row || e.detail > 1) return;
   if (e.target.closest('.h')) {
     copyHash(commits[+row.dataset.i].h);
     setCursor(+row.dataset.i, { scroll: false });
   } else setCursor(+row.dataset.i, { scroll: false, open: true });
 });
+$('rows').addEventListener('contextmenu', openContext);
+$('rows').addEventListener('dblclick', e => {
+  if (e.target.closest('.row') && !e.target.closest('.h')) closeDetail();
+});
+$('list').addEventListener('scroll', closeContext, { passive: true });
 $('detail-title').addEventListener('click', e => { if (e.target.closest('.h') && openHash) copyHash(openHash); });
 $('pick-btn').addEventListener('click', () => $('menu').hidden ? openMenu() : closeMenu());
 $('filter').addEventListener('input', () => { menuCursor = 0; renderMenu(); });
@@ -603,6 +670,7 @@ $('menu').addEventListener('click', e => {
 });
 ['remote', 'tag'].forEach(k => $(`opt-${k}`).addEventListener('change', e => { store.set(k, e.target.checked); renderMenu(); $('filter').focus(); }));
 document.addEventListener('mousedown', e => {
+  if (!$('ctx').hidden && !$('ctx').contains(e.target)) closeContext();
   if (!$('mainmenu').contains(e.target)) closeMenubar();
   if (!$('menu').hidden && !$('picker').contains(e.target)) closeMenu();
   if (!$('pmenu').hidden && !$('projects').contains(e.target)) closeProjects();
@@ -732,6 +800,7 @@ document.addEventListener('keydown', e => {
     Enter: () => setCursor(cursor < 0 ? 0 : cursor, { open: true }),
     Escape: () => {
       if (closeMenubar()) return;
+      if (!$('ctx').hidden) return closeContext();
       if (!$('menu').hidden) closeMenu();
       else closeDetail();
     },

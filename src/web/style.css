@@ -113,6 +113,17 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 .row .h { font-family: var(--mono); font-size: calc(var(--fs) - 1px); color: var(--dim); flex: none; width: var(--w-hash); overflow: hidden; text-overflow: clip; cursor: copy; }
 .row .h:hover, #detail-title .h:hover { color: var(--remote); text-decoration: underline; }
 #detail-title .h { font-family: var(--mono); cursor: copy; margin-right: 8px; }
+#ctx { position: fixed; z-index: 30; min-width: 220px; padding: 4px 0; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 8px 28px rgba(0,0,0,.25); }
+#ctx[hidden] { display: none; }
+#ctx button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: none; padding: 5px 14px; white-space: nowrap; }
+#ctx button:hover { background: var(--hover); }
+#ctx button.danger, #confirm .danger { color: var(--rm); }
+#ctx hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+#confirm { max-width: min(460px, 90vw); padding: 18px 20px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+#confirm::backdrop { background: rgba(0,0,0,.35); }
+#confirm p { margin: 0 0 16px; line-height: 1.5; }
+#confirm .actions { display: flex; justify-content: flex-end; gap: 8px; }
+#confirm .danger { font-weight: 600; border-color: var(--rm); }
 #toast { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 4px 12px; border-radius: 4px; font: 12px var(--mono); z-index: 20; opacity: 0; transition: opacity .15s; pointer-events: none; }
 #toast.on { opacity: 1; }
 .row .s { flex: 1; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 5px; align-items: center; min-width: 140px; }
@@ -133,7 +144,7 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 .file .p { overflow: hidden; text-overflow: ellipsis; flex: 1; }
 .file .n { color: var(--dim); flex: none; }
 .file .n b { color: var(--add); font-weight: 400; } .file .n i { color: var(--rm); font-style: normal; }
-#diff { flex: 1; overflow: auto; margin: 0; padding: 6px 0 0; font: calc(var(--fs) - 1px)/1.45 var(--mono); tab-size: 4; }
+#diff { flex: 1; overflow: auto; margin: 0; padding: 0; font: calc(var(--fs) - 1px)/1.45 var(--mono); tab-size: 4; }
 #diff > span, #diff .fbody > span { display: block; padding: 0 10px; white-space: pre; min-width: max-content; }
 #detail-tools { display: flex; align-items: center; gap: 10px; padding: 4px 10px; border-bottom: 1px solid var(--line); color: var(--dim); }
 #detail-tools button { padding: 0 8px; font-size: calc(var(--fs) - 1px); }

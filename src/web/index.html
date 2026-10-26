@@ -40,6 +40,8 @@
               <kbd>f</kbd><span>fetch all remotes</span>
               <kbd>r</kbd><span>reload</span>
               <kbd>esc</kbd><span>close a menu or the diff</span>
+              <kbd>right-click</kbd><span>checkout, copy or delete a branch</span>
+              <kbd>double-click</kbd><span>close the diff</span>
             </div>
             <div class="about" id="about"></div>
           </div>
@@ -73,6 +75,7 @@
   <span id="count"></span>
   <span class="spacer"></span>
   <select id="limit" title="Max commits">
+    <option value="10">10</option><option value="20">20</option><option value="100">100</option><option value="500">500</option>
     <option value="1000">1k</option><option value="5000">5k</option><option value="20000">20k</option><option value="200000">all</option>
   </select>
   <button id="fetch" title="Fetch all remotes (f)">⇣ fetch</button>
@@ -98,6 +101,13 @@
     <pre id="diff"></pre>
   </aside>
 </div>
+<div id="ctx" hidden></div>
+<dialog id="confirm">
+  <form method="dialog">
+    <p id="confirm-text"></p>
+    <div class="actions"><button value="cancel" autofocus>Cancel</button><button value="ok" class="danger"></button></div>
+  </form>
+</dialog>
 <div id="toast"></div>
 <script type="module" src="/app.js"></script>
 </body>

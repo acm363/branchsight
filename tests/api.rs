@@ -320,3 +320,87 @@ fn page_and_every_asset_it_references_are_served() {
         assert!(!body.is_empty() && !ctype.is_empty(), "{asset}");
     }
 }
+
+fn post(port: u16, path: &str) -> (u16, String) {
+    let (status, _, body) = request(port, "POST", path, "localhost");
+    (status, body)
+}
+
+fn cloned_with_feature(sb: &Sandbox) -> (PathBuf, PathBuf) {
+    let origin = sb.path("origin");
+    init(&origin);
+    commit(&origin, "a", "A");
+    git(&origin, &["checkout", "-q", "-b", "feature"]);
+    commit(&origin, "f", "F");
+    git(&origin, &["checkout", "-q", "main"]);
+    let clone = sb.path("clone");
+    git(&sb.0, &["clone", "-q", origin.to_str().unwrap(), clone.to_str().unwrap()]);
+    (origin, clone)
+}
+
+#[test]
+fn checkout_switches_to_a_local_branch_and_tracks_a_remote_one() {
+    // Given.
+    let sb = Sandbox::new();
+    let (_, clone) = cloned_with_feature(&sb);
+    git(&clone, &["branch", "local-only"]);
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&clone);
+
+    // When.
+    let (status, body) = post(port, &format!("/api/checkout?{q}&ref=local-only"));
+
+    // Then.
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(git(&clone, &["branch", "--show-current"]), "local-only");
+
+    // When.
+    let (status, body) = post(port, &format!("/api/checkout?{q}&ref={}", encode("origin/feature")));
+
+    // Then.
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(git(&clone, &["branch", "--show-current"]), "feature");
+    assert_eq!(git(&clone, &["rev-parse", "--abbrev-ref", "feature@{upstream}"]), "origin/feature");
+}
+
+#[test]
+fn checkout_refuses_unknown_and_option_like_names_and_requires_post() {
+    // Given.
+    let sb = Sandbox::new();
+    let (_, clone) = cloned_with_feature(&sb);
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&clone);
+
+    // When.
+    let refused: Vec<u16> = ["nope", "--orphan=x", "-", "origin/-f", "../main"]
+        .iter()
+        .map(|name| post(port, &format!("/api/checkout?{q}&ref={}", encode(name))).0)
+        .collect();
+    let (get_status, _) = get(port, &format!("/api/checkout?{q}&ref=main"));
+
+    // Then.
+    assert!(refused.iter().all(|s| *s == 400), "{refused:?}");
+    assert_eq!(get_status, 400);
+    assert_eq!(git(&clone, &["branch", "--show-current"]), "main");
+}
+
+#[test]
+fn delete_remote_branch_removes_it_on_the_remote_only() {
+    // Given.
+    let sb = Sandbox::new();
+    let (origin, clone) = cloned_with_feature(&sb);
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&clone);
+
+    // When.
+    let (get_status, _) = get(port, &format!("/api/delete-remote?{q}&ref={}", encode("origin/feature")));
+    let (status, body) = post(port, &format!("/api/delete-remote?{q}&ref={}", encode("origin/feature")));
+
+    // Then.
+    assert_eq!(get_status, 400);
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(git(&origin, &["branch", "--list", "feature"]), "");
+    assert_eq!(git(&origin, &["branch", "--list", "main"]), "* main");
+    let (status, _) = post(port, &format!("/api/delete-remote?{q}&ref=main"));
+    assert_eq!(status, 400, "a local branch is not a remote one");
+}

@@ -123,7 +123,11 @@ fn route(cfg: &Config, post: bool, url: &str) -> Option<Result<Routed, String>> 
         }
         "/api/state" => repo().and_then(|r| r.fingerprint()).map(|v| json_reply(json!({ "v": v }))),
         "/api/fetch" if post => repo().and_then(|r| fetch(&r)).map(|out| json_reply(json!({ "out": out }))),
-        "/api/fetch" => Err("POST required".into()),
+        "/api/checkout" if post => repo().and_then(|r| r.checkout(param("ref").unwrap_or(""))).map(|out| json_reply(json!({ "out": out }))),
+        "/api/delete-remote" if post => repo()
+            .and_then(|r| r.delete_remote_branch(param("ref").unwrap_or("")))
+            .map(|out| json_reply(json!({ "out": out }))),
+        "/api/fetch" | "/api/checkout" | "/api/delete-remote" => Err("POST required".into()),
         "/api/commit" => repo()
             .and_then(|r| r.show(param("h").unwrap_or("")))
             .map(|t| (t, "text/plain; charset=utf-8")),

@@ -101,11 +101,50 @@ impl Repo {
     }
 
     pub fn fetch(&self) -> Result<String, String> {
+        self.network(&["fetch", "--all", "--prune", "--quiet"])
+    }
+
+    pub fn checkout(&self, name: &str) -> Result<String, String> {
+        if self.has_ref(&format!("refs/heads/{name}")) {
+            self.git(&["switch", "--quiet", "--no-guess", name])?;
+            return Ok(format!("switched to {name}"));
+        }
+        let (_, branch) = self.split_remote_branch(name)?;
+        if self.has_ref(&format!("refs/heads/{branch}")) {
+            self.git(&["switch", "--quiet", "--no-guess", branch])?;
+            return Ok(format!("switched to the existing local {branch}"));
+        }
+        self.git(&["switch", "--quiet", "--create", branch, "--track", name])?;
+        Ok(format!("created {branch} tracking {name} and switched to it"))
+    }
+
+    pub fn delete_remote_branch(&self, name: &str) -> Result<String, String> {
+        let (remote, branch) = self.split_remote_branch(name)?;
+        self.network(&["push", "--quiet", &remote, "--delete", &format!("refs/heads/{branch}")])?;
+        Ok(format!("deleted {branch} on {remote}"))
+    }
+
+    fn has_ref(&self, full: &str) -> bool {
+        !full.contains("/-") && self.git(&["show-ref", "--verify", "--quiet", full]).is_ok()
+    }
+
+    fn split_remote_branch<'a>(&self, name: &'a str) -> Result<(String, &'a str), String> {
+        if !self.has_ref(&format!("refs/remotes/{name}")) {
+            return Err(format!("no branch named {name}"));
+        }
+        self.git(&["remote"])?
+            .lines()
+            .filter_map(|remote| name.strip_prefix(remote).and_then(|r| r.strip_prefix('/')).map(|b| (remote.to_owned(), b)))
+            .max_by_key(|(remote, _)| remote.len())
+            .ok_or_else(|| format!("{name} belongs to no configured remote"))
+    }
+
+    fn network(&self, args: &[&str]) -> Result<String, String> {
         let mut child = command()
             .arg("-C")
             .arg(&self.root)
             .args(["-c", "core.sshCommand=ssh -o BatchMode=yes -o ConnectTimeout=15"])
-            .args(["fetch", "--all", "--prune", "--quiet"])
+            .args(args)
             .env("GIT_TERMINAL_PROMPT", "0")
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -120,7 +159,7 @@ impl Repo {
             if started.elapsed() > FETCH_TIMEOUT {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err(format!("git fetch timed out after {}s", FETCH_TIMEOUT.as_secs()));
+                return Err(format!("git {} timed out after {}s", args[0], FETCH_TIMEOUT.as_secs()));
             }
             thread::sleep(Duration::from_millis(100));
         };

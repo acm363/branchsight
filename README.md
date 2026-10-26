@@ -6,8 +6,8 @@ A dense git commit graph — one line per commit, about 50 on a screen — filte
 the files and diff of each commit. A desktop app for Linux, Windows and macOS, in the spirit of VS Code's Git
 Graph, without the editor.
 
-BranchSight only reads your repositories; the one thing it changes is `git fetch`, when you ask for it.
-It needs `git` on the `PATH`.
+BranchSight reads your repositories and changes them only when you ask: fetch, checkout, or deleting a remote
+branch (after a confirmation). It needs `git` on the `PATH`, and uses your own credentials for the network.
 
 ## Install
 
@@ -34,7 +34,9 @@ deep), or type a path. `branchsight-app <dir>` opens a repository directly.
 | **Menu** (top left) | open project, close project, text size |
 | **Branches** | starts on all local + all remote branches; type to filter, `enter` or click to toggle |
 | **Columns** | drag a column edge to resize it, double-click it to reset |
-| **Commit** | click or `enter`: files and diff (merges against their first parent); fold each file, or all of them |
+| **Commit** | click or `enter`: files and diff (merges against their first parent); fold each file, or all of them; double-click closes it |
+| **Right-click** | on a branch: checkout (a remote one gets a local tracking branch), copy its name, delete it on the remote |
+| **Limit** | show the last 10 to 20,000 commits, or all |
 | **Hash** | click it, or press `c`, to copy the full hash |
 | **Fetch** | `git fetch --all --prune`; tick **auto** to repeat it every 2 minutes |
 
@@ -63,7 +65,7 @@ scripts/check.sh      # unit + end-to-end tests, graph layout tests, desktop app
 
 | Path | Role |
 |---|---|
-| `src/git.rs` | the git commands, all read-only except `fetch` |
+| `src/git.rs` | the git commands; only `fetch`, `checkout` and the remote branch deletion write |
 | `src/server.rs` | the routes, shared by the app and `serve`, and the loopback-only guard |
 | `src/projects.rs` | repository discovery under the roots |
 | `src/web/` | the page; `graph.js` computes the lanes |
