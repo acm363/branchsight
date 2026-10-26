@@ -31,7 +31,7 @@ deep), or type a path. `branchsight-app <dir>` opens a repository directly.
 
 | | |
 |---|---|
-| **Menu** (top left) | open project, close project, text size |
+| **Menu** (☰, top left) | open and close a project; text size; theme (system, light or dark); keyboard shortcuts |
 | **Branches** | starts on all local + all remote branches; type to filter, `enter` or click to toggle |
 | **Columns** | drag a column edge to resize it, double-click it to reset |
 | **Commit** | click or `enter`: files and diff (merges against their first parent); fold each file, or all of them; double-click closes it |

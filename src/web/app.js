@@ -43,6 +43,17 @@ async function api(path, signal, method = 'GET') {
   return r;
 }
 
+const THEMES = ['system', 'light', 'dark'];
+
+function setTheme(theme) {
+  const choice = THEMES.includes(theme) ? theme : 'system';
+  if (choice === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.dataset.theme = choice;
+  $('theme-seg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.theme === choice));
+  prefs.set('theme', choice);
+  if (commits.length) render();
+}
+
 function setFontSize(px) {
   const size = Math.max(FONT_SIZES.min, Math.min(FONT_SIZES.max, px));
   ROW = Math.round(size * 1.6);
@@ -512,6 +523,7 @@ async function resolveRepo() {
 }
 
 async function init() {
+  setTheme(prefs.get('theme'));
   setFontSize(prefs.get('fontSize') ?? FONT_SIZES.default);
   ctx = await (await api('/api/context')).json();
   $('about').textContent = `BranchSight ${ctx.version} · MIT · github.com/acm363/branchsight`;
@@ -552,6 +564,7 @@ async function init() {
 
 $('list').addEventListener('scroll', () => requestAnimationFrame(render), { passive: true });
 window.addEventListener('resize', () => requestAnimationFrame(render));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => commits.length && render());
 let toastTimer = 0;
 async function copyHash(text) {
   try {
@@ -800,6 +813,8 @@ $('mainmenu').addEventListener('click', e => {
   if (cmd === 'smaller') setFontSize(size - 1);
   if (cmd === 'bigger') setFontSize(size + 1);
   if (cmd === 'reset-size') setFontSize(FONT_SIZES.default);
+  const theme = e.target.closest('#theme-seg [data-theme]')?.dataset.theme;
+  if (theme) setTheme(theme);
 });
 $('split').addEventListener('mousedown', e => {
   e.preventDefault();
