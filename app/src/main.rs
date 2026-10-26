@@ -20,7 +20,11 @@ async fn api(config: State<'_, Arc<Config>>, method: String, path: String) -> Re
     .map_err(|e| e.to_string())
 }
 
+const APP_NAME: &str = "BranchSight";
+
 fn main() {
+    #[cfg(target_os = "linux")]
+    glib::set_prgname(Some(APP_NAME));
     let default_repo = std::env::args().nth(1).map(PathBuf::from).and_then(|dir| Repo::open(&dir)).map(|r| r.root);
     let config = Config { roots: Config::home_roots(), default_repo };
 

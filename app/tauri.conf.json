@@ -43,12 +43,14 @@
       "deb": {
         "depends": [
           "git"
-        ]
+        ],
+        "desktopTemplate": "linux.desktop"
       },
       "rpm": {
         "depends": [
           "git"
-        ]
+        ],
+        "desktopTemplate": "linux.desktop"
       }
     }
   }

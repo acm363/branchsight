@@ -1,0 +1,9 @@
+[Desktop Entry]
+Categories=Development;
+Comment=Compact git commit graph with a branch picker
+Exec={{exec}}
+StartupWMClass=BranchSight
+Icon={{icon}}
+Name=BranchSight
+Terminal=false
+Type=Application
