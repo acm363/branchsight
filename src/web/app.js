@@ -321,9 +321,26 @@ function fileDiffParams(f) {
   return params;
 }
 
+const SPLIT_LIMITS = [0.15, 0.85];
+
+function setSplit(fraction) {
+  const f = Math.max(SPLIT_LIMITS[0], Math.min(SPLIT_LIMITS[1], fraction));
+  $('viewer').style.setProperty('--v-l', `${f}fr`);
+  $('viewer').style.setProperty('--v-r', `${1 - f}fr`);
+  return f;
+}
+
+function placeDivider() {
+  const boundary = $('v-body').querySelector('.v-row:not(.u):not(.gap) .ln:nth-child(3)') || $('v-sides').querySelector('.to');
+  const viewer = $('viewer').getBoundingClientRect();
+  $('v-divider').style.left = `${boundary.getBoundingClientRect().left - viewer.left}px`;
+  $('v-divider').style.top = `${$('v-bar').offsetHeight}px`;
+}
+
 function openViewer(index) {
   if (!panelFiles.length) return;
   viewer = { files: panelFiles, index: Math.max(0, index), mode: prefs.get('diffMode') || 'split', change: -1, data: null };
+  setSplit(prefs.get('diffSplit') ?? 0.5);
   $('v-file').innerHTML = viewer.files.map((f, i) => `<option value="${i}">${f.st}  ${esc(f.from ? `${f.from} → ${f.path}` : f.path)}</option>`).join('');
   $('viewer').hidden = false;
   loadViewerFile();
@@ -382,6 +399,7 @@ function renderViewer() {
       : `<div class="v-row u${r.kind !== 'ctx' ? ' chg' : ''}"${tag(i)}><span class="ln">${r.old ?? ''}</span><span class="ln">${r.new ?? ''}</span>${codeCell(r, signs[r.kind])}</div>`);
   $('v-body').innerHTML = html.join('') || '<div class="v-empty">No change in this file.</div>';
   $('v-body').scrollTop = 0;
+  placeDivider();
 }
 
 function goChange(k) {
@@ -1010,6 +1028,32 @@ $('v-file').addEventListener('change', e => {
   viewer.index = +e.target.value;
   loadViewerFile();
 });
+$('v-divider').addEventListener('mousedown', e => {
+  e.preventDefault();
+  const divider = e.currentTarget;
+  divider.classList.add('drag');
+  const gutter = $('v-body').querySelector('.v-row:not(.u) .ln')?.offsetWidth || 50;
+  const move = ev => {
+    const body = $('v-body').getBoundingClientRect();
+    const usable = $('v-body').clientWidth - 2 * gutter;
+    setSplit((ev.clientX - body.left - gutter) / usable);
+    placeDivider();
+  };
+  const up = () => {
+    divider.classList.remove('drag');
+    window.removeEventListener('mousemove', move);
+    window.removeEventListener('mouseup', up);
+    const l = parseFloat(getComputedStyle($('viewer')).getPropertyValue('--v-l'));
+    prefs.set('diffSplit', l);
+  };
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', up);
+});
+$('v-divider').addEventListener('dblclick', () => {
+  prefs.set('diffSplit', setSplit(0.5));
+  placeDivider();
+});
+window.addEventListener('resize', () => viewer && placeDivider());
 $('v-mode').addEventListener('click', e => {
   const mode = e.target.closest('[data-mode]')?.dataset.mode;
   if (!mode || !viewer?.data) return;

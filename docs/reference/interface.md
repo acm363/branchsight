@@ -85,5 +85,6 @@
 | ◀ ▶ and the file selector, `[` `]` | previous, next file |
 | ↑ Previous change, ↓ Next change, `p` `n`, `shift+F7` `F7` | previous, next block of changes, continuing into the neighbouring file |
 | Side by side / Unified | two columns with the whole files, or one column; remembered |
+| divider between the sides | drag it to give one side more room, double-click it to reset; remembered |
 | highlight inside a line | the part of a modified line that changed |
 | `esc` or ✕ Close | back to the graph |
