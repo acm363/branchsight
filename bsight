@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+here=$(dirname "$(readlink -f "$0")")
+top=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "bsight: not inside a git repository: $PWD" >&2; exit 1; }
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/bsight"
+memory="$cache/$(printf %s "$top" | sha1sum | cut -c1-16)"
+mkdir -p "$cache"
+
+list_refs() {
+  local scope=("refs/heads" "refs/remotes")
+  [[ ${1:-} == tags ]] && scope+=("refs/tags")
+  git for-each-ref --sort=-creatordate --exclude='refs/remotes/*/HEAD' \
+    --format=$'%(refname:short)\t%(creatordate:short)\t%(if)%(authorname)%(then)%(authorname)%(else)%(taggername)%(end)\t%(subject)' "${scope[@]}" |
+    awk -F'\t' '{l[NR]=$0; n=length($1); if (n > w && n <= 50) w = n} END {
+      for (i = 1; i <= NR; i++) {
+        split(l[i], f, "\t")
+        printf "%-" w "s\t%s  %-16.16s  %s\n", f[1], f[2], f[3], f[4]
+      }
+    }'
+}
+
+if [[ ${1:-} == --list-refs ]]; then
+  list_refs "${2:-}"
+  exit
+fi
+
+pick() {
+  local -a previous=()
+  [[ -s $memory ]] && mapfile -t previous <"$memory"
+  [[ ${#previous[@]} -eq 0 ]] && previous=("$(git branch --show-current)")
+
+  local refs pinned=() rest start=""
+  refs=$(list_refs)
+  for ref in "${previous[@]}"; do
+    grep -qP "^\Q$ref\E\s" <<<"$refs" && pinned+=("$ref")
+  done
+  rest=$(awk 'NR==FNR {p[$1]; next} !($1 in p)' <(printf '%s\n' "${pinned[@]}") <(printf '%s\n' "$refs"))
+  for ((i = 1; i <= ${#pinned[@]}; i++)); do start+="pos($i)+select+"; done
+
+  {
+    for ref in "${pinned[@]}"; do grep -P "^\Q$ref\E\s" <<<"$refs"; done
+    [[ -n $rest ]] && printf '%s\n' "$rest"
+  } | fzf --multi --layout=reverse --height=100% \
+    --delimiter=$'\t' --nth=1 --tabstop=2 \
+    --header='tab select · alt-a all · alt-d none · alt-t +tags · enter show · esc quit' \
+    --bind="load:${start}first" \
+    --bind='alt-a:select-all,alt-d:deselect-all' \
+    --bind="alt-t:reload('$here/bsight' --list-refs tags)" \
+    --preview='git log --graph --color=always --format="%C(auto)%h%d %s %C(dim)%an, %ar" -40 $(echo {1})' \
+    --preview-window=right,45% |
+    awk '{print $1}'
+}
+
+show() {
+  printf '%s\n' "$@" >"$memory"
+  local back
+  back=$(mktemp)
+  rm -f "$back"
+  GGR_BACK=$back TIGRC_USER="$here/tigrc" tig --date-order "$@" --
+  [[ -e $back ]] && rm -f "$back" && return 0
+  return 1
+}
+
+if [[ $# -gt 0 ]]; then
+  show "$@" || exit 0
+fi
+
+while selection=$(pick) && [[ -n $selection ]]; do
+  mapfile -t refs <<<"$selection"
+  show "${refs[@]}" || break
+done

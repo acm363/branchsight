@@ -1,0 +1,54 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf
+      - run: cargo test --release
+      - run: npx -y @tauri-apps/cli@2.12.4 build
+        working-directory: app
+      - run: cargo build --release --bin branchsight
+      - shell: bash
+        run: |
+          mkdir dist
+          cp target/release/bundle/*/*.{AppImage,deb,rpm,dmg,msi,exe} dist/ 2>/dev/null || true
+          exe=branchsight; [[ "$RUNNER_OS" == Windows ]] && exe=branchsight.exe
+          cp "target/release/$exe" "dist/branchsight-cli-$(echo "$RUNNER_OS" | tr A-Z a-z)-$(uname -m)${exe#branchsight}"
+          ls -l dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: branchsight-${{ matrix.os }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --draft --generate-notes --title "BranchSight $GITHUB_REF_NAME"

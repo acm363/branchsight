@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "BranchSight",
+  "mainBinaryName": "branchsight-app",
+  "identifier": "com.acm363.branchsight",
+  "build": {
+    "frontendDist": "dist"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "DeveloperTool",
+    "shortDescription": "Compact git commit graph with a branch picker",
+    "longDescription": "BranchSight shows a dense, one-line-per-commit git graph for any repository, filtered to the branches you pick, with the files and diff of each commit.",
+    "copyright": "Copyright (c) 2026 Acm_363",
+    "license": "MIT",
+    "licenseFile": "../LICENSE",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "linux": {
+      "deb": { "depends": ["git"] },
+      "rpm": { "depends": ["git"] }
+    }
+  }
+}

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BranchSight</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div id="projects">
+    <button id="proj-btn" title="Projects (p)"><strong id="repo">…</strong> ▾</button>
+    <div id="pmenu" hidden>
+      <input id="pfilter" placeholder="Filter projects, or type a path…" autocomplete="off" spellcheck="false">
+      <div id="plist" class="reflist"></div>
+    </div>
+  </div>
+  <div id="picker">
+    <button id="pick-btn" title="Branches (b)"><span id="chips"></span><span>▾</span></button>
+    <div id="menu" hidden>
+      <input id="filter" placeholder="Filter refs…" autocomplete="off" spellcheck="false">
+      <div class="opts">
+        <label><input type="checkbox" id="opt-remote"> remotes</label>
+        <label><input type="checkbox" id="opt-tag"> tags</label>
+        <span class="spacer"></span>
+        <button data-act="current">current</button>
+        <button data-act="all">all</button>
+        <button data-act="none">clear</button>
+      </div>
+      <div id="reflist"></div>
+    </div>
+  </div>
+  <span id="count"></span>
+  <span class="spacer"></span>
+  <span class="hint"><kbd>p</kbd> project <kbd>b</kbd> branches <kbd>↑↓</kbd> move <kbd>enter</kbd> diff <kbd>esc</kbd> close <kbd>c</kbd> copy hash <kbd>f</kbd> fetch</span>
+  <select id="limit" title="Max commits">
+    <option value="1000">1k</option><option value="5000">5k</option><option value="20000">20k</option><option value="200000">all</option>
+  </select>
+  <button id="fetch" title="Fetch all remotes (f)">⇣ fetch</button>
+  <label class="auto" title="Fetch every 2 minutes while this tab is visible"><input type="checkbox" id="auto-fetch"> auto</label>
+  <button id="reload" title="Reload (r) · local changes are picked up automatically">⟳</button>
+</header>
+<div id="main">
+  <div id="list" tabindex="0"><div id="spacer"><canvas id="graph"></canvas><div id="rows"></div></div></div>
+  <div id="split" hidden></div>
+  <aside id="detail" hidden>
+    <div id="detail-head"><span id="detail-title"></span><button id="close" title="Close (esc)">✕</button></div>
+    <div id="files"></div>
+    <pre id="diff"></pre>
+  </aside>
+</div>
+<div id="toast"></div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+source -q ~/.tigrc
+
+set main-view = line-number:no id:yes date:relative-compact author:abbreviated,width=12 commit-title:yes,graph=v2,refs,overflow=no
+set line-graphics = utf-8
+set vertical-split = auto
+set split-view-width = 60%
+set diff-options = --stat --summary --patch
+set ignore-case = smart-case
+
+bind main b <sh -c 'touch "$GGR_BACK"'

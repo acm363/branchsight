@@ -1,0 +1,11 @@
+[Unit]
+Description=BranchSight, git graph on http://localhost:7420
+
+[Service]
+ExecStart=%h/.local/bin/branchsight --port 7420 --root %h
+WorkingDirectory=%h
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
