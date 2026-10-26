@@ -9,6 +9,16 @@ use serde_json::{Value, json};
 
 const MAX_DIFF_BYTES: usize = 4 * 1024 * 1024;
 const FETCH_TIMEOUT: Duration = Duration::from_secs(90);
+const WHOLE_FILE: &str = "--unified=1000000";
+const EMPTY_TREE: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+
+pub enum FileDiff<'a> {
+    Commit(&'a str),
+    Compare(&'a str, &'a str),
+    Staged,
+    Unstaged,
+    Untracked,
+}
 const REF_KINDS: [(&str, &str); 3] = [("head", "refs/heads/"), ("remote", "refs/remotes/"), ("tag", "refs/tags/")];
 const REF_GROUPS: [(&str, &str); 3] = [("@local", "--branches"), ("@remotes", "--remotes"), ("@tags", "--tags")];
 
@@ -213,12 +223,50 @@ impl Repo {
     }
 
     pub fn compare(&self, from: &str, to: &str) -> Result<String, String> {
-        for hash in [from, to] {
+        self.check_commits(&[from, to])?;
+        self.git(&["diff", "--no-ext-diff", "--stat=200", "--summary", "--patch", "-M", from, to, "--"]).map(cap)
+    }
+
+    pub fn file_diff(&self, which: FileDiff, paths: &[String]) -> Result<String, String> {
+        if paths.is_empty() || paths.iter().any(|p| p.is_empty()) {
+            return Err("a file path is required".into());
+        }
+        let specs: Vec<String> = paths.iter().map(|p| format!(":(literal){p}")).collect();
+        let mut args = vec!["diff", "--no-ext-diff", "-M", WHOLE_FILE];
+        let parent;
+        match which {
+            FileDiff::Commit(hash) => {
+                self.check_commits(&[hash])?;
+                parent = self.git(&["rev-parse", "--verify", "-q", &format!("{hash}^1")]).map_or(EMPTY_TREE.to_owned(), |p| p.trim().to_owned());
+                args.extend([parent.as_str(), hash]);
+            }
+            FileDiff::Compare(from, to) => {
+                self.check_commits(&[from, to])?;
+                args.extend([from, to]);
+            }
+            FileDiff::Staged => args.push("--cached"),
+            FileDiff::Unstaged => {}
+            FileDiff::Untracked => {
+                let path = &paths[0];
+                let listed = self.git(&["ls-files", "--others", "--exclude-standard", "-z", "--", &specs[0]])?;
+                if !listed.split('\0').any(|p| p == path) {
+                    return Err(format!("{path} is not an untracked file"));
+                }
+                return git_accepting(&self.root, &["diff", "--no-ext-diff", "--no-index", WHOLE_FILE, "--", "/dev/null", path], 1).map(cap);
+            }
+        }
+        args.push("--");
+        args.extend(specs.iter().map(String::as_str));
+        self.git(&args).map(cap)
+    }
+
+    fn check_commits(&self, hashes: &[&str]) -> Result<(), String> {
+        for hash in hashes {
             if !is_hash(hash) || self.git(&["cat-file", "-e", &format!("{hash}^{{commit}}")]).is_err() {
                 return Err(format!("unknown commit {hash}"));
             }
         }
-        self.git(&["diff", "--no-ext-diff", "--stat=200", "--summary", "--patch", "-M", from, to, "--"]).map(cap)
+        Ok(())
     }
 
     pub fn show(&self, hash: &str) -> Result<String, String> {
@@ -271,6 +319,10 @@ fn command() -> Command {
 }
 
 fn git(dir: &Path, args: &[&str]) -> Result<String, String> {
+    git_accepting(dir, args, 0)
+}
+
+fn git_accepting(dir: &Path, args: &[&str], also_ok: i32) -> Result<String, String> {
     let out = command()
         .arg("-C")
         .arg(dir)
@@ -278,7 +330,7 @@ fn git(dir: &Path, args: &[&str]) -> Result<String, String> {
         .args(args)
         .output()
         .map_err(|e| e.to_string())?;
-    if out.status.success() {
+    if out.status.success() || out.status.code() == Some(also_ok) {
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
     } else {
         Err(String::from_utf8_lossy(&out.stderr).trim().to_owned())

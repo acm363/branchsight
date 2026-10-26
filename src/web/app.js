@@ -1,3 +1,4 @@
+import { buildDiff } from './diffview.js';
 import { DEFAULT_SELECTION, GROUPS, layout } from './graph.js';
 
 const MAX_DIFF_LINES = 40000, FONT_SIZES = { min: 10, max: 20, default: 13 };
@@ -10,7 +11,7 @@ const color = n => COLORS[n % COLORS.length];
 
 let repo = {}, refs = [], selected = [], commits = [], rows = [], lanes = 1, cursor = -1, openHash = null;
 let refsByHash = new Map(), menuItems = [], menuCursor = 0, detailTimer = 0;
-let logRequest = null, compareWith = -1;
+let logRequest = null, compareWith = -1, panelSource = null, panelFiles = [], viewer = null;
 const logCache = new Map(), LOG_CACHE_SIZE = 16;
 let ctx = { roots: [] }, repoPath = null, projectList = [], pItems = [], pCursor = 0;
 
@@ -38,7 +39,14 @@ async function api(path, signal, method = 'GET') {
     if (status !== 200) throw new Error(body);
     return { json: async () => JSON.parse(body), text: async () => body };
   }
-  const r = await fetch(path, { signal, method });
+  let r;
+  try {
+    r = await fetch(path, { signal, method });
+  } catch (e) {
+    if (e.name === 'AbortError' || method !== 'GET') throw e;
+    await new Promise(resolve => setTimeout(resolve, 400));
+    r = await fetch(path, { signal, method });
+  }
   if (!r.ok) throw new Error(await r.text());
   return r;
 }
@@ -220,14 +228,27 @@ function openPanel(key, titleHtml, title) {
   $('detail-title').title = title;
 }
 
+function refName(hash) {
+  const refs = refsByHash.get(hash) || [];
+  return (refs.find(r => r.kind === 'head') || refs.find(r => r.kind === 'remote') || refs.find(r => r.kind === 'tag'))?.name;
+}
+
+function sideLabel(hash) {
+  const c = commits.find(x => x.h === hash);
+  const name = refName(hash);
+  return `${name ? `${name} · ` : ''}${hash.slice(0, 7)}${c ? ` ${c.s}` : ''}`;
+}
+
 function fillPanel({ head = '', groups }) {
   const label = f => esc(f.from ? `${f.from} → ${f.path}` : f.path);
   const count = (f) => f.untracked ? '<span class="n">new</span>' : `<span class="n"><b>+${f.add}</b> <i>−${f.del}</i></span>`;
   const section = f => `<div class="fsec${f.untracked ? ' closed untracked' : ''}" id="${f.id}"><div class="fh"><span class="st st-${f.st}">${f.st}</span>`
-    + `<span class="p">${label(f)}</span>${count(f)}`
+    + `<span class="p">${label(f)}</span>${count(f)}<button class="open-v" title="Open in the diff view">⤢</button>`
     + `${f.untracked ? '' : '<button class="fold" title="Fold or unfold this file">▾</button>'}</div><div class="fbody">${f.body}</div></div>`;
   const titled = groups.length > 1 || groups[0]?.title;
   const all = groups.flatMap(g => g.files);
+  panelFiles = all;
+  $('open-viewer').disabled = !all.length;
   $('diff').innerHTML = head + groups.map(g => (titled ? `<div class="grp">${esc(g.title)} · ${g.files.length}</div>` : '')
     + g.files.map(section).join('') + (g.more || '')).join('');
   $('diff').scrollTop = 0;
@@ -244,6 +265,8 @@ async function showDetail(c) {
   if (!c) return;
   if (c.wt) return showWorktree();
   compareWith = -1;
+  const parent = c.p[0];
+  panelSource = { kind: 'commit', h: c.h, fromLabel: parent ? `parent · ${sideLabel(parent)}` : 'nothing (first commit)', toLabel: sideLabel(c.h) };
   openPanel(c.h, `${hashSpan(c.h)}${esc(c.s)}`, c.s);
   const text = await (await api(withRepo('/api/commit', new URLSearchParams({ h: c.h })))).text();
   if (openHash !== c.h) return;
@@ -253,11 +276,14 @@ async function showDetail(c) {
 
 async function showWorktree() {
   compareWith = -1;
+  panelSource = { kind: 'worktree' };
   openPanel('worktree', '<span class="wt-title">Uncommitted changes</span>', 'Uncommitted changes');
   const wt = await (await api(withRepo('/api/worktree'))).json();
   if (openHash !== 'worktree') return;
   const staged = parseDiff(wt.staged, 's'), unstaged = parseDiff(wt.unstaged, 'u');
-  const untracked = wt.untracked.map((path, i) => ({ path, st: 'U', id: `n${i}`, body: '', untracked: true }));
+  const untracked = wt.untracked.map((path, i) => ({ path, st: 'U', id: `n${i}`, body: '', untracked: true, kind: 'untracked' }));
+  staged.files.forEach(f => { f.kind = 'staged'; });
+  unstaged.files.forEach(f => { f.kind = 'unstaged'; });
   fillPanel({ groups: [
     { title: 'Staged', files: staged.files, more: staged.more },
     { title: 'Not staged', files: unstaged.files, more: unstaged.more },
@@ -270,12 +296,114 @@ async function showCompare(i, j) {
   if (newer.wt || older.wt) return showToast('compare two commits, not the uncommitted changes', 3000);
   compareWith = j;
   const key = `${older.h}..${newer.h}`;
+  panelSource = { kind: 'compare', from: older.h, to: newer.h, fromLabel: sideLabel(older.h), toLabel: sideLabel(newer.h) };
   openPanel(key, `<span class="cmp-label">Compare</span>${hashSpan(older.h, 7)}<span class="arrow">→</span>${hashSpan(newer.h, 7)}`, `${older.s} → ${newer.s}`);
   render();
   const text = await (await api(withRepo('/api/compare', new URLSearchParams({ from: older.h, to: newer.h })))).text();
   if (openHash !== key) return;
   const { head, files, more } = parseDiff(text, 'x');
   fillPanel({ head, groups: [{ files, more }] });
+}
+
+function viewerLabels(f) {
+  if (panelSource.kind !== 'worktree') return [panelSource.fromLabel, panelSource.toLabel];
+  const head = `HEAD${repo.branch ? ` · ${repo.branch}` : ''}`;
+  return { staged: [head, 'Staged (index)'], unstaged: ['Staged (index)', 'Working tree'], untracked: ['nothing (new file)', 'Working tree'] }[f.kind];
+}
+
+function fileDiffParams(f) {
+  const params = new URLSearchParams();
+  if (panelSource.kind === 'commit') params.set('kind', 'commit'), params.set('h', panelSource.h);
+  else if (panelSource.kind === 'compare') params.set('kind', 'compare'), params.set('from', panelSource.from), params.set('to', panelSource.to);
+  else params.set('kind', f.kind);
+  if (f.from) params.append('path', f.from);
+  params.append('path', f.path);
+  return params;
+}
+
+function openViewer(index) {
+  if (!panelFiles.length) return;
+  viewer = { files: panelFiles, index: Math.max(0, index), mode: prefs.get('diffMode') || 'split', change: -1, data: null };
+  $('v-file').innerHTML = viewer.files.map((f, i) => `<option value="${i}">${f.st}  ${esc(f.from ? `${f.from} → ${f.path}` : f.path)}</option>`).join('');
+  $('viewer').hidden = false;
+  loadViewerFile();
+}
+
+function closeViewer() {
+  viewer = null;
+  $('viewer').hidden = true;
+  $('list').focus();
+}
+
+async function loadViewerFile(atEnd = false) {
+  const v = viewer, f = v.files[v.index];
+  const [from, to] = viewerLabels(f);
+  $('v-from').textContent = from;
+  $('v-to').textContent = to;
+  $('v-file').value = String(v.index);
+  $('v-prev-file').disabled = v.index === 0;
+  $('v-next-file').disabled = v.index === v.files.length - 1;
+  $('v-body').innerHTML = '<div class="v-empty">loading…</div>';
+  let text;
+  try {
+    text = await (await api(withRepo('/api/filediff', fileDiffParams(f)))).text();
+  } catch (e) {
+    text = null;
+    if (viewer === v) $('v-body').innerHTML = `<div class="v-empty">${esc(e.message)}</div>`;
+  }
+  if (viewer !== v || v.files[v.index] !== f || text === null) return;
+  v.data = buildDiff(text);
+  renderViewer();
+  goChange(atEnd ? v.data.changes.length - 1 : 0);
+}
+
+function codeCell(cell, sign = '') {
+  if (!cell) return '<span class="code none"></span>';
+  const { text, range: r } = cell;
+  const inner = r && r[1] > r[0] ? `${esc(text.slice(0, r[0]))}<mark>${esc(text.slice(r[0], r[1]))}</mark>${esc(text.slice(r[1]))}` : esc(text);
+  return `<span class="code ${cell.kind}">${sign}${inner || (sign ? '' : ' ')}</span>`;
+}
+
+function renderViewer() {
+  const v = viewer, d = v.data;
+  $('viewer').classList.toggle('unified', v.mode === 'unified');
+  $('v-mode').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.mode === v.mode));
+  if (d.binary) {
+    $('v-body').innerHTML = '<div class="v-empty">Binary file: no text to compare.</div>';
+    return;
+  }
+  const starts = new Map(d.changes.map((c, k) => [v.mode === 'split' ? c.split : c.unified, k]));
+  const tag = i => starts.has(i) ? ` data-change="${starts.get(i)}"` : '';
+  const signs = { del: '−', add: '+', ctx: ' ' };
+  const html = v.mode === 'split'
+    ? d.split.map((r, i) => r.gap ? '<div class="v-row gap">⋯</div>'
+      : `<div class="v-row${r.change ? ' chg' : ''}"${tag(i)}><span class="ln">${r.left?.n ?? ''}</span>${codeCell(r.left)}<span class="ln">${r.right?.n ?? ''}</span>${codeCell(r.right)}</div>`)
+    : d.unified.map((r, i) => r.gap ? '<div class="v-row u gap">⋯</div>'
+      : `<div class="v-row u${r.kind !== 'ctx' ? ' chg' : ''}"${tag(i)}><span class="ln">${r.old ?? ''}</span><span class="ln">${r.new ?? ''}</span>${codeCell(r, signs[r.kind])}</div>`);
+  $('v-body').innerHTML = html.join('') || '<div class="v-empty">No change in this file.</div>';
+  $('v-body').scrollTop = 0;
+}
+
+function goChange(k) {
+  const v = viewer, total = v.data?.changes.length || 0;
+  if (k >= total && v.index < v.files.length - 1) return moveFile(1);
+  if (k < 0 && v.index > 0 && v.change <= 0) return moveFile(-1, true);
+  v.change = Math.max(0, Math.min(total - 1, k));
+  $('v-pos').textContent = total ? `change ${v.change + 1} of ${total}` : 'no change';
+  $('v-body').querySelectorAll('.cur').forEach(el => el.classList.remove('cur'));
+  let row = $('v-body').querySelector(`[data-change="${v.change}"]`);
+  if (!row) return;
+  const body = $('v-body');
+  body.scrollTop += row.getBoundingClientRect().top - body.getBoundingClientRect().top - body.clientHeight / 3;
+  for (; row?.classList.contains('chg'); row = row.nextElementSibling) row.classList.add('cur');
+}
+
+function moveFile(step, atEnd = false) {
+  const v = viewer, next = v.index + step;
+  if (next < 0 || next >= v.files.length) return;
+  v.index = next;
+  v.change = -1;
+  loadViewerFile(atEnd);
 }
 
 function parseDiff(text, prefix) {
@@ -859,10 +987,37 @@ $('files').addEventListener('click', e => {
   diff.scrollTop += sec.getBoundingClientRect().top - diff.getBoundingClientRect().top;
 });
 $('diff').addEventListener('click', e => {
+  if (e.target.closest('.open-v')) {
+    openViewer(panelFiles.findIndex(f => f.id === e.target.closest('.fsec').id));
+    return;
+  }
   const fh = e.target.closest('.fsec > .fh');
   if (!fh) return;
   fh.parentElement.classList.toggle('closed');
   updateFoldAll();
+});
+$('files').addEventListener('dblclick', e => {
+  const el = e.target.closest('.file[data-id]');
+  if (el) openViewer(panelFiles.findIndex(f => f.id === el.dataset.id));
+});
+$('open-viewer').addEventListener('click', () => openViewer(0));
+$('v-close').addEventListener('click', closeViewer);
+$('v-prev-file').addEventListener('click', () => moveFile(-1));
+$('v-next-file').addEventListener('click', () => moveFile(1));
+$('v-prev').addEventListener('click', () => goChange(viewer.change - 1));
+$('v-next').addEventListener('click', () => goChange(viewer.change + 1));
+$('v-file').addEventListener('change', e => {
+  viewer.index = +e.target.value;
+  loadViewerFile();
+});
+$('v-mode').addEventListener('click', e => {
+  const mode = e.target.closest('[data-mode]')?.dataset.mode;
+  if (!mode || !viewer?.data) return;
+  viewer.mode = mode;
+  prefs.set('diffMode', mode);
+  const keep = viewer.change;
+  renderViewer();
+  goChange(keep);
 });
 $('fold-all').addEventListener('click', () => {
   const sections = [...$('diff').querySelectorAll('.fsec')];
@@ -918,6 +1073,16 @@ $('split').addEventListener('mousedown', e => {
   window.addEventListener('mouseup', up);
 });
 document.addEventListener('keydown', e => {
+  if (viewer) {
+    const action = {
+      Escape: closeViewer,
+      n: () => goChange(viewer.change + 1), F7: () => goChange(viewer.change + (e.shiftKey ? -1 : 1)),
+      p: () => goChange(viewer.change - 1), N: () => goChange(viewer.change - 1),
+      ']': () => moveFile(1), '[': () => moveFile(-1),
+    }[e.key];
+    if (action && (e.key === 'Escape' || !e.target.closest?.('input, select'))) { action(); e.preventDefault(); }
+    return;
+  }
   if (e.target.closest?.('input, select') || e.ctrlKey || e.metaKey || e.altKey) return;
   const page = Math.max(1, Math.floor($('list').clientHeight / ROW) - 1);
   const keys = {

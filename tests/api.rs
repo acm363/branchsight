@@ -508,3 +508,67 @@ fn compare_shows_every_change_between_two_commits() {
         assert_eq!(status, 400, "{bad}");
     }
 }
+
+#[test]
+fn file_diff_returns_the_whole_file_for_each_source() {
+    // Given.
+    let sb = Sandbox::new();
+    let repo = sb.path("repo");
+    init(&repo);
+    let lines: String = (1..=30).map(|n| format!("line {n}\n")).collect();
+    fs::write(repo.join("long.txt"), &lines).unwrap();
+    git(&repo, &["add", "long.txt"]);
+    git(&repo, &["commit", "-q", "-m", "long file"]);
+    let first = git(&repo, &["rev-parse", "HEAD"]);
+    fs::write(repo.join("long.txt"), lines.replace("line 15\n", "line fifteen\n")).unwrap();
+    git(&repo, &["commit", "-q", "-am", "rename line 15"]);
+    let second = git(&repo, &["rev-parse", "HEAD"]);
+    fs::write(repo.join("long.txt"), lines.replace("line 2\n", "line two\n")).unwrap();
+    fs::write(repo.join("fresh.txt"), "hello\n").unwrap();
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&repo);
+    let diff = |extra: &str| get(port, &format!("/api/filediff?{q}&{extra}"));
+
+    // When.
+    let (commit_status, commit) = diff(&format!("kind=commit&h={second}&path=long.txt"));
+    let (_, root) = diff(&format!("kind=commit&h={first}&path=long.txt"));
+    let (_, compare) = diff(&format!("kind=compare&from={first}&to={second}&path=long.txt"));
+    let (_, unstaged) = diff("kind=unstaged&path=long.txt");
+    let (untracked_status, untracked) = diff("kind=untracked&path=fresh.txt");
+
+    // Then.
+    assert_eq!(commit_status, 200, "{commit}");
+    assert!(commit.contains(" line 1\n") && commit.contains(" line 30") && commit.contains("+line fifteen"), "whole file, not 3 lines of context: {commit}");
+    assert!(root.contains("+line 1\n") && root.contains("+line 30"), "a first commit diffs against nothing: {root}");
+    assert_eq!(compare, commit);
+    assert!(unstaged.contains("-line 2\n") && unstaged.contains("+line two") && unstaged.contains(" line 29"), "{unstaged}");
+    assert_eq!(untracked_status, 200, "{untracked}");
+    assert!(untracked.contains("+hello"), "{untracked}");
+}
+
+#[test]
+fn file_diff_refuses_unknown_sources_and_files() {
+    // Given.
+    let sb = Sandbox::new();
+    let repo = sb.path("repo");
+    init(&repo);
+    let head = commit(&repo, "tracked.txt", "A");
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&repo);
+    let status = |extra: &str| get(port, &format!("/api/filediff?{q}&{extra}")).0;
+
+    // When.
+    let refused = [
+        status("kind=everything&path=tracked.txt"),
+        status(&format!("kind=commit&h={head}")),
+        status("kind=commit&h=HEAD&path=tracked.txt"),
+        status("kind=untracked&path=tracked.txt"),
+        status(&format!("kind=untracked&path={}", encode("../outside.txt"))),
+    ];
+
+    // Then.
+    assert_eq!(refused, [400; 5]);
+    let (ok, body) = get(port, &format!("/api/filediff?{q}&kind=commit&h={head}&path={}", encode("--output=x")));
+    assert_eq!(ok, 200, "an option-like path is only a path: {body}");
+    assert!(!repo.join("x").exists());
+}

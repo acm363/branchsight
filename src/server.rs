@@ -9,7 +9,7 @@ use std::time::Duration;
 use serde_json::{Value, json};
 use tiny_http::{Header, Method, Request, Response, Server};
 
-use crate::git::Repo;
+use crate::git::{FileDiff, Repo};
 use crate::projects;
 use crate::url::query;
 
@@ -17,6 +17,7 @@ const INDEX_HTML: &str = include_str!("web/index.html");
 const STYLE_CSS: &str = include_str!("web/style.css");
 const APP_JS: &str = include_str!("web/app.js");
 const GRAPH_JS: &str = include_str!("web/graph.js");
+const DIFFVIEW_JS: &str = include_str!("web/diffview.js");
 const FAVICON_SVG: &str = include_str!("web/favicon.svg");
 const PING: &str = "branchsight";
 const DEFAULT_LIMIT: usize = 5000;
@@ -106,6 +107,7 @@ fn route(cfg: &Config, post: bool, url: &str) -> Option<Result<Routed, String>> 
         "/style.css" => Ok((STYLE_CSS.to_owned(), "text/css; charset=utf-8")),
         "/app.js" => Ok((APP_JS.to_owned(), "text/javascript; charset=utf-8")),
         "/graph.js" => Ok((GRAPH_JS.to_owned(), "text/javascript; charset=utf-8")),
+        "/diffview.js" => Ok((DIFFVIEW_JS.to_owned(), "text/javascript; charset=utf-8")),
         "/favicon.svg" => Ok((FAVICON_SVG.to_owned(), "image/svg+xml")),
         "/api/ping" => Ok((PING.to_owned(), "text/plain")),
         "/api/context" => Ok(json_reply(json!({
@@ -123,6 +125,21 @@ fn route(cfg: &Config, post: bool, url: &str) -> Option<Result<Routed, String>> 
         }
         "/api/state" => repo().and_then(|r| r.fingerprint()).map(|v| json_reply(json!({ "v": v }))),
         "/api/status" => repo().and_then(|r| r.status()).map(json_reply),
+        "/api/filediff" => {
+            let paths: Vec<String> = params.iter().filter(|(k, _)| k == "path").map(|(_, v)| v.clone()).collect();
+            let (from, to, h) = (param("from").unwrap_or(""), param("to").unwrap_or(""), param("h").unwrap_or(""));
+            let which = match param("kind").unwrap_or("") {
+                "commit" => Ok(FileDiff::Commit(h)),
+                "compare" => Ok(FileDiff::Compare(from, to)),
+                "staged" => Ok(FileDiff::Staged),
+                "unstaged" => Ok(FileDiff::Unstaged),
+                "untracked" => Ok(FileDiff::Untracked),
+                other => Err(format!("unknown kind {other}")),
+            };
+            which
+                .and_then(|w| repo().and_then(|r| r.file_diff(w, &paths)))
+                .map(|t| (t, "text/plain; charset=utf-8"))
+        }
         "/api/worktree" => repo().and_then(|r| r.worktree()).map(json_reply),
         "/api/compare" => repo()
             .and_then(|r| r.compare(param("from").unwrap_or(""), param("to").unwrap_or("")))

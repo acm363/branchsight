@@ -47,6 +47,8 @@
               <kbd>right-click</kbd><span>checkout a branch, tag or commit; copy; delete a remote branch</span>
               <kbd>double-click</kbd><span>close the diff</span>
               <kbd>ctrl+click</kbd><span>compare with the selected commit</span>
+              <kbd>n p</kbd><span>diff view: next, previous change (also F7, shift+F7)</span>
+              <kbd>] [</kbd><span>diff view: next, previous file</span>
             </div>
             <div class="about" id="about"></div>
           </div>
@@ -101,10 +103,26 @@
   <div id="split" hidden></div>
   <aside id="detail" hidden>
     <div id="detail-head"><span id="detail-title"></span><button id="close" title="Close (esc)">✕</button></div>
-    <div id="detail-tools"><button id="fold-all" title="Fold or unfold every file">Collapse all</button><span id="files-count"></span></div>
+    <div id="detail-tools"><button id="fold-all" title="Fold or unfold every file">Collapse all</button><button id="open-viewer" title="Each file side by side, with next and previous change">Open diff view</button><span id="files-count"></span></div>
     <div id="files"></div>
     <pre id="diff"></pre>
   </aside>
+</div>
+<div id="viewer" hidden>
+  <div id="v-bar">
+    <button id="v-close" title="Close (esc)">✕ Close</button>
+    <button id="v-prev-file" title="Previous file ([)">◀</button>
+    <select id="v-file" title="File"></select>
+    <button id="v-next-file" title="Next file (])">▶</button>
+    <span class="v-sep"></span>
+    <button id="v-prev" title="Previous change (p or shift+F7)">↑ Previous change</button>
+    <button id="v-next" title="Next change (n or F7)">↓ Next change</button>
+    <span id="v-pos"></span>
+    <span class="spacer"></span>
+    <span class="seg" id="v-mode"><button data-mode="split">Side by side</button><button data-mode="unified">Unified</button></span>
+  </div>
+  <div id="v-sides"><div class="v-side from"><span class="v-tag">FROM</span><span id="v-from"></span></div><div class="v-side to"><span class="v-tag">TO</span><span id="v-to"></span></div></div>
+  <div id="v-body"></div>
 </div>
 <div id="ctx" hidden></div>
 <dialog id="confirm">
