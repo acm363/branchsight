@@ -1,0 +1,33 @@
+# Check out and clean up branches
+
+Everything here starts with a right-click on a branch label, a tag or a commit row.
+
+![The branch menu](../images/branch-menu.png)
+
+## Switch to a branch
+
+Choose **Checkout `<branch>`**.
+
+- On a local branch, BranchSight switches to it.
+- On a remote branch such as `origin/feature/sync`, it creates the local `feature/sync` tracking it and switches to
+  it; if that local branch already exists, it switches to it as it is.
+
+Git refuses when your uncommitted changes would be overwritten; the reason appears at the bottom of the window.
+
+## Look at a tag or an old commit
+
+Choose **Checkout tag `<tag>` (detached)** or **Checkout commit `<hash>` (detached)**. HEAD then points at that
+commit without being on a branch, which is how git lets you inspect old states. Check out a branch to leave it.
+
+After any checkout the graph keeps your branch selection and scrolls to the new HEAD.
+
+## Delete a branch on the remote
+
+Choose **Delete remote branch `<remote>/<branch>`**, then confirm. This runs
+`git push <remote> --delete <branch>` with your own credentials: the branch disappears for everyone using that
+remote, and BranchSight cannot undo it. Your local branch, if any, is kept.
+
+## Copy a name or a hash
+
+**Copy branch name** copies the name without the remote, ready for `git switch`. **Copy commit hash** copies the full
+hash; clicking a hash in the Commit column, or pressing `c`, does the same.

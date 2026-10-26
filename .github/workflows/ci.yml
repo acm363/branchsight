@@ -3,9 +3,9 @@ name: ci
 on:
   push:
     branches: [main]
-    paths-ignore: ['**.md', 'assets/**', 'LICENSE']
+    paths-ignore: ['**.md', 'docs/**', 'assets/**', 'LICENSE']
   pull_request:
-    paths-ignore: ['**.md', 'assets/**', 'LICENSE']
+    paths-ignore: ['**.md', 'docs/**', 'assets/**', 'LICENSE']
   workflow_dispatch:
     inputs:
       bundles:
