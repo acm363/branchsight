@@ -1,6 +1,6 @@
 import { DEFAULT_SELECTION, GROUPS, layout } from './graph.js';
 
-const ROW = 20, LANE = 16, MAX_LANES = 30, MAX_DIFF_LINES = 40000;
+const ROW = 20, LANE = 16, MAX_DIFF_LINES = 40000;
 const POLL_MS = 5000, AUTO_FETCH_MS = 120000;
 const COLORS = ['#3b82f6', '#e5484d', '#30a46c', '#f5a524', '#8e4ec6', '#12a594', '#d6409f', '#0090ff', '#ad7f58', '#7c66dc', '#e16f24', '#5bb98b'];
 const $ = id => document.getElementById(id);
@@ -8,7 +8,9 @@ const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&
 const color = n => COLORS[n % COLORS.length];
 
 let repo = {}, refs = [], selected = [], commits = [], rows = [], lanes = 1, cursor = -1, openHash = null;
-let refsByHash = new Map(), menuItems = [], menuCursor = 0, logTimer = 0, detailTimer = 0;
+let refsByHash = new Map(), menuItems = [], menuCursor = 0, detailTimer = 0;
+let logRequest = null;
+const logCache = new Map(), LOG_CACHE_SIZE = 16;
 let ctx = { roots: [] }, repoPath = null, projectList = [], pItems = [], pCursor = 0;
 
 const store = {
@@ -26,8 +28,8 @@ function withRepo(path, params = new URLSearchParams()) {
   return `${path}?${params}`;
 }
 
-async function api(path) {
-  const r = await fetch(path);
+async function api(path, signal) {
+  const r = await fetch(path, { signal });
   if (!r.ok) throw new Error(await r.text());
   return r;
 }
@@ -37,7 +39,18 @@ function fmtDate(t) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-const graphWidth = () => 18 + Math.min(lanes, MAX_LANES) * LANE;
+const AUTO_LANES = 10;
+const COLS = { graph: [30, 640], author: [40, 400], date: [60, 220], hash: [40, 200] };
+let colWidths = {};
+const graphWidth = () => colWidths.graph || 18 + Math.min(lanes, AUTO_LANES) * LANE;
+
+function applyCols() {
+  const pane = $('pane');
+  ['author', 'date', 'hash'].forEach(k => colWidths[k]
+    ? pane.style.setProperty(`--w-${k}`, `${colWidths[k]}px`)
+    : pane.style.removeProperty(`--w-${k}`));
+  pane.style.setProperty('--w-graph', `${graphWidth()}px`);
+}
 
 function chipsFor(c) {
   const list = refsByHash.get(c.h) || [];
@@ -55,7 +68,7 @@ function render() {
   let html = '';
   for (let i = first; i < last; i++) {
     const c = commits[i];
-    html += `<div class="row${i === cursor ? ' sel' : ''}${c.p.length > 1 ? ' merge' : ''}" data-i="${i}" style="top:${i * ROW}px;padding-left:${gw}px">`
+    html += `<div class="row${i === cursor ? ' sel' : ''}${c.p.length > 1 ? ' merge' : ''}" data-i="${i}" style="top:${i * ROW}px">`
       + `<span class="s">${chipsFor(c)}<span class="t">${esc(c.s)}</span></span>`
       + `<span class="a">${esc(c.a)}</span><span class="d">${fmtDate(c.t)}</span>`
       + `<span class="h" title="Copy ${c.h}">${c.h.slice(0, 7)}</span></div>`;
@@ -241,8 +254,7 @@ function selectionChanged() {
   history.replaceState(null, '', url);
   renderChips();
   if (!$('menu').hidden) renderMenu();
-  clearTimeout(logTimer);
-  logTimer = setTimeout(loadLog, 200);
+  loadLog();
 }
 
 function openMenu() {
@@ -274,24 +286,42 @@ async function loadRefs() {
   renderChips();
 }
 
-async function loadLog({ anchor = false } = {}) {
+async function fetchLog(params, signal, fresh) {
+  const key = `${repo.path}|${version}|${params}`;
+  if (!fresh && logCache.has(key)) return logCache.get(key);
+  const list = await (await api(withRepo('/api/log', params), signal)).json();
+  const entry = { list, ...layout(list) };
+  logCache.set(key, entry);
+  if (logCache.size > LOG_CACHE_SIZE) logCache.delete(logCache.keys().next().value);
+  return entry;
+}
+
+async function loadLog({ anchor = false, fresh = false } = {}) {
   const params = new URLSearchParams(selected.map(n => ['ref', n]));
   params.set('limit', $('limit').value);
   const keep = commits[cursor]?.h;
   const list = $('list'), topIndex = Math.floor(list.scrollTop / ROW);
   const top = anchor ? { h: commits[topIndex]?.h, offset: list.scrollTop - topIndex * ROW } : null;
-  if (!anchor) $('count').textContent = 'loading…';
+  logRequest?.abort();
+  const request = logRequest = new AbortController();
+  const pending = setTimeout(() => { if (!anchor) $('count').textContent = 'loading…'; }, 120);
   try {
-    commits = await (await api(withRepo('/api/log', params))).json();
+    const entry = await fetchLog(params, request.signal, fresh);
+    if (request !== logRequest) return;
+    ({ list: commits, rows, lanes } = entry);
   } catch (e) {
+    if (e.name === 'AbortError') return;
     commits = [];
     loadFailed = true;
     $('count').textContent = '';
     $('rows').innerHTML = `<div id="error">${esc(e.message)} — retrying…</div>`;
     return;
   }
+  finally {
+    clearTimeout(pending);
+  }
   loadFailed = false;
-  ({ rows, lanes } = layout(commits));
+  applyCols();
   $('spacer').style.height = `${commits.length * ROW}px`;
   const limit = +$('limit').value;
   $('count').textContent = `${commits.length.toLocaleString()} commits${commits.length >= limit ? ' (limit)' : ''}`;
@@ -303,10 +333,10 @@ async function loadLog({ anchor = false } = {}) {
   render();
 }
 
-async function reload({ anchor = false } = {}) {
+async function reload({ anchor = false, fresh = false } = {}) {
   repo = await (await api(withRepo('/api/repo'))).json();
   await loadRefs();
-  await loadLog({ anchor });
+  await loadLog({ anchor, fresh });
 }
 
 let version = null, polling = false, fetching = false, lastFetch = 0, loadFailed = false;
@@ -316,8 +346,9 @@ async function poll() {
   polling = true;
   try {
     const { v } = await (await api(withRepo('/api/state'))).json();
-    if (loadFailed || (version !== null && v !== version)) await reload({ anchor: true });
+    const changed = version !== null && v !== version;
     version = v;
+    if (loadFailed || changed) await reload({ anchor: true });
   } catch {
   } finally {
     polling = false;
@@ -439,6 +470,7 @@ async function init() {
   $('opt-remote').checked = store.get('remote') ?? true;
   $('opt-tag').checked = store.get('tag') ?? false;
   $('limit').value = store.get('limit') ?? '5000';
+  colWidths = prefs.get('cols') || {};
   const w = store.get('detailWidth');
   if (w) $('detail').style.width = `${w}px`;
   $('auto-fetch').checked = store.get('autoFetch') ?? false;
@@ -525,7 +557,35 @@ $('plist').addEventListener('click', e => {
   if (el) switchProject(pItems[+el.dataset.i].p.path);
 });
 $('limit').addEventListener('change', e => { store.set('limit', e.target.value); loadLog(); });
-$('reload').addEventListener('click', () => reload({ anchor: true }));
+$('reload').addEventListener('click', () => reload({ anchor: true, fresh: true }));
+$('cols').addEventListener('mousedown', e => {
+  const grip = e.target.closest('.grip');
+  if (!grip) return;
+  e.preventDefault();
+  const col = grip.dataset.col, dir = +grip.dataset.dir, x0 = e.clientX;
+  const w0 = col === 'graph' ? graphWidth() : parseFloat(getComputedStyle($('pane')).getPropertyValue(`--w-${col}`));
+  const [min, max] = COLS[col];
+  const move = ev => {
+    colWidths[col] = Math.round(Math.max(min, Math.min(max, w0 + dir * (ev.clientX - x0))));
+    applyCols();
+    render();
+  };
+  const up = () => {
+    window.removeEventListener('mousemove', move);
+    window.removeEventListener('mouseup', up);
+    prefs.set('cols', colWidths);
+  };
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', up);
+});
+$('cols').addEventListener('dblclick', e => {
+  const grip = e.target.closest('.grip');
+  if (!grip) return;
+  delete colWidths[grip.dataset.col];
+  prefs.set('cols', colWidths);
+  applyCols();
+  render();
+});
 $('fetch').addEventListener('click', fetchRemotes);
 $('auto-fetch').addEventListener('change', e => {
   store.set('autoFetch', e.target.checked);
@@ -558,7 +618,7 @@ document.addEventListener('keydown', e => {
     Home: () => setCursor(0), End: () => setCursor(commits.length - 1),
     Enter: () => setCursor(cursor < 0 ? 0 : cursor, { open: true }),
     Escape: () => $('menu').hidden ? closeDetail() : closeMenu(),
-    b: openMenu, '/': openMenu, p: openProjects, r: () => reload({ anchor: true }), f: fetchRemotes, c: () => commits[cursor] && copyHash(commits[cursor].h),
+    b: openMenu, '/': openMenu, p: openProjects, r: () => reload({ anchor: true, fresh: true }), f: fetchRemotes, c: () => commits[cursor] && copyHash(commits[cursor].h),
   };
   if (keys[e.key]) { keys[e.key](); e.preventDefault(); }
 });

@@ -47,21 +47,33 @@ header { display: flex; align-items: center; gap: 10px; padding: 6px 10px; borde
 .k-head { color: var(--head); } .k-remote { color: var(--remote); } .k-tag { color: var(--tag); }
 .chip.is-head { background: var(--head); color: var(--bg); border-color: var(--head); }
 #main { flex: 1; display: flex; min-height: 0; }
+#pane { flex: 1; display: flex; flex-direction: column; min-width: 0; --w-graph: 120px; --w-author: 130px; --w-date: 108px; --w-hash: 56px; }
+#cols { position: relative; flex: none; display: flex; align-items: center; gap: 10px; height: 22px; padding: 0 10px 0 var(--w-graph); border-bottom: 1px solid var(--line); background: var(--bg2); color: var(--dim); font-size: 11.5px; white-space: nowrap; user-select: none; }
+#cols > span { position: relative; flex: none; overflow: hidden; text-overflow: ellipsis; }
+#cols .c-g { position: absolute; left: 8px; max-width: calc(var(--w-graph) - 12px); }
+#cols .c-s { flex: 1; min-width: 0; }
+#cols .c-a { width: var(--w-author); overflow: visible; }
+#cols .c-d { width: var(--w-date); overflow: visible; }
+#cols .c-h { width: var(--w-hash); overflow: visible; }
+.grip { position: absolute; top: -4px; bottom: -4px; left: -10px; width: 10px; cursor: col-resize; z-index: 3; }
+.grip-g { top: 0; bottom: 0; left: calc(var(--w-graph) - 7px); }
+.grip::after { content: ''; position: absolute; left: 4px; top: 5px; bottom: 5px; width: 1px; background: var(--line); }
+.grip:hover::after { left: 3px; width: 3px; background: var(--remote); }
 #list { flex: 1; overflow: auto; position: relative; outline: none; min-width: 0; }
 #spacer { position: relative; }
 #graph { position: absolute; left: 0; pointer-events: none; z-index: 1; }
-.row { position: absolute; left: 0; right: 0; height: 20px; display: flex; align-items: center; gap: 10px; padding-right: 10px; white-space: nowrap; cursor: default; }
+.row { position: absolute; left: 0; right: 0; height: 20px; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 var(--w-graph); white-space: nowrap; cursor: default; }
 .row:hover { background: var(--hover); }
 .row.sel { background: var(--sel); }
-.row .h { font-family: var(--mono); font-size: 11.5px; color: var(--dim); flex: none; width: 56px; cursor: copy; }
+.row .h { font-family: var(--mono); font-size: 11.5px; color: var(--dim); flex: none; width: var(--w-hash); overflow: hidden; text-overflow: clip; cursor: copy; }
 .row .h:hover, #detail-title .h:hover { color: var(--remote); text-decoration: underline; }
 #detail-title .h { font-family: var(--mono); cursor: copy; margin-right: 8px; }
 #toast { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 4px 12px; border-radius: 4px; font: 12px var(--mono); z-index: 20; opacity: 0; transition: opacity .15s; pointer-events: none; }
 #toast.on { opacity: 1; }
 .row .s { flex: 1; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 5px; align-items: center; min-width: 0; }
 .row .s .t { overflow: hidden; text-overflow: ellipsis; }
-.row .a { flex: none; width: 130px; overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
-.row .d { flex: none; width: 108px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.row .a { flex: none; width: var(--w-author); overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
+.row .d { flex: none; width: var(--w-date); overflow: hidden; color: var(--dim); font-variant-numeric: tabular-nums; }
 .row.merge .t { color: var(--dim); }
 #split { width: 5px; cursor: col-resize; background: var(--line); flex: none; }
 #detail { width: 48%; display: flex; flex-direction: column; min-width: 240px; background: var(--bg); }
@@ -87,7 +99,7 @@ header { display: flex; align-items: center; gap: 10px; padding: 6px 10px; borde
 kbd { font: 11px var(--mono); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; color: var(--dim); }
 .hint { color: var(--dim); }
 @media (max-width: 1100px) { .hint { display: none; } }
-@media (max-width: 760px) { .row .a { display: none; } #detail { width: 100%; } }
+@media (max-width: 760px) { .row .a, #cols .c-a { display: none; } #detail { width: 100%; } }
 header .auto { display: flex; align-items: center; gap: 4px; color: var(--dim); cursor: pointer; }
 button.err { color: var(--rm); border-color: var(--rm); }
 button:disabled { opacity: .6; cursor: progress; }

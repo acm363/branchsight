@@ -42,7 +42,16 @@
   <button id="reload" title="Reload (r) · local changes are picked up automatically">⟳</button>
 </header>
 <div id="main">
-  <div id="list" tabindex="0"><div id="spacer"><canvas id="graph"></canvas><div id="rows"></div></div></div>
+  <div id="pane">
+    <div id="cols" title="Drag a column edge to resize it, double-click to reset">
+      <span class="c-g">Graph</span><i class="grip grip-g" data-col="graph" data-dir="1"></i>
+      <span class="c-s">Description</span>
+      <span class="c-a"><i class="grip" data-col="author" data-dir="-1"></i>Author</span>
+      <span class="c-d"><i class="grip" data-col="date" data-dir="-1"></i>Date</span>
+      <span class="c-h"><i class="grip" data-col="hash" data-dir="-1"></i>Commit</span>
+    </div>
+    <div id="list" tabindex="0"><div id="spacer"><canvas id="graph"></canvas><div id="rows"></div></div></div>
+  </div>
   <div id="split" hidden></div>
   <aside id="detail" hidden>
     <div id="detail-head"><span id="detail-title"></span><button id="close" title="Close (esc)">✕</button></div>
