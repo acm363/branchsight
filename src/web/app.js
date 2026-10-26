@@ -499,6 +499,7 @@ function switchProject(path) {
 }
 
 function closeProject() {
+  prefs.set('last', null);
   location.href = `${location.pathname}?start`;
 }
 
@@ -519,7 +520,7 @@ async function resolveRepo() {
     const match = projectList.find(p => p.name.toLowerCase() === host);
     if (match) return match.path;
   }
-  return ctx.default;
+  return ctx.default || prefs.get('last');
 }
 
 async function init() {
@@ -533,11 +534,13 @@ async function init() {
       repo = await (await api(withRepo('/api/repo'))).json();
     } catch (e) {
       $('rows').innerHTML = `<div id="error">${esc(e.message)}</div>`;
+      if (repoPath === prefs.get('last')) prefs.set('last', null);
       repoPath = null;
     }
   }
   if (!repoPath) return showStart();
   repoPath = repo.path;
+  prefs.set('last', repo.path);
   prefs.set('recent', [repo.path, ...(prefs.get('recent') || []).filter(p => p !== repo.path)].slice(0, 30));
   document.title = `${repo.name} · BranchSight`;
   $('repo').textContent = repo.name;

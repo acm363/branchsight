@@ -26,8 +26,8 @@ SmartScreen shows "More info → Run anyway".
 
 ## Use
 
-The app opens on the project picker: type to filter the repositories found under your home folder (three levels
-deep), or type a path. `branchsight-app <dir>` opens a repository directly.
+The app reopens the last project; after File › Close project it starts on the picker, which lists the repositories
+under your home folder (three levels deep) and also accepts a path. `branchsight-app <dir>` opens one directly.
 
 | | |
 |---|---|
