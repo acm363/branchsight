@@ -37,6 +37,18 @@ const SCENES = [
       const r = label.getBoundingClientRect();
       label.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.x + 30, clientY: r.y + r.height }))`,
   },
+  {
+    name: 'diff-view',
+    url: page(opened),
+    run: `${row('chore: update dependencies')}.querySelector('.t').click();
+      await new Promise(r => setTimeout(r, 400));
+      ${row('wip(sync): progress indicator')}.querySelector('.t').dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true, detail: 1 }));
+      await new Promise(r => setTimeout(r, 700));
+      document.getElementById('open-viewer').click();
+      await new Promise(r => setTimeout(r, 700));
+      document.getElementById('v-file').value = '2';
+      document.getElementById('v-file').dispatchEvent(new Event('change'))`,
+  },
   { name: 'start', url: page('start'), height: 420, run: '' },
   { name: 'light', url: page(opened), theme: 'light', run: `${row('feat(sync): retry with backoff')}.querySelector('.t').click()` },
 ];

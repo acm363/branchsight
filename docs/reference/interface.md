@@ -33,7 +33,7 @@
 | `c` | copy the selected commit's hash |
 | `f` | fetch |
 | `r` | reload |
-| `esc` | close the open menu, picker or diff panel |
+| `esc` | close the diff view, the open menu, the picker or the diff panel |
 
 ## Mouse
 
@@ -74,4 +74,16 @@
 | title | the commit, the comparison (`older → newer`) or *Uncommitted changes*; click a hash to copy it |
 | Collapse all / Expand all | fold or unfold every file |
 | file list | click a file to unfold it and jump to it |
-| file header | stays pinned while scrolling; click it or `▾` to fold the file |
+| file header | stays pinned while scrolling; click it or `▾` to fold the file; `⤢` opens it in the diff view |
+| Open diff view | the diff view on the first file; double-clicking a file in the list opens it on that file |
+
+## Diff view
+
+| Element | Role |
+|---|---|
+| FROM / TO | the two sides: a commit's parent and the commit, the older and the newer commit of a comparison, or HEAD, the index and the working tree; with the branch name when one points there |
+| ◀ ▶ and the file selector, `[` `]` | previous, next file |
+| ↑ Previous change, ↓ Next change, `p` `n`, `shift+F7` `F7` | previous, next block of changes, continuing into the neighbouring file |
+| Side by side / Unified | two columns with the whole files, or one column; remembered |
+| highlight inside a line | the part of a modified line that changed |
+| `esc` or ✕ Close | back to the graph |

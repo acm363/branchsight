@@ -10,15 +10,17 @@ editor.
 
 - **Read history fast**: every local and remote branch by default, a fuzzy branch picker, labels in each lane's
   colour, a limit from 10 commits to all of them.
-- **Look inside**: the files and diff of a commit, the comparison of any two commits (`ctrl`+click), your
-  uncommitted work split into staged, not staged and untracked.
+- **Look inside**: the files and diff of a commit, the comparison of any two commits or branches (`ctrl`+click),
+  your uncommitted work split into staged, not staged and untracked.
+- **Read a diff properly**: a full-window diff view, *FROM* one side *TO* the other with branch names, whole files
+  side by side, next and previous change across every file.
 - **Act from the graph**: right-click to check out a branch, a tag or a commit, copy a name or a hash, or delete a
   branch on the remote.
 - **Always current**: commits, checkouts and file edits made elsewhere show up within five seconds.
 - **Your git, your machine**: it runs your own `git`, opens no network port, and changes a repository only when you
   ask.
 
-![Comparing two commits](docs/images/compare.png)
+![The diff view](docs/images/diff-view.png)
 
 ## Install
 

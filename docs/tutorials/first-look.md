@@ -46,6 +46,12 @@ shows every change between the two commits, with both rows highlighted.
 
 ![Comparing two commits](../images/compare.png)
 
+Click **Open diff view** at the top of the panel. Each file now fills the window, the older version on the left
+under **FROM**, the newer one on the right under **TO**. Press `n` to jump to the next change, again and again: it
+moves through every change of every file. Press `esc` to come back to the graph.
+
+![The diff view](../images/diff-view.png)
+
 ## 5. Review your uncommitted work
 
 Click the dashed **Uncommitted changes** row at the top. The panel splits your work into what is staged, what is

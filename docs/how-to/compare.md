@@ -13,6 +13,20 @@ highlighted while the comparison is open.
 
 ![Comparing two commits](../images/compare.png)
 
+## Read the comparison file by file
+
+Click **Open diff view** at the top of the panel, or `⤢` on a file. The diff view fills the window and labels both
+sides: **FROM** the older commit, **TO** the newer one, each with its branch name when a branch points there.
+
+![The diff view](../images/diff-view.png)
+
+- **↓ Next change** (`n` or `F7`) and **↑ Previous change** (`p` or `shift+F7`) jump from one block of changes to the
+  next; past the last change of a file they continue in the next file.
+- **◀ ▶** (`[` `]`) and the file selector move between files.
+- **Side by side** shows the whole old file on the left and the whole new file on the right; **Unified** shows one
+  column. Inside a modified line, the part that changed is highlighted.
+- `esc` closes the view.
+
 To compare against a tag, click the commit carrying the tag. To end the comparison, click any commit, press `esc`,
 or double-click a row.
 

@@ -39,6 +39,7 @@ Every `/api/` request takes `repo=<path>`, defaulting to `dir`.
 | `/api/log?ref=…&limit=N` | GET | commits of the given refs; `@local`, `@remotes`, `@tags` select them all |
 | `/api/commit?h=<hash>` | GET | the commit and its diff against its first parent |
 | `/api/compare?from=<hash>&to=<hash>` | GET | `git diff from to` |
+| `/api/filediff?kind=…&path=…` | GET | one file's diff with the whole file as context; `kind` is `commit` (with `h`), `compare` (with `from`, `to`), `staged`, `unstaged` or `untracked`; a renamed file takes both paths |
 | `/api/status` | GET | counts of staged, unstaged and untracked files |
 | `/api/worktree` | GET | staged diff, unstaged diff, untracked paths |
 | `/api/state` | GET | a fingerprint that changes with refs, HEAD and the working tree |
