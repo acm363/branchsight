@@ -19,7 +19,8 @@ fn commit_lists_every_file_with_its_status_counts_and_rename_source() {
     commit(&repo, "kept.txt", "kept");
     commit(&repo, "old name.txt", "renamed later");
     commit(&repo, "gone.txt", "deleted later");
-    git(&repo, &["mv", "old name.txt", "new \"name\".txt"]);
+    let renamed = if cfg!(windows) { "new name.txt" } else { "new \"name\".txt" };
+    git(&repo, &["mv", "old name.txt", renamed]);
     git(&repo, &["rm", "-q", "gone.txt"]);
     fs::write(repo.join("logo.png"), [0x89, b'P', b'N', b'G', 0, 1, 2]).unwrap();
     fs::write(repo.join("kept.txt"), "kept\nmore\n").unwrap();
@@ -36,8 +37,8 @@ fn commit_lists_every_file_with_its_status_counts_and_rename_source() {
     assert!(patch_of(&shown, "kept.txt").contains("+more"));
     assert_eq!(file(files, "gone.txt")["status"], "D");
     assert!(patch_of(&shown, "gone.txt").contains("-deleted later"));
-    assert_eq!(file(files, "new \"name\".txt")["status"], "R");
-    assert_eq!(file(files, "new \"name\".txt")["from"], "old name.txt");
+    assert_eq!(file(files, renamed)["status"], "R");
+    assert_eq!(file(files, renamed)["from"], "old name.txt");
     assert_eq!((file(files, "logo.png")["status"].as_str(), file(files, "logo.png")["add"].is_null()), (Some("A"), true), "binary files have no line counts");
     assert!(shown["header"].as_str().unwrap().starts_with(&format!("commit {head}")));
     assert_eq!(shown["truncated"], false);
