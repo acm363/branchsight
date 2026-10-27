@@ -6,7 +6,7 @@ for tool in git cargo node; do
   command -v "$tool" >/dev/null || { echo "missing: $tool" >&2; exit 1; }
 done
 
-cargo test
+GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 cargo test
 node --test tests/js/*.test.mjs
 
 if [[ "$(uname)" != Linux ]] || pkg-config --exists webkit2gtk-4.1 2>/dev/null; then

@@ -68,6 +68,13 @@ fn git_command(dir: &Path, args: &[&str]) -> Command {
 pub fn init(dir: &Path) {
     fs::create_dir_all(dir).unwrap();
     git(dir, &["init", "-q"]);
+    identify(dir);
+}
+
+fn identify(dir: &Path) {
+    for (key, value) in [("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false")] {
+        git(dir, &["config", key, value]);
+    }
 }
 
 pub fn commit(dir: &Path, file: &str, message: &str) -> String {
@@ -92,6 +99,7 @@ fn commit_staged(dir: &Path, message: &str) -> String {
 pub fn clone(sb: &Sandbox, origin: &Path, name: &str) -> PathBuf {
     let target = sb.path(name);
     git(&sb.0, &["clone", "-q", origin.to_str().unwrap(), target.to_str().unwrap()]);
+    identify(&target);
     target
 }
 
