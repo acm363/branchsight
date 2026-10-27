@@ -6,10 +6,14 @@ use super::run::{self, ACTION_TIMEOUT, Call};
 
 const NON_INTERACTIVE_SSH: &str = "core.sshCommand=ssh -o BatchMode=yes -o ConnectTimeout=15";
 const STALLED_HTTP: [&str; 2] = ["http.lowSpeedLimit=1000", "http.lowSpeedTime=60"];
+const UNATTENDED: [&str; 1] = ["credential.interactive=false"];
+const NOISE: [&str; 5] = ["To ", "hint:", "error: failed to push some refs", "Warning: Permanently added", "warning: redirecting to"];
+const REASONS: [&str; 4] = [" ! ", "fatal:", "error:", "remote: error"];
 
 impl Repo {
-    pub fn fetch(&self) -> Result<String, String> {
-        self.network(&["fetch", "--all", "--prune", "--quiet"])
+    pub fn fetch(&self, unattended: bool) -> Result<String, String> {
+        let quiet = if unattended { &UNATTENDED[..] } else { &[] };
+        self.network(&["fetch", "--all", "--prune", "--quiet"], &[&STALLED_HTTP[..], quiet].concat()).map_err(main_reason)
     }
 
     pub fn checkout(&self, name: &str) -> Result<String, String> {
@@ -37,7 +41,7 @@ impl Repo {
 
     pub fn delete_remote_branch(&self, name: &str) -> Result<String, String> {
         let (remote, branch) = self.split_remote_branch(name)?;
-        self.network(&["push", "--quiet", "--delete", "--end-of-options", &remote, &format!("refs/heads/{branch}")]).map_err(main_reason)?;
+        self.network(&["push", "--quiet", "--delete", "--end-of-options", &remote, &format!("refs/heads/{branch}")], &[]).map_err(main_reason)?;
         Ok(format!("deleted {branch} on {remote}"))
     }
 
@@ -62,7 +66,7 @@ impl Repo {
         args.extend(flag);
         args.extend((!tracks_it).then_some("--set-upstream"));
         args.extend(["--end-of-options", remote, &refspec]);
-        self.network(&args).map_err(|e| match e {
+        self.network(&args, &[]).map_err(|e| match e {
             e if e.contains("(stale info)") => format!("someone pushed to {remote}/{branch} since your last fetch: fetch and look first"),
             e if e.contains("[rejected]") => format!("{remote}/{branch} has commits you do not have: fetch them, or push with lease"),
             e => main_reason(e),
@@ -88,8 +92,8 @@ impl Repo {
         split_remote(&self.remotes()?, name).ok_or_else(|| format!("{name} belongs to no configured remote"))
     }
 
-    fn network(&self, args: &[&str]) -> Result<String, String> {
-        let mut config = STALLED_HTTP.to_vec();
+    fn network(&self, args: &[&str], extra: &[&str]) -> Result<String, String> {
+        let mut config = extra.to_vec();
         config.extend(self.uses_default_ssh().then_some(NON_INTERACTIVE_SSH));
         run::run(&self.root, &Call { config: &config, timeout: ACTION_TIMEOUT, ..Call::new(args) }).map(|output| output.text.trim().to_owned())
     }
@@ -101,7 +105,32 @@ impl Repo {
 }
 
 fn main_reason(error: String) -> String {
-    let noise = |line: &&str| line.starts_with("To ") || line.starts_with("hint:") || line.starts_with("error: failed to push some refs");
-    let kept: Vec<&str> = error.lines().filter(|line| !noise(line)).collect();
-    if kept.is_empty() { error } else { kept.join("\n") }
+    let starts = |line: &str, prefixes: &[&str]| prefixes.iter().any(|p| line.starts_with(p));
+    let useful = |line: &&str| !starts(line, &NOISE) && !line.trim_start_matches("remote:").trim_matches(['=', ' ']).is_empty();
+    let (mut reasons, details): (Vec<&str>, Vec<&str>) = error.lines().filter(useful).partition(|line| starts(line, &REASONS));
+    reasons.extend(details);
+    if reasons.is_empty() { error } else { reasons.join("\n") }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_reason_comes_first_and_noise_is_dropped() {
+        // Given.
+        let stderr = "Warning: Permanently added 'host' to the list of known hosts.\nremote: =====\nremote: lint failed: 3 errors\nremote:\nTo host:repo.git\n ! [remote rejected] b -> b (pre-receive hook declined)\nerror: failed to push some refs to 'host:repo.git'";
+
+        // When.
+        let reason = main_reason(stderr.to_owned());
+
+        // Then.
+        assert_eq!(reason, " ! [remote rejected] b -> b (pre-receive hook declined)\nremote: lint failed: 3 errors");
+    }
+
+    #[test]
+    fn an_error_without_known_lines_is_kept_whole() {
+        // Then.
+        assert_eq!(main_reason("To host\nhint: retry".to_owned()), "To host\nhint: retry");
+    }
 }

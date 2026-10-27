@@ -19,6 +19,19 @@ never reads one as an option. git runs without a terminal, with its password pro
 a window of its own, is the one exception. The end-to-end tests send option-like names such as `--orphan=x`, `--output=…` and
 `--receive-pack=x` and check that they are refused.
 
+## Time limits and prompts
+
+These apply to the desktop app and to `branchsight serve` alike.
+
+- git never prompts on a terminal or through an askpass program, and ssh runs in batch mode with a 15 s connect
+  timeout unless you configured your own ssh command.
+- A credential helper with its own window, such as Git Credential Manager, can still open it when you fetch, push
+  or delete by hand; the automatic fetch never asks.
+- A fetch slower than 1 KB/s for a minute is dropped.
+- Reads stop after 2 minutes; fetch, checkout, push and delete after 15.
+- On Linux and macOS a stopped git first gets three seconds to remove its lock files. On Windows it is stopped at
+  once: if a later command reports `index.lock: File exists`, delete that file once no git is running.
+
 ## Only your own machine can talk to it
 
 The desktop app has no network port at all. `branchsight serve` listens on `127.0.0.1` and `[::1]` only and answers

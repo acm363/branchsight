@@ -27,7 +27,7 @@ const shortcuts = {
   Home: () => select(0), End: () => select(state.entries.length - 1),
   Enter: () => select(Math.max(0, state.cursor), { open: true }),
   b: branches.open, '/': branches.open, p: projects.open,
-  r: () => sync.reload({ fresh: true }), f: fetchRemotes,
+  r: () => sync.reload({ fresh: true }), f: () => fetchRemotes(),
   c: () => commitAt(state.cursor) && copy(commitAt(state.cursor).h),
 };
 

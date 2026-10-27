@@ -73,7 +73,7 @@ fn route(config: &Config, post: bool, path: &str, q: &Query) -> Result<Reply, St
         "/api/compare" => Reply::json(repo()?.compare(q.get("from"), q.get("to"))?),
         "/api/worktree" => Reply::json(repo()?.worktree()?),
         "/api/filediff" => Reply::json(repo()?.file_diff(file_diff(q)?, &q.all("path"))?),
-        "/api/fetch" => done(fetch(&action()?)?),
+        "/api/fetch" => done(fetch(&action()?, q.get("auto") == "1")?),
         "/api/checkout" => done(action()?.checkout(q.get("ref"))?),
         "/api/push" => done(action()?.push(q.get("ref"), q.get("remote"), q.get("mode"))?),
         "/api/delete-remote" => done(action()?.delete_remote_branch(q.get("ref"))?),
@@ -100,11 +100,11 @@ fn done(out: String) -> Reply {
     Reply::json(json!({ "out": out }))
 }
 
-fn fetch(repo: &Repo) -> Result<String, String> {
+fn fetch(repo: &Repo, unattended: bool) -> Result<String, String> {
     if !FETCHING.lock().map_err(|e| e.to_string())?.insert(repo.root.clone()) {
         return Err("a fetch is already running for this repository".into());
     }
-    let result = repo.fetch();
+    let result = repo.fetch(unattended);
     if let Ok(mut running) = FETCHING.lock() {
         running.remove(&repo.root);
     }

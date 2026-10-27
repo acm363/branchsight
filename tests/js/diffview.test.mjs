@@ -92,4 +92,3 @@ test('a new file has nothing on the left and a binary file is flagged', () => {
   assert.equal(image.binary, true);
   assert.equal(image.split.length, 0);
 });
-

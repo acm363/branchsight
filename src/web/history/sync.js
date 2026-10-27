@@ -10,7 +10,7 @@ const POLL_MS = 5000, LOG_CACHE_SIZE = 16;
 const logCache = new Map();
 const refListeners = [], logListeners = [];
 
-let seen = null, shown = null, polling = false, request = null;
+let seen = null, shown = null, failed = false, polling = false, request = null;
 
 export const onRefs = listener => refListeners.push(listener);
 
@@ -52,12 +52,13 @@ export async function loadLog({ keepScroll = false, fresh = false } = {}) {
     const loaded = await fetchLog(params, fresh, mine.signal);
     if (mine !== request) return;
     shown = loaded;
+    failed = false;
     log.show(withWorktree(loaded, seen?.status), { cursorKey: cursorKey(), top: keepScroll ? log.anchor() : null });
     const limit = +$('limit').value, count = loaded.commits.length;
     $('count').textContent = `${plural(count, 'commit')}${count >= limit ? ' (limit)' : ''}`;
   } catch (e) {
     if (e.name === 'AbortError' || mine !== request) return;
-    seen = null;
+    failed = true;
     log.show({ entries: [], rows: [], lanes: 1 });
     $('count').textContent = '';
     $('rows').innerHTML = `<div id="error">${esc(e.message)} — retrying…</div>`;
@@ -75,7 +76,7 @@ export async function reload({ keepScroll = true, fresh = false, now = null } = 
     await loadRefs();
     seen = current;
   } catch (e) {
-    seen = null;
+    failed = true;
     throw e;
   }
   await loadLog({ keepScroll, fresh });
@@ -98,7 +99,7 @@ export async function poll() {
   polling = true;
   try {
     const now = await getJson('/api/state');
-    if (!seen || now.history !== seen.history) await reload({ now });
+    if (failed || !seen || now.history !== seen.history) await reload({ now });
     else if (now.worktree !== seen.worktree) {
       seen = now;
       refreshWorktree(now.status);

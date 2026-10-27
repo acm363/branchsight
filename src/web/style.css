@@ -26,7 +26,7 @@ html, body { margin: 0; height: 100%; }
 body { background: var(--bg); color: var(--fg); font: var(--fs)/1.4 var(--sans); display: flex; flex-direction: column; overflow: hidden; }
 button, input, select { font: inherit; color: inherit; }
 button, select { background: var(--bg2); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; cursor: pointer; }
-button:hover { background: var(--hover); }
+button:not(:disabled):hover { background: var(--hover); }
 header { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--bg2); flex: none; }
 #repo { font-weight: 600; }
 #count { color: var(--dim); }
@@ -47,8 +47,7 @@ header { display: flex; align-items: center; gap: 10px; padding: 6px 10px; borde
 .sub-menu { display: none; position: absolute; left: 100%; top: -5px; min-width: 220px; padding: 4px 0; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 8px 28px rgba(0,0,0,.18); }
 .sub:hover > .sub-menu { display: block; }
 .sub-menu > button { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; border: 0; border-radius: 0; background: none; padding: 5px 14px; }
-.sub-menu > button:hover { background: var(--hover); }
-.sub-menu > button:disabled { background: none; }
+.sub-menu > button:not(:disabled):hover { background: var(--hover); }
 .sub-menu .mrow { display: flex; align-items: center; gap: 6px; padding: 4px 14px; white-space: nowrap; }
 .sub-menu .mrow button { padding: 0 8px; }
 .seg { display: inline-flex; }
@@ -179,7 +178,7 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 .dialog p { margin: 0 0 16px; line-height: 1.5; }
 .dialog .actions { display: flex; justify-content: flex-end; gap: 8px; }
 #confirm .danger { font-weight: 600; border-color: var(--rm); }
-#toast { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 4px 12px; border-radius: 4px; font: 12px var(--mono); z-index: 20; opacity: 0; transition: opacity .15s; pointer-events: none; }
+#toast { white-space: pre-line; max-width: min(720px, 92vw); position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 4px 12px; border-radius: 4px; font: 12px var(--mono); z-index: 20; opacity: 0; transition: opacity .15s; pointer-events: none; }
 #toast.on { opacity: 1; }
 .row .s { flex: 1; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 5px; align-items: center; min-width: 140px; }
 .row .s .t { overflow: hidden; text-overflow: ellipsis; }
@@ -227,5 +226,5 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 @media (max-width: 760px) { .row .a, #cols .c-a { display: none; } #detail { width: 100%; } }
 header .auto { display: flex; align-items: center; gap: 4px; color: var(--dim); cursor: pointer; }
 button.err { color: var(--rm); border-color: var(--rm); }
-button:disabled, button:disabled:hover { opacity: .45; cursor: default; background: var(--bg2); }
+button:disabled { opacity: .45; cursor: default; }
 header > * { white-space: nowrap; }

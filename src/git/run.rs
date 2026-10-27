@@ -51,10 +51,15 @@ enum Stream {
 #[derive(Default)]
 struct Collected {
     stdout: Vec<u8>,
-    stderr_head: Vec<u8>,
-    stderr_tail: Vec<u8>,
-    stderr_cut: bool,
+    stderr: Clipped,
     truncated: bool,
+}
+
+#[derive(Default)]
+struct Clipped {
+    head: Vec<u8>,
+    tail: Vec<u8>,
+    cut: bool,
 }
 
 impl<'a> Call<'a> {
@@ -74,20 +79,31 @@ impl Collected {
                 }
             }
             Stream::Out => {}
-            Stream::Err => {
-                let room = (STDERR_KEPT / 2).saturating_sub(self.stderr_head.len()).min(bytes.len());
-                self.stderr_head.extend_from_slice(&bytes[..room]);
-                self.stderr_tail.extend_from_slice(&bytes[room..]);
-                let excess = self.stderr_tail.len().saturating_sub(STDERR_KEPT / 2);
-                self.stderr_tail.drain(..excess);
-                self.stderr_cut |= excess > 0;
-            }
+            Stream::Err => self.stderr.push(&bytes),
+        }
+    }
+}
+
+impl Clipped {
+    const HALF: usize = STDERR_KEPT / 2;
+
+    fn push(&mut self, bytes: &[u8]) {
+        let room = Self::HALF.saturating_sub(self.head.len()).min(bytes.len());
+        self.head.extend_from_slice(&bytes[..room]);
+        self.tail.extend_from_slice(&bytes[room..]);
+        if self.tail.len() > Self::HALF {
+            self.tail.drain(..self.tail.len() - Self::HALF);
+            self.cut = true;
         }
     }
 
-    fn stderr(&self) -> String {
-        let gap = if self.stderr_cut { "\n…\n" } else { "" };
-        format!("{}{gap}{}", String::from_utf8_lossy(&self.stderr_head), String::from_utf8_lossy(&self.stderr_tail)).trim().to_owned()
+    fn text(&self) -> String {
+        if !self.cut {
+            return String::from_utf8_lossy(&[&self.head[..], &self.tail[..]].concat()).trim().to_owned();
+        }
+        let head = &self.head[..self.head.iter().rposition(|b| *b == b'\n').unwrap_or(self.head.len())];
+        let tail = &self.tail[self.tail.iter().position(|b| *b == b'\n').map_or(0, |i| i + 1)..];
+        format!("{}\n…\n{}", String::from_utf8_lossy(head).trim_end(), String::from_utf8_lossy(tail).trim())
     }
 }
 
@@ -106,7 +122,7 @@ pub(crate) fn run(dir: &Path, call: &Call) -> Result<Output, String> {
     if collected.truncated {
         return Ok(Output { text: decode(cut_at_line(collected.stdout)), truncated: true });
     }
-    let stderr = collected.stderr();
+    let stderr = collected.stderr.text();
     if status.success() || status.code() == Some(call.accepted_exit) {
         Ok(Output { text: decode(collected.stdout), truncated: false })
     } else if stderr.is_empty() {
@@ -244,4 +260,39 @@ fn stop(child: &mut Child) {
         let _ = child.kill();
     }
     let _ = child.wait();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_long_error_keeps_whole_lines_from_its_start_and_end() {
+        // Given.
+        let mut clipped = Clipped::default();
+        let lines: String = (0..20_000).map(|n| format!("line {n}\n")).collect();
+
+        // When.
+        clipped.push(b"fatal: the reason\n");
+        clipped.push(lines.as_bytes());
+        let text = clipped.text();
+
+        // Then.
+        assert!(text.starts_with("fatal: the reason\n"));
+        assert!(text.ends_with("line 19999"));
+        assert!(text.lines().all(|line| line == "fatal: the reason" || line == "…" || line.starts_with("line ")), "no line is cut in two");
+    }
+
+    #[test]
+    fn a_short_error_is_kept_as_it_is() {
+        // Given.
+        let mut clipped = Clipped::default();
+
+        // When.
+        clipped.push(b"error: one\n");
+        clipped.push(b"error: two\n");
+
+        // Then.
+        assert_eq!(clipped.text(), "error: one\nerror: two");
+    }
 }

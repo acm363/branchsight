@@ -6,11 +6,9 @@ import * as log from '../history/list.js';
 import { state } from '../shared/state.js';
 import { poll, reload } from '../history/sync.js';
 
-const AUTO_FETCH_MS = 120000, AUTO_FETCH_CHECK_MS = 10000;
+const AUTO_FETCH_MS = 120000, AUTO_FETCH_CHECK_MS = 10000, ACTION_MS = 15 * 60 * 1000;
 
 let fetching = false, lastFetch = 0;
-
-const ACTION_MS = 15 * 60 * 1000;
 
 async function run(endpoint, params, busy) {
   toast(busy, ACTION_MS);
@@ -18,7 +16,7 @@ async function run(endpoint, params, busy) {
     const { out } = await post(endpoint, params);
     toast(out, 3000);
   } catch (e) {
-    toast(e.message.split('\n')[0], 7000);
+    toast(e.message.split('\n').slice(0, 3).join('\n'), 9000);
   }
   await reload().catch(() => {});
 }
@@ -48,7 +46,7 @@ export async function push(branch, upstream) {
   };
   note();
   select.onchange = note;
-  dialog.onkeydown = e => e.key === 'Enter' && e.target.type === 'radio' && e.preventDefault();
+  dialog.onkeydown = e => e.key === 'Enter' && !e.target.closest('button') && e.preventDefault();
   dialog.querySelector('[name="mode"][value="normal"]').checked = true;
   if ((await ask(dialog)) !== 'ok') return;
   const remote = select.value, mode = dialog.querySelector('[name="mode"]:checked').value;
@@ -57,14 +55,14 @@ export async function push(branch, upstream) {
   await run('/api/push', { ref: branch, remote, mode }, `pushing ${branch} to ${remote}…`);
 }
 
-export async function fetchRemotes() {
+export async function fetchRemotes({ unattended = false } = {}) {
   if (fetching || !state.repo.path) return;
   fetching = true;
   const button = $('fetch');
   button.disabled = true;
   button.textContent = '⇣ fetching…';
   try {
-    await post('/api/fetch');
+    await post('/api/fetch', unattended ? { auto: '1' } : {});
     button.title = `Fetch all remotes (f) · last ${new Date().toLocaleTimeString()}`;
     button.classList.remove('err');
   } catch (e) {
@@ -81,7 +79,7 @@ export async function fetchRemotes() {
 }
 
 function autoFetch() {
-  if ($('auto-fetch').checked && !document.hidden && Date.now() - lastFetch >= AUTO_FETCH_MS) fetchRemotes();
+  if ($('auto-fetch').checked && !document.hidden && Date.now() - lastFetch >= AUTO_FETCH_MS) fetchRemotes({ unattended: true });
 }
 
 export function startAutoFetch() {
@@ -90,7 +88,7 @@ export function startAutoFetch() {
   document.addEventListener('visibilitychange', autoFetch);
 }
 
-$('fetch').addEventListener('click', fetchRemotes);
+$('fetch').addEventListener('click', () => fetchRemotes());
 $('auto-fetch').addEventListener('change', e => {
   state.store.set('autoFetch', e.target.checked);
   autoFetch();

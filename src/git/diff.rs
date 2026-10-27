@@ -45,11 +45,14 @@ impl Repo {
         let specs: Vec<String> = paths.iter().map(|p| format!(":(literal){p}")).collect();
         let output = match which {
             FileDiff::Untracked => self.untracked_diff(&paths[0], &specs[0])?,
+            FileDiff::Unstaged => {
+                let specs: Vec<&str> = specs.iter().map(String::as_str).collect();
+                let side = |stage| self.capped(&Call::new(&[&["diff", stage, "--no-ext-diff", "-M", WHOLE_FILE, "--"], &specs[..]].concat()));
+                let ours = side("--ours")?;
+                if ours.text.contains("\ndiff --git ") || ours.text.starts_with("diff --git ") { ours } else { side("--theirs")? }
+            }
             _ => {
-                let mut source = self.source(which)?;
-                if let FileDiff::Unstaged = which {
-                    source.push("--ours");
-                }
+                let source = self.source(which)?;
                 let specs: Vec<&str> = specs.iter().map(String::as_str).collect();
                 self.capped(&Call::new(&[&source[..], &["--no-ext-diff", "-M", WHOLE_FILE, "--"], &specs[..]].concat()))?
             }

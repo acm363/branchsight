@@ -10,7 +10,9 @@ summary such as `1 staged · 2 modified · 1 untracked`.
 ![Uncommitted changes](../images/uncommitted.png)
 
 To read a file side by side, double-click it in the file list or click its `⤢`: the diff view labels the sides
-*HEAD* → *Staged (index)* for staged files, *Staged (index)* → *Working tree* for the others.
+*HEAD* → *Staged (index)* for staged files, *Staged (index)* → *Working tree* for the others. During a merge, a
+conflicted file shows as `U` in red and its diff view compares *our side (HEAD)* with the working tree, conflict
+markers included.
 
 The row and the panel refresh on their own within five seconds of a change, including further edits to a file that
 was already modified. The row disappears once the working copy is clean.

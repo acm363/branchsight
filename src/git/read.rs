@@ -84,7 +84,7 @@ impl Repo {
         if refs.is_empty() {
             revisions.push("HEAD");
         }
-        if self.git(&["rev-parse", "--verify", "-q", "HEAD"]).is_err() {
+        if revisions.contains(&"HEAD") && self.unborn() {
             revisions.retain(|name| *name != "HEAD");
         }
         if !grouped && revisions.is_empty() {
@@ -122,6 +122,11 @@ impl Repo {
             })
             .unzip();
         Ok(json!({ "history": self.history()?, "worktree": worktree, "status": status }))
+    }
+
+    fn unborn(&self) -> bool {
+        self.git(&["rev-parse", "--verify", "-q", "HEAD"]).is_err()
+            && self.git(&["symbolic-ref", "-q", "HEAD"]).is_ok_and(|target| self.git(&["show-ref", "--verify", "-q", target.trim()]).is_err())
     }
 
     fn history(&self) -> Result<String, String> {

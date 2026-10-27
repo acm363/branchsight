@@ -89,11 +89,13 @@ export function showWorktree({ keep = false } = {}) {
 
 function group(title, { files, truncated }, kind, sides, budget) {
   let hidden = 0;
+  const conflictSides = ['our side (HEAD)', sides[1]];
   const listed = files.map(({ patch, ...file }, i) => {
     const rendered = patchHtml(patch, budget.lines);
     budget.lines -= rendered.shown;
     hidden += rendered.hidden;
-    return { ...file, kind, sides, id: `${kind}-${i}`, body: rendered.html };
+    const fileSides = kind === 'unstaged' && file.status === 'U' ? conflictSides : sides;
+    return { ...file, kind, sides: fileSides, id: `${kind}-${i}`, body: rendered.html };
   });
   const notes = [hidden && `${plural(hidden, 'more line')} not shown here`, truncated && 'the diff is cut at 4 MB'].filter(Boolean);
   return { title, files: listed, note: notes.length ? `${notes.join(', ')}: open a file in the diff view to see all of it` : '' };
@@ -108,16 +110,18 @@ async function open(source, titleHtml, title, load, keep = false) {
   $('open-viewer').disabled = !shown;
   try {
     const groups = await load({ lines: MAX_LINES });
-    if (requested !== source.key) return;
+    if (requested !== source.key) return false;
     const folds = keep ? keptFolds() : null;
     shown = { source, files: groups.flatMap(g => g.files) };
     fill(groups, folds);
+    return true;
   } catch (e) {
-    if (requested !== source.key) return;
+    if (requested !== source.key) return false;
     shown = null;
     $('files').innerHTML = '';
     $('files-count').textContent = '';
     $('diff').innerHTML = `<div id="error">${esc(e.message)}</div>`;
+    return false;
   }
 }
 
@@ -172,10 +176,14 @@ function openViewer(id) {
 }
 
 onLog(worktree => {
-  if (requested !== 'worktree' || worktree === drawnWorktree) return;
-  drawnWorktree = worktree;
-  if (isWorktree(state.entries[0])) showWorktree({ keep: true });
-  else close();
+  if (requested !== 'worktree') return;
+  if (!isWorktree(state.entries[0])) return close();
+  const drawn = `${worktree}|${state.repo.head}|${state.repo.branch}`;
+  if (drawn === drawnWorktree) return;
+  drawnWorktree = drawn;
+  showWorktree({ keep: true }).then(ok => {
+    if (!ok) drawnWorktree = null;
+  });
 });
 
 $('close').addEventListener('click', close);

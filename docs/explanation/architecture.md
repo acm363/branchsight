@@ -47,5 +47,6 @@ Every five seconds, while the window is visible, the page asks for two fingerpri
 of `git status` and the size and modification time of each changed file. When the first changes, the page reloads
 the graph; when only the second does, it refreshes the uncommitted-changes row and its panel. Both keep your scroll
 position and the files you folded.
-Polling costs about 30 ms of git work per check and works the same on every system, including network drives and
-WSL, where file watchers are unreliable.
+Polling costs about 30 ms of git work per check on a usual repository, more when thousands of untracked files are
+not ignored, and works the same on every system, including network drives and WSL, where file watchers are
+unreliable.
