@@ -1,4 +1,5 @@
 mod diff;
+mod patch;
 mod read;
 mod run;
 mod write;
@@ -9,15 +10,20 @@ pub use diff::FileDiff;
 
 pub struct Repo {
     pub root: PathBuf,
+    shallow: PathBuf,
 }
 
 impl Repo {
     pub fn open(dir: &Path) -> Result<Repo, String> {
-        match run::git(dir, &["rev-parse", "--show-toplevel"]) {
-            Ok(top) => Ok(Repo { root: PathBuf::from(top.trim()) }),
-            Err(e) if e.contains("not a git repository") => Err(format!("not a git repository: {}", dir.display())),
-            Err(e) => Err(e),
-        }
+        let out = match run::git(dir, &["rev-parse", "--show-toplevel", "--git-path", "shallow"]) {
+            Err(e) if e.contains("not a git repository") => return Err(format!("not a git repository: {}", dir.display())),
+            other => other?,
+        };
+        let mut lines = out.lines();
+        let (Some(root), Some(shallow)) = (lines.next(), lines.next()) else {
+            return Err(format!("not a working tree: {}", dir.display()));
+        };
+        Ok(Repo { root: PathBuf::from(root), shallow: dir.join(shallow) })
     }
 
     fn git(&self, args: &[&str]) -> Result<String, String> {

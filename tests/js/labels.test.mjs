@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { indexRefs, refLabels, refName } from '../../src/web/labels.js';
+import { indexRefs, refLabels, refName } from '../../src/web/history/labels.js';
 
 const head = name => ({ kind: 'head', name, hash: 'a' });
 const remote = (remoteName, branch) => ({ kind: 'remote', name: `${remoteName}/${branch}`, remote: remoteName, branch, hash: 'a' });

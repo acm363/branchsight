@@ -21,7 +21,7 @@ document.addEventListener('mousedown', e => {
   while (layers.length && !topLayer().contains(e.target) && closeLayer(topLayer()));
 });
 
-export function drag(event, onMove, onEnd = () => {}) {
+export function drag(event, onMove, onEnd) {
   event.preventDefault();
   let frame = 0, last = event;
   const move = e => {
@@ -66,16 +66,19 @@ export async function copy(text) {
   toast(`copied ${text}`);
 }
 
-export function confirmAction(text, okLabel) {
-  const dialog = $('confirm');
-  $('confirm-text').textContent = text;
-  dialog.querySelector('[value="ok"]').textContent = okLabel;
+export function ask(dialog) {
   dialog.returnValue = '';
   const layer = { contains: () => true, close: () => {}, keydown: () => true };
   openLayer(layer);
   dialog.showModal();
   return new Promise(resolve => dialog.addEventListener('close', () => {
     closeLayer(layer);
-    resolve(dialog.returnValue === 'ok');
+    resolve(dialog.returnValue);
   }, { once: true }));
+}
+
+export async function confirmAction(text, okLabel) {
+  $('confirm-text').textContent = text;
+  $('confirm').querySelector('[value="ok"]').textContent = okLabel;
+  return (await ask($('confirm'))) === 'ok';
 }

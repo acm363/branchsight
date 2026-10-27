@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { DEFAULT_SELECTION, layout } from '../../src/web/graph.js';
+import { layout } from '../../src/web/history/graph.js';
 
 const c = (h, ...p) => ({ h, p });
 
@@ -78,9 +78,4 @@ test('several branch tips start on separate lanes', () => {
   // Then.
   assert.equal(lanes, 2);
   assert.notEqual(rows[0].col, rows[1].col);
-});
-
-test('the default view selects every local and remote branch', () => {
-  // Then.
-  assert.deepEqual(DEFAULT_SELECTION, ['@local', '@remotes']);
 });

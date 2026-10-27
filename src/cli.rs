@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::process::exit;
 
-use branchsight::config::{Config, plain_path};
+use branchsight::config::{Config, canonical, expand_home};
 use branchsight::git::Repo;
 
 const DEFAULT_PORT: u16 = 7420;
@@ -41,17 +41,17 @@ pub fn parse() -> Args {
                 let given = value();
                 port = given.parse().unwrap_or_else(|_| fail(&format!("invalid port {given}")));
             }
-            "-r" | "--root" => roots.push(PathBuf::from(value())),
+            "-r" | "--root" => roots.push(expand_home(&value())),
             "-h" | "--help" => {
                 println!("{USAGE}");
                 exit(0);
             }
             unknown if unknown.starts_with('-') => fail(&format!("unknown option {unknown}")),
-            _ => dir = PathBuf::from(arg),
+            _ => dir = expand_home(&arg),
         }
     }
 
-    let dir = dir.canonicalize().map_or(dir, plain_path);
+    let dir = canonical(dir);
     let default_repo = Repo::open(&dir).ok().map(|repo| repo.root);
     if roots.is_empty() {
         roots.push(match &default_repo {
@@ -59,7 +59,7 @@ pub fn parse() -> Args {
             None => dir,
         });
     }
-    let roots = roots.into_iter().map(|root| root.canonicalize().map_or(root, plain_path)).collect();
+    let roots = roots.into_iter().map(canonical).collect();
     Args { port, config: Config { roots, default_repo } }
 }
 

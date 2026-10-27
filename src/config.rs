@@ -22,6 +22,10 @@ pub fn open_repo(config: &Config, requested: &str) -> Result<Repo, String> {
     Repo::open(&dir)
 }
 
+pub fn canonical(path: PathBuf) -> PathBuf {
+    path.canonicalize().map_or(path, plain_path)
+}
+
 pub fn plain_path(path: PathBuf) -> PathBuf {
     let text = path.to_string_lossy();
     if let Some(share) = text.strip_prefix(r"\\?\UNC\") {
@@ -37,7 +41,7 @@ fn home_dir() -> Option<PathBuf> {
     std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")).map(PathBuf::from)
 }
 
-fn expand_home(path: &str) -> PathBuf {
+pub fn expand_home(path: &str) -> PathBuf {
     let rest = path.strip_prefix("~/").or_else(|| path.strip_prefix("~\\")).or((path == "~").then_some(""));
     match (rest, home_dir()) {
         (Some(rest), Some(home)) => home.join(rest),

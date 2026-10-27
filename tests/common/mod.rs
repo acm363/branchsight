@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
 use branchsight::config::Config;
-use branchsight::http::{self, ACTION_HEADER};
+use branchsight::http::{self, PAGE_HEADER};
 use branchsight::url::encode;
 use serde_json::Value;
 
@@ -45,16 +45,24 @@ pub struct Reply {
 }
 
 pub fn git(dir: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
+    let out = git_command(dir, args).output().unwrap();
+    assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+    String::from_utf8_lossy(&out.stdout).trim().to_owned()
+}
+
+pub fn git_succeeds(dir: &Path, args: &[&str]) -> bool {
+    git_command(dir, args).output().unwrap().status.success()
+}
+
+fn git_command(dir: &Path, args: &[&str]) -> Command {
+    let mut command = Command::new("git");
+    command
         .arg("-C")
         .arg(dir)
         .args(["-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false"])
         .args(["-c", "tag.gpgsign=false", "-c", "init.defaultBranch=main", "-c", "core.hooksPath=/dev/null"])
-        .args(args)
-        .output()
-        .unwrap();
-    assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
-    String::from_utf8_lossy(&out.stdout).trim().to_owned()
+        .args(args);
+    command
 }
 
 pub fn init(dir: &Path) {
@@ -68,6 +76,15 @@ pub fn commit(dir: &Path, file: &str, message: &str) -> String {
     }
     fs::write(dir.join(file), format!("{message}\n")).unwrap();
     git(dir, &["add", file]);
+    commit_staged(dir, message)
+}
+
+pub fn commit_all(dir: &Path, message: &str) -> String {
+    git(dir, &["add", "-A"]);
+    commit_staged(dir, message)
+}
+
+fn commit_staged(dir: &Path, message: &str) -> String {
     git(dir, &["commit", "-q", "-m", message]);
     git(dir, &["rev-parse", "HEAD"])
 }
@@ -105,12 +122,12 @@ pub fn request(port: u16, method: &str, path: &str, headers: &[(&str, &str)]) ->
 }
 
 pub fn get(port: u16, path: &str) -> (u16, String) {
-    let reply = request(port, "GET", path, &[]);
+    let reply = request(port, "GET", path, &[(PAGE_HEADER, "1")]);
     (reply.status, reply.body)
 }
 
 pub fn post(port: u16, path: &str) -> (u16, String) {
-    let reply = request(port, "POST", path, &[(ACTION_HEADER, "1")]);
+    let reply = request(port, "POST", path, &[(PAGE_HEADER, "1")]);
     (reply.status, reply.body)
 }
 
@@ -126,6 +143,10 @@ pub fn repo_query(repo: &Path) -> String {
 
 pub fn subjects(log: &Value) -> Vec<String> {
     log.as_array().unwrap().iter().map(|c| c["s"].as_str().unwrap().to_owned()).collect()
+}
+
+pub fn file<'a>(files: &'a Value, path: &str) -> &'a Value {
+    files.as_array().unwrap().iter().find(|f| f["path"] == path).unwrap_or_else(|| panic!("{path} in {files}"))
 }
 
 pub fn paths(files: &Value) -> Vec<String> {

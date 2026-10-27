@@ -152,6 +152,7 @@ dependencies = [
 name = "branchsight"
 version = "0.2.1"
 dependencies = [
+ "libc",
  "serde_json",
  "tiny_http",
 ]

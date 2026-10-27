@@ -1,18 +1,16 @@
-import * as actions from './actions.js';
-import { getJson, inDesktopApp, setRepo } from './api.js';
-import * as branches from './branches.js';
-import { $, closeLayer, copy, topLayer } from './dom.js';
-import { color, esc, samePath } from './format.js';
-import { DEFAULT_SELECTION } from './graph.js';
-import * as history from './history.js';
-import * as log from './log.js';
-import * as panel from './panel.js';
-import { prefs, repoPrefs } from './prefs.js';
-import * as projects from './projects.js';
-import * as settings from './settings.js';
-import { commitAt, state } from './state.js';
-
-const MAX_RECENT = 30;
+import { fetchRemotes, startAutoFetch } from './actions/commands.js';
+import { openContextMenu } from './actions/context-menu.js';
+import { getJson, inDesktopApp, setRepo } from './shared/api.js';
+import * as branches from './header/branches.js';
+import { $, closeLayer, copy, topLayer } from './shared/dom.js';
+import { esc, samePath } from './shared/format.js';
+import * as log from './history/list.js';
+import * as panel from './changes/panel.js';
+import { prefs, repoPrefs } from './shared/prefs.js';
+import * as projects from './header/projects.js';
+import * as settings from './header/settings.js';
+import { commitAt, state } from './shared/state.js';
+import * as sync from './history/sync.js';
 
 function select(i, { open = false, scroll = 'nearest' } = {}) {
   if (!state.entries.length) return;
@@ -29,9 +27,12 @@ const shortcuts = {
   Home: () => select(0), End: () => select(state.entries.length - 1),
   Enter: () => select(Math.max(0, state.cursor), { open: true }),
   b: branches.open, '/': branches.open, p: projects.open,
-  r: () => history.reload(), f: actions.fetchRemotes,
+  r: () => sync.reload({ fresh: true }), f: fetchRemotes,
   c: () => commitAt(state.cursor) && copy(commitAt(state.cursor).h),
 };
+
+const typing = target => target.closest?.('input, select, textarea');
+const pressingKeyboardFocusedButton = e => e.key === 'Enter' && e.target.closest?.('button')?.matches(':focus-visible');
 
 document.addEventListener('keydown', e => {
   const layer = topLayer();
@@ -42,7 +43,7 @@ document.addEventListener('keydown', e => {
     else panel.close();
     return;
   }
-  if (e.target.closest?.('input, select') || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (typing(e.target) || pressingKeyboardFocusedButton(e) || e.ctrlKey || e.metaKey || e.altKey) return;
   const action = shortcuts[e.key];
   if (!action) return;
   action();
@@ -64,14 +65,14 @@ $('rows').addEventListener('dblclick', e => {
   if (e.target.closest('.row') && !e.target.closest('.h')) panel.close();
 });
 
-$('rows').addEventListener('contextmenu', actions.openContextMenu);
+$('rows').addEventListener('contextmenu', openContextMenu);
 
 $('limit').addEventListener('change', e => {
   state.store.set('limit', e.target.value);
-  history.loadLog();
+  sync.loadLog();
 });
 
-$('reload').addEventListener('click', () => history.reload());
+$('reload').addEventListener('click', () => sync.reload({ fresh: true }));
 
 async function resolveRepo(fallback) {
   const params = new URLSearchParams(location.search);
@@ -82,19 +83,9 @@ async function resolveRepo(fallback) {
   return match ? match.path : fallback || prefs.get('last');
 }
 
-function remember(repo) {
-  prefs.set('last', repo.path);
-  prefs.set('recent', [repo.path, ...(prefs.get('recent') || []).filter(p => !samePath(p, repo.path))].slice(0, MAX_RECENT));
-  document.title = `${repo.name} · BranchSight`;
-  $('repo').textContent = repo.name;
-  $('proj-chip').title = `${repo.path} — switch project (p)`;
-  $('avatar').textContent = (repo.name[0] || '?').toUpperCase();
-  $('avatar').style.background = color([...repo.name].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 0));
-}
-
 function restoreView(store) {
   const fromUrl = new URLSearchParams(location.search).getAll('ref');
-  state.selected = fromUrl.length ? fromUrl : store.get('sel') ?? DEFAULT_SELECTION;
+  state.selected = fromUrl.length ? fromUrl : store.get('sel') ?? branches.DEFAULT_SELECTION;
   $('opt-remote').checked = store.get('remote') ?? true;
   $('opt-tag').checked = store.get('tag') ?? false;
   $('limit').value = store.get('limit') ?? '5000';
@@ -121,13 +112,13 @@ async function init() {
   }
   setRepo(state.repo.path);
   state.store = repoPrefs(state.repo.path);
-  remember(state.repo);
+  projects.setCurrent(state.repo);
   restoreView(state.store);
-  await history.loadRefs();
-  await branches.setSelection(state.selected);
+  await sync.reload({ keepScroll: false });
+  branches.saveSelection();
   $('list').focus();
-  history.startPolling();
-  actions.startAutoFetch();
+  sync.startPolling();
+  startAutoFetch();
 }
 
 init().catch(e => {

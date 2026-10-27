@@ -1,11 +1,12 @@
-import { getJson } from './api.js';
-import { $ } from './dom.js';
-import { esc, fuzzy, highlight, pathKey, samePath, shortPath } from './format.js';
-import { picker } from './picker.js';
-import { prefs } from './prefs.js';
-import { state } from './state.js';
+import { getJson } from '../shared/api.js';
+import { $ } from '../shared/dom.js';
+import { color, esc, fuzzy, highlight, pathKey, samePath, shortPath } from '../shared/format.js';
+import { picker } from '../shared/picker.js';
+import { prefs } from '../shared/prefs.js';
+import { state } from '../shared/state.js';
 
 const PATH_LIKE = /^(\/|~|[a-zA-Z]:[\\/])/;
+const MAX_RECENT = 30;
 
 let known = null;
 
@@ -58,6 +59,16 @@ export async function open() {
 function switchTo(path) {
   if (samePath(path, state.repo.path)) return menu.close();
   location.href = `${location.pathname}?repo=${encodeURIComponent(path)}`;
+}
+
+export function setCurrent(repo) {
+  prefs.set('last', repo.path);
+  prefs.set('recent', [repo.path, ...(prefs.get('recent') || []).filter(p => !samePath(p, repo.path))].slice(0, MAX_RECENT));
+  document.title = `${repo.name} · BranchSight`;
+  $('repo').textContent = repo.name;
+  $('proj-chip').title = `${repo.path} — switch project (p)`;
+  $('avatar').textContent = (repo.name[0] || '?').toUpperCase();
+  $('avatar').style.background = color([...repo.name].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 0));
 }
 
 export function closeProject() {

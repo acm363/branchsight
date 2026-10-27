@@ -53,7 +53,7 @@ scripts/check.sh      # unit and end-to-end tests, graph layout tests, desktop a
 | `src/api.rs` | the routes shared by the app and `serve` |
 | `src/http.rs` | the `serve` listener and its loopback and same-site guards |
 | `src/projects.rs` | repository discovery |
-| `src/web/` | the page, one ES module per part of the screen; `graph.js` computes the lanes |
+| `src/web/` | the page: `history/`, `changes/`, `header/`, `actions/`, `shared/`; `history/graph.js` computes the lanes |
 | `app/` | the Tauri shell |
 | `tests/` | end-to-end tests against throwaway repositories, page logic tests in `tests/js` (`node --test`) |
 | `scripts/` | checks, the demo repository and the documentation screenshots |

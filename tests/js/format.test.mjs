@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { esc, fuzzy, highlight, samePath, shortPath } from '../../src/web/format.js';
+import { esc, fuzzy, highlight, samePath, shortPath } from '../../src/web/shared/format.js';
 
 test('a substring match ranks before a scattered one', () => {
   // When.

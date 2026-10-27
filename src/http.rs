@@ -9,7 +9,7 @@ use tiny_http::{Header, Method, Request, Response, Server};
 use crate::api::{self, PING};
 use crate::config::Config;
 
-pub const ACTION_HEADER: &str = "X-BranchSight";
+pub const PAGE_HEADER: &str = "X-BranchSight";
 
 type BindError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -43,12 +43,13 @@ fn handle(config: &Config, request: Request) {
         let _ = request.respond(Response::from_string("forbidden host").with_status_code(403));
         return;
     }
-    let post = *request.method() == Method::Post;
-    if post && !is_own_page(header(ACTION_HEADER).as_deref(), header("Sec-Fetch-Site").as_deref()) {
-        let _ = request.respond(Response::from_string("cross-site request refused").with_status_code(403));
+    let path = request.url().split('?').next().unwrap_or("/");
+    let runs_git = path.starts_with("/api/") && path != "/api/ping";
+    if runs_git && !is_own_page(header(PAGE_HEADER).as_deref(), header("Sec-Fetch-Site").as_deref()) {
+        let _ = request.respond(Response::from_string("only the BranchSight page can call the API").with_status_code(403));
         return;
     }
-    let reply = api::respond(config, post, request.url());
+    let reply = api::respond(config, *request.method() == Method::Post, request.url());
     let response = Response::from_string(reply.body)
         .with_status_code(reply.status)
         .with_header(header_line("Content-Type", reply.content_type))
@@ -56,8 +57,8 @@ fn handle(config: &Config, request: Request) {
     let _ = request.respond(response);
 }
 
-fn is_own_page(action: Option<&str>, fetch_site: Option<&str>) -> bool {
-    action == Some("1") && fetch_site.is_none_or(|site| matches!(site, "same-origin" | "none"))
+fn is_own_page(marker: Option<&str>, fetch_site: Option<&str>) -> bool {
+    marker == Some("1") && fetch_site.is_none_or(|site| matches!(site, "same-origin" | "none"))
 }
 
 fn is_local_host(host: &str) -> bool {
@@ -89,7 +90,7 @@ mod tests {
     }
 
     #[test]
-    fn actions_need_the_page_header_and_no_foreign_site() {
+    fn the_api_needs_the_page_header_and_no_foreign_site() {
         // Then.
         assert!(is_own_page(Some("1"), None));
         assert!(is_own_page(Some("1"), Some("same-origin")));

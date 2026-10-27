@@ -34,9 +34,9 @@ The [architecture](docs/explanation/architecture.md) explains how the pieces fit
 
 ## Conventions
 
-- **Tests first for behaviour.** Server behaviour is tested end to end in `tests/api.rs` against throwaway
-  repositories; page logic lives in plain modules (`graph.js`, `diffview.js`) tested with `node --test`. Tests are
-  written as `// Given.` / `// When.` / `// Then.`.
+- **Tests first for behaviour.** Server behaviour is tested end to end in `tests/` (`history.rs`, `diffs.rs`,
+  `actions.rs`, `serve.rs`) against throwaway repositories; page logic that needs no screen lives in plain modules
+  tested in `tests/js` with `node --test`. Tests are written as `// Given.` / `// When.` / `// Then.`.
 - **Safety.** Anything that changes a repository needs a `POST` route, validated inputs and an end-to-end test that
   tries to abuse it; see [what BranchSight changes](docs/explanation/safety.md).
 - **Comments.** Only where a reader would otherwise get the code wrong; the reasoning goes in the commit message.

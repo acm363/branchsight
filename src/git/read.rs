@@ -1,5 +1,6 @@
 use std::fs;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::path::Path;
 use std::time::UNIX_EPOCH;
 
 use serde_json::{Value, json};
@@ -25,6 +26,7 @@ impl Repo {
             "name": self.root.file_name().map(|n| n.to_string_lossy().into_owned()),
             "head": head.trim(),
             "branch": branch.trim(),
+            "remotes": self.remotes()?,
         }))
     }
 
@@ -33,7 +35,7 @@ impl Repo {
         let out = self.git(&[
             "for-each-ref",
             "--sort=-creatordate",
-            "--format=%(refname)%1f%(symref)%1f%(objectname)%1f%(*objectname)%1f%(creatordate:unix)",
+            "--format=%(refname)%1f%(symref)%1f%(objectname)%1f%(*objectname)%1f%(creatordate:unix)%1f%(upstream:remotename)",
             "refs/heads",
             "refs/remotes",
             "refs/tags",
@@ -41,13 +43,16 @@ impl Repo {
         let refs = out
             .lines()
             .filter_map(|line| {
-                let [refname, symref, object, peeled, date] = line.split('\x1f').collect::<Vec<_>>()[..] else { return None };
+                let [refname, symref, object, peeled, date, upstream] = line.split('\x1f').collect::<Vec<_>>()[..] else { return None };
                 if !symref.is_empty() {
                     return None;
                 }
                 let (kind, name) = REF_KINDS.iter().find_map(|(k, prefix)| refname.strip_prefix(prefix).map(|n| (*k, n)))?;
                 let hash = if peeled.is_empty() { object } else { peeled };
                 let mut entry = json!({ "name": name, "kind": kind, "hash": hash, "date": date.parse::<i64>().unwrap_or(0) });
+                if !upstream.is_empty() {
+                    entry["upstream"] = json!(upstream);
+                }
                 if let Some((remote, branch)) = (kind == "remote").then(|| split_remote(&remotes, name)).flatten() {
                     entry["remote"] = json!(remote);
                     entry["branch"] = json!(branch);
@@ -61,16 +66,18 @@ impl Repo {
     pub fn log(&self, refs: &[String], limit: usize) -> Result<Value, String> {
         let limit = format!("--max-count={limit}");
         let mut args = vec!["log", "--date-order", &limit, "--format=%H%x1f%P%x1f%an%x1f%at%x1f%s%x1e"];
-        let (groups, names): (Vec<&str>, Vec<&str>) = refs.iter().map(String::as_str).partition(|r| r.starts_with('@'));
-        for group in groups {
-            let (_, option) = REF_GROUPS.iter().find(|(g, _)| *g == group).ok_or(format!("unknown ref group {group}"))?;
-            args.push(option);
+        let mut revisions = Vec::new();
+        for name in refs {
+            match REF_GROUPS.iter().find(|(group, _)| group == name) {
+                Some((_, option)) => args.push(option),
+                None => revisions.push(name.as_str()),
+            }
         }
         args.push("--end-of-options");
         if refs.is_empty() {
             args.push("HEAD");
         }
-        args.extend(names);
+        args.extend(revisions);
         args.push("--");
         let out = self.git(&args)?;
         let commits = out
@@ -94,36 +101,29 @@ impl Repo {
     pub fn state(&self) -> Result<Value, String> {
         let refs = self.git(&["for-each-ref", "--format=%(HEAD)%(objectname)%(refname)"])?;
         let head = self.git(&["rev-parse", "--verify", "-q", "HEAD"]).unwrap_or_default();
-        let worktree = self.porcelain().ok();
-        let status = worktree.as_deref().map(|out| counts(&changes(out)));
-        let worktree = worktree.map(|out| self.worktree_digest(&out));
-        Ok(json!({ "history": digest(&(refs, head)), "worktree": worktree, "status": status }))
-    }
-
-    pub fn status(&self) -> Result<Value, String> {
-        Ok(counts(&changes(&self.porcelain()?)))
+        let history = digest(&(refs, head, stamp(&self.shallow)));
+        let porcelain = self.git(&["status", "--porcelain=v2", "-z", "--untracked-files=all"]).ok();
+        let (worktree, status) = match porcelain.as_deref().map(|out| (out, changes(out))) {
+            Some((out, changes)) => {
+                let stamps: Vec<(u128, u64)> = changes.iter().map(|change| stamp(&self.root.join(change.path))).collect();
+                (Some(digest(&(out, stamps))), Some(counts(&changes)))
+            }
+            None => (None, None),
+        };
+        Ok(json!({ "history": history, "worktree": worktree, "status": status }))
     }
 
     pub(super) fn remotes(&self) -> Result<Vec<String>, String> {
         Ok(self.git(&["remote"])?.lines().map(str::to_owned).collect())
     }
 
-    fn porcelain(&self) -> Result<String, String> {
-        self.git(&["status", "--porcelain=v2", "-z", "--untracked-files=normal"])
-    }
+}
 
-    fn worktree_digest(&self, porcelain: &str) -> String {
-        let stamps: Vec<(u128, u64)> = changes(porcelain)
-            .iter()
-            .map(|change| {
-                fs::symlink_metadata(self.root.join(change.path)).map_or((0, 0), |meta| {
-                    let modified = meta.modified().ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map_or(0, |d| d.as_nanos());
-                    (modified, meta.len())
-                })
-            })
-            .collect();
-        digest(&(porcelain, stamps))
-    }
+fn stamp(path: &Path) -> (u128, u64) {
+    fs::symlink_metadata(path).map_or((0, 0), |meta| {
+        let modified = meta.modified().ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map_or(0, |d| d.as_nanos());
+        (modified, meta.len())
+    })
 }
 
 pub(super) fn split_remote<'a>(remotes: &[String], name: &'a str) -> Option<(String, &'a str)> {

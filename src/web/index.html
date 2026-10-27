@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost">
 <title>BranchSight</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
@@ -119,6 +120,7 @@
     <button id="v-prev" title="Previous change (p or shift+F7)">↑ Previous change</button>
     <button id="v-next" title="Next change (n or F7)">↓ Next change</button>
     <span id="v-pos"></span>
+    <span id="v-cut" hidden>this file's diff is cut at 4 MB</span>
     <span class="spacer"></span>
     <span class="seg" id="v-mode"><button data-mode="split">Side by side</button><button data-mode="unified">Unified</button></span>
   </div>
@@ -127,6 +129,17 @@
   <div id="v-divider" title="Drag to resize the two sides, double-click to reset"></div>
 </div>
 <div id="ctx" hidden></div>
+<dialog id="push">
+  <form method="dialog">
+    <p>Push <b id="push-branch"></b> to <select id="push-remote"></select></p>
+    <fieldset id="push-mode">
+      <label><input type="radio" name="mode" value="normal" checked> Normal: only if the remote has nothing you would lose</label>
+      <label><input type="radio" name="mode" value="force-with-lease"> Force with lease: overwrite, unless someone pushed since your last fetch</label>
+      <label class="danger"><input type="radio" name="mode" value="force"> Force: overwrite whatever the remote has</label>
+    </fieldset>
+    <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Push</button></div>
+  </form>
+</dialog>
 <dialog id="confirm">
   <form method="dialog">
     <p id="confirm-text"></p>

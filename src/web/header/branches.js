@@ -1,11 +1,17 @@
-import { $ } from './dom.js';
-import { esc, fmtDate, fuzzy, highlight } from './format.js';
-import { DEFAULT_SELECTION, GROUPS } from './graph.js';
-import { loadLog, onRefs } from './history.js';
-import { picker } from './picker.js';
-import { state } from './state.js';
+import { $ } from '../shared/dom.js';
+import { esc, fmtDate, fuzzy, highlight } from '../shared/format.js';
+import { picker } from '../shared/picker.js';
+import { state } from '../shared/state.js';
+import { loadLog, onRefs } from '../history/sync.js';
 
 const MAX_SHOWN = 400, MAX_CHIPS = 5;
+const GROUPS = [
+  { name: '@local', label: 'all local branches', kind: 'head' },
+  { name: '@remotes', label: 'all remote branches', kind: 'remote' },
+  { name: 'HEAD', label: 'HEAD', kind: 'head' },
+];
+
+export const DEFAULT_SELECTION = ['@local', '@remotes'];
 
 const menu = picker({
   anchor: $('picker'),
@@ -47,14 +53,18 @@ function toggle(name) {
 
 export function setSelection(names) {
   state.selected = names;
-  state.store.set('sel', names);
+  saveSelection();
+  return loadLog();
+}
+
+export function saveSelection() {
+  state.store.set('sel', state.selected);
   const url = new URL(location);
   url.searchParams.delete('ref');
   url.searchParams.set('repo', state.repo.path);
-  names.forEach(name => url.searchParams.append('ref', name));
-  history.replaceState(null, '', url);
+  state.selected.forEach(name => url.searchParams.append('ref', name));
+  window.history.replaceState(null, '', url);
   refreshChips();
-  return loadLog();
 }
 
 function refreshChips() {
@@ -65,7 +75,11 @@ function refreshChips() {
   if (menu.isOpen) menu.render();
 }
 
-onRefs(refreshChips);
+onRefs(() => {
+  const known = new Set([...state.refs.map(r => r.name), ...GROUPS.map(g => g.name)]);
+  state.selected = state.selected.filter(name => known.has(name));
+  refreshChips();
+});
 
 $('pick-btn').addEventListener('click', () => (menu.isOpen ? menu.close() : open()));
 

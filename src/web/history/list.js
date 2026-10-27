@@ -1,8 +1,8 @@
-import { $, drag } from './dom.js';
-import { color, esc, fmtDate } from './format.js';
+import { $, drag } from '../shared/dom.js';
+import { clamp, color, esc, fmtDate } from '../shared/format.js';
 import { refLabels } from './labels.js';
-import { prefs } from './prefs.js';
-import { isWorktree, state } from './state.js';
+import { prefs } from '../shared/prefs.js';
+import { isWorktree, state } from '../shared/state.js';
 
 const AUTO_LANES = 24;
 const COLUMN_LIMITS = { graph: [30, 640], author: [40, 400], date: [60, 220], hash: [40, 200] };
@@ -66,7 +66,7 @@ export function anchor() {
 
 export function setCursor(i, { scroll = 'nearest' } = {}) {
   if (!state.entries.length) return;
-  state.cursor = Math.max(0, Math.min(state.entries.length - 1, i));
+  state.cursor = clamp(i, 0, state.entries.length - 1);
   const list = $('list'), y = state.cursor * ROW;
   if (scroll === 'center') list.scrollTop = Math.max(0, y - list.clientHeight / 2 + ROW / 2);
   else if (scroll && y < list.scrollTop) list.scrollTop = y;
@@ -132,11 +132,16 @@ function labelsHtml(commit, laneColor) {
 function draw(first, last, width) {
   const canvas = $('graph'), dpr = window.devicePixelRatio || 1, height = Math.max(1, (last - first) * ROW);
   canvas.style.top = `${first * ROW}px`;
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
-  canvas.width = width * dpr;
-  canvas.height = height * dpr;
   const g = canvas.getContext('2d');
+  if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+  } else {
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, canvas.width, canvas.height);
+  }
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.lineWidth = ROW * 0.12;
   g.lineCap = 'round';
@@ -196,7 +201,7 @@ $('cols').addEventListener('mousedown', e => {
   const start = name === 'graph' ? graphWidth() : parseFloat(getComputedStyle($('pane')).getPropertyValue(`--w-${name}`));
   const [min, max] = COLUMN_LIMITS[name];
   drag(e, ev => {
-    columns[name] = Math.round(Math.max(min, Math.min(max, start + direction * (ev.clientX - x0))));
+    columns[name] = Math.round(clamp(start + direction * (ev.clientX - x0), min, max));
     applyColumns();
     render();
   }, () => prefs.set('cols', columns));

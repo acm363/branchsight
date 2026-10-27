@@ -20,7 +20,7 @@ async function call(method, path, signal) {
     if (status !== 200) throw new Error(body);
     return body;
   }
-  const options = { method, signal, headers: method === 'POST' ? { 'X-BranchSight': '1' } : {} };
+  const options = { method, signal, headers: { 'X-BranchSight': '1' } };
   let reply;
   try {
     reply = await fetch(path, options);
@@ -35,5 +35,4 @@ async function call(method, path, signal) {
 }
 
 export const getJson = (path, params, signal) => call('GET', url(path, params), signal).then(JSON.parse);
-export const getText = (path, params) => call('GET', url(path, params));
 export const post = (path, params) => call('POST', url(path, params)).then(JSON.parse);

@@ -2,7 +2,7 @@ mod common;
 
 use std::path::PathBuf;
 
-use branchsight::http::ACTION_HEADER;
+use branchsight::http::PAGE_HEADER;
 use branchsight::url::encode;
 use common::*;
 
@@ -18,6 +18,27 @@ fn cloned_with_feature(sb: &Sandbox) -> (PathBuf, PathBuf) {
 }
 
 #[test]
+fn requests_from_other_sites_are_refused_before_git_runs() {
+    // Given.
+    let sb = Sandbox::new();
+    let repo = sb.path("repo");
+    init(&repo);
+    commit(&repo, "a", "A");
+    let port = start(vec![sb.0.clone()], None);
+    let path = format!("/api/state?{}", repo_query(&repo));
+
+    // When.
+    let without_header = request(port, "GET", &path, &[]).status;
+    let cross_site = request(port, "GET", &path, &[(PAGE_HEADER, "1"), ("Sec-Fetch-Site", "cross-site")]).status;
+    let page = request(port, "GET", "/", &[]).status;
+    let ping = request(port, "GET", "/api/ping", &[]).status;
+
+    // Then.
+    assert_eq!((without_header, cross_site), (403, 403));
+    assert_eq!((page, ping), (200, 200), "the page itself and the liveness check need no header");
+}
+
+#[test]
 fn actions_from_other_sites_are_refused() {
     // Given.
     let sb = Sandbox::new();
@@ -28,9 +49,9 @@ fn actions_from_other_sites_are_refused() {
 
     // When.
     let without_header = request(port, "POST", &path, &[]).status;
-    let cross_site = request(port, "POST", &path, &[(ACTION_HEADER, "1"), ("Sec-Fetch-Site", "cross-site")]).status;
+    let cross_site = request(port, "POST", &path, &[(PAGE_HEADER, "1"), ("Sec-Fetch-Site", "cross-site")]).status;
     let after_refusals = git(&copy, &["branch", "--show-current"]);
-    let own_page = request(port, "POST", &path, &[(ACTION_HEADER, "1"), ("Sec-Fetch-Site", "same-origin")]).status;
+    let own_page = request(port, "POST", &path, &[(PAGE_HEADER, "1"), ("Sec-Fetch-Site", "same-origin")]).status;
 
     // Then.
     assert_eq!((without_header, cross_site), (403, 403));
@@ -168,12 +189,81 @@ fn fetch_brings_new_remote_commits_and_requires_post() {
     assert_eq!(git(&copy, &["rev-parse", "origin/main"]), newer);
 }
 
+#[test]
+fn push_sends_a_new_branch_and_sets_its_upstream() {
+    // Given.
+    let sb = Sandbox::new();
+    let (origin, copy) = cloned_with_feature(&sb);
+    git(&copy, &["checkout", "-q", "-b", "fresh"]);
+    let tip = commit(&copy, "fresh.txt", "fresh work");
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&copy);
+
+    // When.
+    let (as_get, _) = get(port, &format!("/api/push?{q}&ref=fresh&remote=origin&mode=normal"));
+    let (pushed, body) = post(port, &format!("/api/push?{q}&ref=fresh&remote=origin&mode=normal"));
+
+    // Then.
+    assert_eq!(as_get, 400);
+    assert_eq!(pushed, 200, "{body}");
+    assert_eq!(git(&origin, &["rev-parse", "refs/heads/fresh"]), tip);
+    assert_eq!(git(&copy, &["rev-parse", "--abbrev-ref", "fresh@{upstream}"]), "origin/fresh");
+}
+
+#[test]
+fn push_overwrites_a_rewritten_branch_only_when_asked() {
+    // Given.
+    let sb = Sandbox::new();
+    let (origin, copy) = cloned_with_feature(&sb);
+    git(&copy, &["checkout", "-q", "-b", "feature", "origin/feature"]);
+    git(&copy, &["commit", "-q", "--amend", "-m", "F rewritten"]);
+    let rewritten = git(&copy, &["rev-parse", "HEAD"]);
+    let port = start(vec![sb.0.clone()], None);
+    let push = |mode: &str| post(port, &format!("/api/push?{}&ref=feature&remote=origin&mode={mode}", repo_query(&copy)));
+
+    // When.
+    let (normal, normal_body) = push("normal");
+    let after_normal = git(&origin, &["rev-parse", "refs/heads/feature"]);
+    let (lease, body) = push("force-with-lease");
+
+    // Then.
+    assert_eq!(normal, 400, "a normal push refuses to drop remote commits");
+    assert!(normal_body.contains("has commits you do not have"), "{normal_body}");
+    assert_ne!(after_normal, rewritten);
+    assert_eq!(lease, 200, "{body}");
+    assert_eq!(git(&origin, &["rev-parse", "refs/heads/feature"]), rewritten);
+}
+
+#[test]
+fn push_refuses_unknown_branches_remotes_and_modes() {
+    // Given.
+    let sb = Sandbox::new();
+    let (_, copy) = cloned_with_feature(&sb);
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&copy);
+    let push = |rest: &str| post(port, &format!("/api/push?{q}&{rest}")).0;
+
+    // When.
+    let refused = [
+        push("ref=nope&remote=origin&mode=normal"),
+        push("ref=main&remote=elsewhere&mode=normal"),
+        push("ref=main&remote=origin&mode=sideways"),
+        push(&format!("ref=main&remote={}&mode=normal", encode("--receive-pack=x"))),
+    ];
+
+    // Then.
+    assert_eq!(refused, [400; 4]);
+}
+
 #[cfg(unix)]
 #[test]
 fn fetch_uses_the_ssh_command_the_user_configured() {
     use std::os::unix::fs::PermissionsExt;
 
     // Given.
+    if std::env::var_os("GIT_SSH_COMMAND").is_some() || std::env::var_os("GIT_SSH").is_some() {
+        return;
+    }
     let sb = Sandbox::new();
     let repo = sb.path("repo");
     init(&repo);

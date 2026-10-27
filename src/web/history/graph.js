@@ -1,11 +1,3 @@
-export const GROUPS = [
-  { name: '@local', label: 'all local branches', kind: 'head' },
-  { name: '@remotes', label: 'all remote branches', kind: 'remote' },
-  { name: 'HEAD', label: 'HEAD, the checked-out commit', kind: 'head' },
-];
-
-export const DEFAULT_SELECTION = ['@local', '@remotes'];
-
 export function layout(commits) {
   const known = new Set(commits.map(c => c.h));
   const open = [], colors = [];

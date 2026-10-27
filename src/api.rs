@@ -13,7 +13,6 @@ use crate::url::Query;
 pub const PING: &str = "branchsight";
 const DEFAULT_LIMIT: usize = 5000;
 const MAX_LIMIT: usize = 200_000;
-const ACTIONS: [&str; 3] = ["/api/fetch", "/api/checkout", "/api/delete-remote"];
 const TEXT: &str = "text/plain; charset=utf-8";
 const JSON: &str = "application/json";
 
@@ -48,10 +47,8 @@ pub fn respond(config: &Config, post: bool, url: &str) -> Reply {
 }
 
 fn route(config: &Config, post: bool, path: &str, q: &Query) -> Result<Reply, String> {
-    if ACTIONS.contains(&path) && !post {
-        return Err("POST required".into());
-    }
     let repo = || config::open_repo(config, q.get("repo"));
+    let action = || if post { repo() } else { Err("POST required".to_owned()) };
     Ok(match path {
         "/api/ping" => Reply::ok(TEXT, PING.into()),
         "/api/context" => Reply::json(json!({
@@ -64,14 +61,14 @@ fn route(config: &Config, post: bool, path: &str, q: &Query) -> Result<Reply, St
         "/api/refs" => Reply::json(repo()?.refs()?),
         "/api/log" => Reply::json(repo()?.log(&q.all("ref"), limit(q))?),
         "/api/state" => Reply::json(repo()?.state()?),
-        "/api/status" => Reply::json(repo()?.status()?),
         "/api/commit" => Reply::json(repo()?.show(q.get("h"))?),
         "/api/compare" => Reply::json(repo()?.compare(q.get("from"), q.get("to"))?),
         "/api/worktree" => Reply::json(repo()?.worktree()?),
-        "/api/filediff" => Reply::ok(TEXT, repo()?.file_diff(file_diff(q)?, &q.all("path"))?),
-        "/api/fetch" => done(fetch(&repo()?)?),
-        "/api/checkout" => done(repo()?.checkout(q.get("ref"))?),
-        "/api/delete-remote" => done(repo()?.delete_remote_branch(q.get("ref"))?),
+        "/api/filediff" => Reply::json(repo()?.file_diff(file_diff(q)?, &q.all("path"))?),
+        "/api/fetch" => done(fetch(&action()?)?),
+        "/api/checkout" => done(action()?.checkout(q.get("ref"))?),
+        "/api/push" => done(action()?.push(q.get("ref"), q.get("remote"), q.get("mode"))?),
+        "/api/delete-remote" => done(action()?.delete_remote_branch(q.get("ref"))?),
         _ => Reply::failed(404, "not found".into()),
     })
 }

@@ -1,15 +1,20 @@
 import { closeLayer, openLayer } from './dom.js';
+import { clamp } from './format.js';
 
 export function picker({ anchor, panel, input, list, items, row, choose, empty, tabChooses = false, modal = () => false }) {
   let shown = [], cursor = 0;
   const layer = {
     contains: target => modal() || anchor.contains(target),
     closable: () => !modal(),
-    close: () => { panel.hidden = true; },
+    close: () => {
+      if (panel.contains(document.activeElement)) document.activeElement.blur();
+      panel.hidden = true;
+    },
     keydown(e) {
+      if (e.target !== input) return false;
       const move = { ArrowDown: 1, ArrowUp: -1 }[e.key];
       if (move) {
-        cursor = Math.max(0, Math.min(shown.length - 1, cursor + move));
+        cursor = clamp(cursor + move, 0, shown.length - 1);
         render();
       } else if (e.key === 'Enter' || (tabChooses && e.key === 'Tab')) {
         if (shown[cursor]) choose(shown[cursor]);

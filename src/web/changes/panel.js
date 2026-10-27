@@ -1,10 +1,10 @@
-import { getJson } from './api.js';
-import { $, copy, drag, toast } from './dom.js';
-import { esc, plural } from './format.js';
-import { refName } from './labels.js';
-import * as log from './log.js';
-import { patchSections } from './patch.js';
-import { commitAt, isWorktree, state } from './state.js';
+import { getJson } from '../shared/api.js';
+import { $, copy, drag, toast } from '../shared/dom.js';
+import { SHORT_HASH, esc, plural } from '../shared/format.js';
+import { fileLabel, refName } from '../history/labels.js';
+import * as log from '../history/list.js';
+import { lineHtml, patchHtml } from './patch.js';
+import { commitAt, isWorktree, state } from '../shared/state.js';
 import * as viewer from './viewer.js';
 
 const MAX_LINES = 40000;
@@ -30,22 +30,28 @@ export function close() {
   requestAnimationFrame(log.render);
 }
 
+function clearCompare() {
+  if (!state.compareHash) return;
+  state.compareHash = null;
+  log.render();
+}
+
 const hashSpan = (hash, length = 10) => `<span class="h" data-h="${hash}" title="Copy ${hash}">${hash.slice(0, length)}</span>`;
 
 function sideLabel(hash) {
   const commit = state.entries.find(e => e.h === hash);
   const name = refName(state.refsByHash.get(hash));
-  return `${name ? `${name} · ` : ''}${hash.slice(0, 7)}${commit ? ` ${commit.s}` : ''}`;
+  return `${name ? `${name} · ` : ''}${hash.slice(0, SHORT_HASH)}${commit ? ` ${commit.s}` : ''}`;
 }
 
 function showCommit(commit) {
-  state.compareHash = null;
+  clearCompare();
   const parent = commit.p[0];
-  const from = parent ? `parent · ${sideLabel(parent)}` : 'nothing (first commit)';
-  const source = { kind: 'commit', key: commit.h, h: commit.h, labels: [from, sideLabel(commit.h)] };
-  return open(source, `${hashSpan(commit.h)}${esc(commit.s)}`, commit.s, async () => {
+  const sides = [parent ? `parent · ${sideLabel(parent)}` : 'nothing (first commit)', sideLabel(commit.h)];
+  const source = { kind: 'commit', key: commit.h, h: commit.h };
+  return open(source, `${hashSpan(commit.h)}${esc(commit.s)}`, commit.s, async budget => {
     const changes = await getJson('/api/commit', { h: commit.h });
-    return [{ header: changes.header, ...group('', changes, 'commit', 'c') }];
+    return [{ header: changes.header, ...group('', changes, 'commit', sides, budget) }];
   });
 }
 
@@ -55,36 +61,41 @@ export function showCompare(i, j) {
   const [newer, older] = i < j ? [a, b] : [b, a];
   state.compareHash = b.h;
   log.render();
-  const source = { kind: 'compare', key: `${older.h}..${newer.h}`, from: older.h, to: newer.h, labels: [sideLabel(older.h), sideLabel(newer.h)] };
-  const title = `<span class="cmp-label">Compare</span>${hashSpan(older.h, 7)}<span class="arrow">→</span>${hashSpan(newer.h, 7)}`;
-  return open(source, title, `${older.s} → ${newer.s}`, async () => {
+  const source = { kind: 'compare', key: `${older.h}..${newer.h}`, from: older.h, to: newer.h };
+  const title = `<span class="cmp-label">Compare</span>${hashSpan(older.h, SHORT_HASH)}<span class="arrow">→</span>${hashSpan(newer.h, SHORT_HASH)}`;
+  return open(source, title, `${older.s} → ${newer.s}`, async budget => {
     const changes = await getJson('/api/compare', { from: older.h, to: newer.h });
-    return [group('', changes, 'compare', 'x')];
+    return [group('', changes, 'compare', [sideLabel(older.h), sideLabel(newer.h)], budget)];
   });
 }
 
 export function showWorktree({ keep = false } = {}) {
-  state.compareHash = null;
+  clearCompare();
+  const head = `HEAD${state.repo.branch ? ` · ${state.repo.branch}` : ''}`;
   const source = { kind: 'worktree', key: 'worktree' };
-  return open(source, '<span class="wt-title">Uncommitted changes</span>', 'Uncommitted changes', async () => {
+  return open(source, '<span class="wt-title">Uncommitted changes</span>', 'Uncommitted changes', async budget => {
     const worktree = await getJson('/api/worktree');
-    const untracked = worktree.untracked.map((path, i) => ({ status: 'U', path, add: null, del: null, kind: 'untracked', id: `n${i}`, body: '' }));
+    const untracked = worktree.untracked.map((path, i) => ({
+      status: 'U', path, add: null, del: null, kind: 'untracked', id: `n${i}`, body: '', sides: ['nothing (new file)', 'Working tree'],
+    }));
     return [
-      group('Staged', worktree.staged, 'staged', 's'),
-      group('Not staged', worktree.unstaged, 'unstaged', 'u'),
+      group('Staged', worktree.staged, 'staged', [head, 'Staged (index)'], budget),
+      group('Not staged', worktree.unstaged, 'unstaged', ['Staged (index)', 'Working tree'], budget),
       { title: 'Untracked', files: untracked, note: '' },
     ].filter(g => g.files.length);
   }, keep);
 }
 
-function group(title, { files, patch, truncated }, kind, prefix) {
-  const { sections, hidden } = patchSections(patch, MAX_LINES);
+function group(title, { files, truncated }, kind, sides, budget) {
+  let hidden = 0;
+  const listed = files.map(({ patch, ...file }, i) => {
+    const rendered = patchHtml(patch, budget.left);
+    budget.left -= rendered.used - rendered.hidden;
+    hidden += rendered.hidden;
+    return { ...file, kind, sides, id: `${kind[0]}${i}`, body: rendered.html };
+  });
   const notes = [hidden && `${plural(hidden, 'more line')} not shown here`, truncated && 'the diff is cut at 4 MB'].filter(Boolean);
-  return {
-    title,
-    files: files.map((f, i) => ({ ...f, kind, id: `${prefix}${i}`, body: sections[i] ?? '' })),
-    note: notes.length ? `${notes.join(', ')}: open a file in the diff view to see all of it` : '',
-  };
+  return { title, files: listed, note: notes.length ? `${notes.join(', ')}: open a file in the diff view to see all of it` : '' };
 }
 
 async function open(source, titleHtml, title, load, keep = false) {
@@ -95,7 +106,7 @@ async function open(source, titleHtml, title, load, keep = false) {
   $('detail-title').title = title;
   $('open-viewer').disabled = !shown;
   try {
-    const groups = await load();
+    const groups = await load({ left: MAX_LINES });
     if (requested !== source.key) return;
     const folds = keep ? keptFolds() : null;
     shown = { source, files: groups.flatMap(g => g.files) };
@@ -110,10 +121,10 @@ async function open(source, titleHtml, title, load, keep = false) {
 }
 
 const fileKey = f => `${f.kind}:${f.path}`;
-const fileLabel = f => esc(f.from ? `${f.from} → ${f.path}` : f.path);
 
 function counts(f) {
   if (f.kind === 'untracked') return '<span class="n">new</span>';
+  if (f.status === 'U') return '<span class="n">conflict</span>';
   if (f.add === null) return '<span class="n">binary</span>';
   return `<span class="n"><b>+${f.add}</b> <i>−${f.del}</i></span>`;
 }
@@ -126,19 +137,20 @@ function keptFolds() {
 function fill(groups, folds) {
   const titled = groups.length > 1 || Boolean(groups[0]?.title);
   const untracked = f => f.kind === 'untracked';
+  const label = f => esc(fileLabel(f));
   const section = f => {
     const closed = untracked(f) || folds?.closed.has(fileKey(f));
     return `<div class="fsec${closed ? ' closed' : ''}${untracked(f) ? ' untracked' : ''}" id="${f.id}" data-key="${esc(fileKey(f))}">`
-      + `<div class="fh"><span class="st st-${f.status}">${f.status}</span><span class="p">${fileLabel(f)}</span>${counts(f)}`
+      + `<div class="fh"><span class="st st-${f.status}">${f.status}</span><span class="p">${label(f)}</span>${counts(f)}`
       + '<button class="open-v" title="Open in the diff view">⤢</button>'
       + `${untracked(f) ? '' : '<button class="fold" title="Fold or unfold this file">▾</button>'}</div><div class="fbody">${f.body}</div></div>`;
   };
-  const header = groups[0]?.header ? groups[0].header.replace(/\n$/, '').split('\n').map(l => `<span>${esc(l) || ' '}</span>`).join('') : '';
+  const header = groups[0]?.header?.replace(/\n$/, '').split('\n').map(line => lineHtml(line)).join('') ?? '';
   $('diff').innerHTML = header + groups.map(g => (titled ? `<div class="grp">${esc(g.title)} · ${g.files.length}</div>` : '')
-    + g.files.map(section).join('') + (g.note ? `<span class="mt">${esc(g.note)}</span>` : '')).join('');
+    + g.files.map(section).join('') + (g.note ? lineHtml(g.note, 'mt') : '')).join('');
   $('files').innerHTML = groups.map(g => (titled ? `<div class="file-grp">${esc(g.title)}</div>` : '')
-    + g.files.map(f => `<div class="file" data-id="${f.id}" title="${fileLabel(f)}"><span class="st st-${f.status}">${f.status}</span>`
-      + `<span class="p">${fileLabel(f)}</span>${counts(f)}</div>`).join('')).join('')
+    + g.files.map(f => `<div class="file" data-id="${f.id}" title="${label(f)}"><span class="st st-${f.status}">${f.status}</span>`
+      + `<span class="p">${label(f)}</span>${counts(f)}</div>`).join('')).join('')
     || '<div class="file"><span class="p">no file changes</span></div>';
   $('diff').scrollTop = folds?.diff ?? 0;
   $('files').scrollTop = folds?.files ?? 0;
@@ -199,5 +211,4 @@ $('open-viewer').addEventListener('click', () => openViewer(shown?.files[0]?.id)
 
 $('split').addEventListener('mousedown', e => drag(e, ev => {
   $('detail').style.width = `${Math.max(240, window.innerWidth - ev.clientX)}px`;
-  log.render();
 }, () => state.store.set('detailWidth', $('detail').offsetWidth)));

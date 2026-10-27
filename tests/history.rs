@@ -54,12 +54,30 @@ fn log_groups_select_every_local_or_remote_branch() {
     // When.
     let both = subjects(&json(port, &format!("/api/log?{q}&ref=@local&ref=@remotes")));
     let local = subjects(&json(port, &format!("/api/log?{q}&ref=@local")));
-    let (unknown, body) = get(port, &format!("/api/log?{q}&ref=@everything"));
+    let (unknown, body) = get(port, &format!("/api/log?{q}&ref=@nothing-like-this"));
 
     // Then.
     assert!(both.contains(&"R remote only".into()) && both.contains(&"L local only".into()), "{both:?}");
     assert!(local.contains(&"L local only".into()) && !local.contains(&"R remote only".into()), "{local:?}");
     assert_eq!(unknown, 400, "{body}");
+}
+
+#[test]
+fn a_branch_named_like_a_group_is_still_a_branch() {
+    // Given.
+    let sb = Sandbox::new();
+    let repo = sb.path("repo");
+    init(&repo);
+    commit(&repo, "a", "A");
+    git(&repo, &["checkout", "-q", "-b", "@wip"]);
+    commit(&repo, "w", "work in progress");
+    let port = start(vec![sb.0.clone()], None);
+
+    // When.
+    let log = json(port, &format!("/api/log?{}&ref={}", repo_query(&repo), encode("@wip")));
+
+    // Then.
+    assert_eq!(subjects(&log), ["work in progress", "A"]);
 }
 
 #[test]
@@ -108,6 +126,7 @@ fn refs_split_remote_names_and_skip_symbolic_heads() {
     assert_eq!((nested["remote"].as_str(), nested["branch"].as_str()), (Some("team/origin"), Some("feature/x")));
     assert_eq!(find("origin/main").unwrap()["branch"], "main");
     assert!(find("origin/HEAD").is_none() && find("origin").is_none());
+    assert_eq!(find("main").unwrap()["upstream"], "origin");
     let tag = find("v1.0.0").unwrap();
     assert_eq!((tag["kind"].as_str(), tag["hash"].as_str()), (Some("tag"), Some(a.as_str())));
 }
@@ -133,6 +152,13 @@ fn state_keeps_history_and_worktree_changes_apart() {
     let staged = state();
     git(&repo, &["commit", "-q", "-m", "B"]);
     let committed = state();
+    git(&repo, &["checkout", "-q", "-b", "elsewhere"]);
+    let switched = state();
+    fs::create_dir_all(repo.join("new/deep")).unwrap();
+    fs::write(repo.join("new/one.txt"), "one\n").unwrap();
+    let untracked = state();
+    fs::write(repo.join("new/deep/two.txt"), "two\n").unwrap();
+    let deeper = state();
 
     // Then.
     assert_eq!(unchanged, clean, "nothing changed, nothing moves");
@@ -143,6 +169,32 @@ fn state_keeps_history_and_worktree_changes_apart() {
     assert_ne!(staged["worktree"], same_counts["worktree"]);
     assert_eq!(staged["status"]["staged"], 1);
     assert_ne!(committed["history"], staged["history"]);
+    assert_ne!(switched["history"], committed["history"], "a branch switch without a commit moves the current branch");
+    assert_eq!(untracked["status"]["untracked"], 1);
+    assert_ne!(deeper["worktree"], untracked["worktree"], "a file added deep inside an untracked folder is seen");
+    assert_eq!(deeper["status"]["untracked"], 2);
+}
+
+#[test]
+fn deepening_a_shallow_clone_changes_the_history_fingerprint() {
+    // Given.
+    let sb = Sandbox::new();
+    let origin = sb.path("origin");
+    init(&origin);
+    commit(&origin, "a", "A");
+    commit(&origin, "b", "B");
+    let copy = sb.path("shallow");
+    let url = format!("file:///{}", origin.display().to_string().replace('\\', "/").trim_start_matches('/'));
+    git(&sb.0, &["clone", "-q", "--depth", "1", &url, copy.to_str().unwrap()]);
+    let port = start(vec![sb.0.clone()], None);
+    let state = || json(port, &format!("/api/state?{}", repo_query(&copy)));
+    let before = state();
+
+    // When.
+    git(&copy, &["fetch", "-q", "--unshallow"]);
+
+    // Then.
+    assert_ne!(state()["history"], before["history"]);
 }
 
 #[test]
@@ -157,7 +209,7 @@ fn status_counts_survive_renames_of_short_names() {
     let port = start(vec![sb.0.clone()], None);
 
     // When.
-    let status = json(port, &format!("/api/status?{}", repo_query(&repo)));
+    let status = &json(port, &format!("/api/state?{}", repo_query(&repo)))["status"];
 
     // Then.
     assert_eq!((status["staged"].as_u64(), status["unstaged"].as_u64(), status["untracked"].as_u64()), (Some(1), Some(0), Some(1)));
@@ -171,7 +223,7 @@ fn user_settings_do_not_change_what_is_parsed() {
     init(&repo);
     commit(&repo, "README.md", "first");
     let second = commit(&repo, "README.md", "second");
-    for setting in ["diff.noprefix=true", "color.ui=always", "color.diff=always", "log.showSignature=true"] {
+    for setting in ["diff.noprefix=true", "diff.srcPrefix=old/", "color.ui=always", "color.diff=always", "log.abbrevCommit=true"] {
         let (key, value) = setting.split_once('=').unwrap();
         git(&repo, &["config", key, value]);
     }
@@ -185,6 +237,7 @@ fn user_settings_do_not_change_what_is_parsed() {
     // Then.
     assert_eq!(log[0]["h"], second.as_str());
     assert_eq!(paths(&shown["files"]), ["README.md"]);
-    let patch = shown["patch"].as_str().unwrap();
+    assert!(shown["header"].as_str().unwrap().starts_with(&format!("commit {second}")));
+    let patch = file(&shown["files"], "README.md")["patch"].as_str().unwrap();
     assert!(patch.starts_with("diff --git a/README.md b/README.md") && !patch.contains('\x1b'), "{patch}");
 }

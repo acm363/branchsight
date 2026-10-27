@@ -21,6 +21,17 @@ commit without being on a branch, which is how git lets you inspect old states. 
 
 After any checkout the graph keeps your branch selection and scrolls to the new HEAD.
 
+## Push a branch
+
+Choose **Push `<branch>`…**, or **Push `<branch>` to a remote…** when it has no upstream yet. Pick the remote and how
+to push:
+
+- **Normal** only adds commits, and is refused when the remote has commits you do not have;
+- **Force with lease** overwrites the remote branch unless someone pushed to it since your last fetch;
+- **Force** overwrites it whatever it holds, after one more confirmation.
+
+A branch pushed for the first time tracks the remote branch from then on, as with `git push -u`.
+
 ## Delete a branch on the remote
 
 Choose **Delete remote branch `<remote>/<branch>`**, then confirm. This runs

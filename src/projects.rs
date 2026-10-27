@@ -1,30 +1,37 @@
 use std::cmp::Reverse;
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 use serde_json::{Value, json};
 
+use crate::config::canonical;
+
 const SCAN_DEPTH: usize = 3;
 const SKIP_DIRS: [&str; 4] = ["node_modules", "target", "dist", "vendor"];
 
 pub fn list(roots: &[PathBuf]) -> Value {
-    let mut out = Vec::new();
+    let mut found = Vec::new();
     for root in roots {
-        scan(root, SCAN_DEPTH, &mut out);
+        scan(root, SCAN_DEPTH, &mut found);
     }
-    out.sort_by_key(|p| Reverse(p["active"].as_u64().unwrap_or(0)));
-    out.dedup_by(|a, b| a["path"] == b["path"]);
-    Value::Array(out)
+    let mut seen = HashSet::new();
+    found.retain(|dir| seen.insert(dir.clone()));
+    let mut projects: Vec<(u64, Value)> = found
+        .iter()
+        .map(|dir| {
+            let active = last_activity(dir);
+            (active, json!({ "name": dir.file_name().map(|n| n.to_string_lossy()), "path": dir.to_string_lossy(), "active": active }))
+        })
+        .collect();
+    projects.sort_by_key(|(active, _)| Reverse(*active));
+    Value::Array(projects.into_iter().map(|(_, project)| project).collect())
 }
 
-fn scan(dir: &Path, depth: usize, out: &mut Vec<Value>) {
+fn scan(dir: &Path, depth: usize, found: &mut Vec<PathBuf>) {
     if dir.join(".git").exists() {
-        out.push(json!({
-            "name": dir.file_name().map(|n| n.to_string_lossy().into_owned()),
-            "path": dir.to_string_lossy(),
-            "active": last_activity(dir),
-        }));
+        found.push(canonical(dir.to_path_buf()));
         return;
     }
     if depth == 0 {
@@ -38,8 +45,9 @@ fn scan(dir: &Path, depth: usize, out: &mut Vec<Value>) {
             continue;
         }
         let path = entry.path();
-        if fs::metadata(&path).is_ok_and(|meta| meta.is_dir()) {
-            scan(&path, depth - 1, out);
+        let Ok(kind) = entry.file_type() else { continue };
+        if kind.is_dir() || (kind.is_symlink() && path.is_dir()) {
+            scan(&path, depth - 1, found);
         }
     }
 }

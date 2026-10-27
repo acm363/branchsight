@@ -1,8 +1,9 @@
-import { $, closeLayer, openLayer } from './dom.js';
-import * as log from './log.js';
-import { prefs } from './prefs.js';
+import { $, closeLayer, openLayer } from '../shared/dom.js';
+import { clamp } from '../shared/format.js';
+import * as log from '../history/list.js';
+import { prefs } from '../shared/prefs.js';
 import * as projects from './projects.js';
-import { state } from './state.js';
+import { state } from '../shared/state.js';
 
 const THEMES = ['system', 'light', 'dark'];
 const FONT_SIZES = { min: 10, max: 20, default: 13 };
@@ -24,7 +25,7 @@ function setTheme(theme) {
 }
 
 function setFontSize(px) {
-  const size = Math.max(FONT_SIZES.min, Math.min(FONT_SIZES.max, px));
+  const size = clamp(px, FONT_SIZES.min, FONT_SIZES.max);
   document.documentElement.style.setProperty('--fs', `${size}px`);
   $('fs-val').textContent = `${size}px`;
   prefs.set('fontSize', size);

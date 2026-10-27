@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildDiff } from '../../src/web/diffview.js';
+import { buildDiff } from '../../src/web/changes/diffview.js';
 
 const diff = (...lines) => ['diff --git a/f b/f', 'index 1..2 100644', '--- a/f', '+++ b/f', ...lines].join('\n');
 

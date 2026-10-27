@@ -4,6 +4,7 @@ use std::collections::BTreeSet;
 use std::fs;
 
 use branchsight::git::Repo;
+use branchsight::http::PAGE_HEADER;
 use common::*;
 
 #[test]
@@ -34,13 +35,32 @@ fn projects_are_found_through_symlinked_folders() {
     init(&sb.path("elsewhere/linked"));
     fs::create_dir_all(sb.path("home")).unwrap();
     std::os::unix::fs::symlink(sb.path("elsewhere"), sb.path("home/code")).unwrap();
+    std::os::unix::fs::symlink(sb.path("elsewhere"), sb.path("home/same-again")).unwrap();
     let port = start(vec![sb.path("home")], None);
 
     // When.
     let projects = json(port, "/api/projects");
 
     // Then.
-    assert_eq!(projects[0]["name"], "linked");
+    assert_eq!(projects.as_array().unwrap().len(), 1, "{projects}");
+    assert_eq!(projects[0]["path"], Repo::open(&sb.path("home/code/linked")).unwrap().root.to_string_lossy().as_ref());
+}
+
+#[cfg(unix)]
+#[test]
+fn a_repository_in_a_folder_ending_with_a_space_opens() {
+    // Given.
+    let sb = Sandbox::new();
+    let repo = sb.path("spaced ");
+    init(&repo);
+    commit(&repo, "a", "A");
+    let port = start(vec![sb.0.clone()], None);
+
+    // When.
+    let info = json(port, &format!("/api/repo?{}", repo_query(&repo)));
+
+    // Then.
+    assert_eq!(info["name"], "spaced ");
 }
 
 #[test]
@@ -79,9 +99,9 @@ fn only_loopback_host_names_are_served() {
     // When.
     let foreign: Vec<u16> = ["evil.example", "localhost.evil.example", "192.168.1.10"]
         .iter()
-        .map(|host| request(port, "GET", "/api/projects", &[("Host", host)]).status)
+        .map(|host| request(port, "GET", "/api/projects", &[("Host", host), (PAGE_HEADER, "1")]).status)
         .collect();
-    let named = request(port, "GET", "/api/projects", &[("Host", "my-project.localhost:7420")]).status;
+    let named = request(port, "GET", "/api/projects", &[("Host", "my-project.localhost:7420"), (PAGE_HEADER, "1")]).status;
 
     // Then.
     assert_eq!(foreign, [403; 3]);
@@ -109,11 +129,27 @@ fn the_page_and_every_module_it_imports_are_served() {
         assert_eq!(reply.status, 200, "{asset}");
         assert!(!reply.body.is_empty() && !reply.content_type.is_empty(), "{asset}");
         if asset.ends_with(".js") {
-            pending.extend(reply.body.match_indices("from './").map(|(i, m)| format!("/{}", reply.body[i + m.len()..].split('\'').next().unwrap())));
+            let folder = asset.rsplit_once('/').map_or("", |(dir, _)| dir).to_owned();
+            pending.extend(reply.body.match_indices("from '").map(|(i, m)| resolve(&folder, reply.body[i + m.len()..].split('\'').next().unwrap())));
         }
     }
 
     // Then.
     assert!(index.content_type.starts_with("text/html"), "{}", index.content_type);
-    assert!(served.contains("/app.js") && served.contains("/graph.js") && served.contains("/style.css"), "{served:?}");
+    assert!(served.contains("/app.js") && served.contains("/history/graph.js") && served.contains("/style.css"), "{served:?}");
+    assert_eq!(served.iter().filter(|a| a.ends_with(".js")).count(), 20, "{served:?}");
+}
+
+fn resolve(folder: &str, import: &str) -> String {
+    let mut parts: Vec<&str> = folder.split('/').filter(|p| !p.is_empty()).collect();
+    for part in import.split('/') {
+        match part {
+            "." => {}
+            ".." => {
+                parts.pop();
+            }
+            name => parts.push(name),
+        }
+    }
+    format!("/{}", parts.join("/"))
 }

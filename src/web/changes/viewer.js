@@ -1,9 +1,9 @@
-import { getText } from './api.js';
+import { getJson } from '../shared/api.js';
 import { buildDiff } from './diffview.js';
-import { $, closeLayer, drag, openLayer } from './dom.js';
-import { esc } from './format.js';
-import { prefs } from './prefs.js';
-import { state } from './state.js';
+import { $, closeLayer, drag, openLayer } from '../shared/dom.js';
+import { clamp, esc } from '../shared/format.js';
+import { fileLabel } from '../history/labels.js';
+import { prefs } from '../shared/prefs.js';
 
 const SPLIT_LIMITS = [0.15, 0.85];
 const GUTTER_EM = 4.2;
@@ -18,7 +18,7 @@ const layer = { contains: () => true, close: hide, keydown };
 export function open(source, files, index) {
   if (!files.length) return;
   viewer = { source, files, index, mode: prefs.get('diffMode') === 'unified' ? 'unified' : 'split', change: 0, data: null };
-  $('v-file').innerHTML = files.map((f, i) => `<option value="${i}">${f.status}  ${esc(f.from ? `${f.from} → ${f.path}` : f.path)}</option>`).join('');
+  $('v-file').innerHTML = files.map((f, i) => `<option value="${i}">${f.status}  ${esc(fileLabel(f))}</option>`).join('');
   $('viewer').hidden = false;
   openLayer(layer);
   setSplit(prefs.get('diffSplit') ?? 0.5);
@@ -45,16 +45,6 @@ function keydown(e) {
   return true;
 }
 
-function sideLabels(source, file) {
-  if (source.kind !== 'worktree') return source.labels;
-  const head = `HEAD${state.repo.branch ? ` · ${state.repo.branch}` : ''}`;
-  return {
-    staged: [head, 'Staged (index)'],
-    unstaged: ['Staged (index)', 'Working tree'],
-    untracked: ['nothing (new file)', 'Working tree'],
-  }[file.kind];
-}
-
 function diffParams(source, file) {
   const params = new URLSearchParams({ kind: file.kind });
   if (source.kind === 'commit') params.set('h', source.h);
@@ -69,24 +59,26 @@ function diffParams(source, file) {
 
 async function load(atEnd = false) {
   const v = viewer, file = v.files[v.index];
-  const [from, to] = sideLabels(v.source, file);
+  const [from, to] = file.sides;
   $('v-from').textContent = from;
   $('v-to').textContent = to;
   $('v-file').value = String(v.index);
   $('v-prev-file').disabled = v.index === 0;
   $('v-next-file').disabled = v.index === v.files.length - 1;
   $('v-pos').textContent = '';
+  $('v-cut').hidden = true;
   $('v-body').innerHTML = '<div class="v-empty">loading…</div>';
   v.data = null;
-  let text;
+  let diff;
   try {
-    text = await getText('/api/filediff', diffParams(v.source, file));
+    diff = await getJson('/api/filediff', diffParams(v.source, file));
   } catch (e) {
     if (viewer === v && v.files[v.index] === file) $('v-body').innerHTML = `<div class="v-empty">${esc(e.message)}</div>`;
     return;
   }
   if (viewer !== v || v.files[v.index] !== file) return;
-  v.data = buildDiff(text);
+  $('v-cut').hidden = !diff.truncated;
+  v.data = buildDiff(diff.patch);
   v.change = atEnd ? Math.max(0, v.data.changes.length - 1) : 0;
   render();
   showChange();
@@ -122,7 +114,8 @@ function render() {
 
 function step(direction) {
   const v = viewer, next = v.change + direction;
-  if (v.data && next >= 0 && next < v.data.changes.length) {
+  if (!v.data) return;
+  if (next >= 0 && next < v.data.changes.length) {
     v.change = next;
     showChange();
   } else moveFile(direction, direction < 0);
@@ -134,7 +127,9 @@ function showChange() {
   body.querySelectorAll('.cur').forEach(el => el.classList.remove('cur'));
   let row = body.querySelector(`[data-change="${v.change}"]`);
   if (!row) return;
-  row.scrollIntoView({ block: 'center' });
+  const target = row;
+  target.scrollIntoView({ block: 'center' });
+  requestAnimationFrame(() => target.isConnected && target.scrollIntoView({ block: 'center' }));
   for (; row?.classList.contains('chg'); row = row.nextElementSibling) row.classList.add('cur');
 }
 
@@ -158,7 +153,7 @@ function placeDivider() {
 }
 
 function setSplit(fraction) {
-  split = Math.max(SPLIT_LIMITS[0], Math.min(SPLIT_LIMITS[1], fraction));
+  split = clamp(fraction, ...SPLIT_LIMITS);
   $('viewer').style.setProperty('--v-l', `${split}fr`);
   $('viewer').style.setProperty('--v-r', `${1 - split}fr`);
   placeDivider();
