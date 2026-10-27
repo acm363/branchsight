@@ -67,14 +67,27 @@ export async function copy(text) {
 }
 
 export function ask(dialog) {
-  dialog.returnValue = '';
-  const layer = { contains: () => true, close: () => {}, keydown: () => true };
-  openLayer(layer);
-  dialog.showModal();
-  return new Promise(resolve => dialog.addEventListener('close', () => {
-    closeLayer(layer);
-    resolve(dialog.returnValue);
-  }, { once: true }));
+  const form = dialog.querySelector('form');
+  return new Promise(resolve => {
+    const answer = value => {
+      form.onsubmit = dialog.oncancel = dialog.onclose = null;
+      closeLayer(layer);
+      if (dialog.open) dialog.close();
+      resolve(value);
+    };
+    const escape = e => {
+      if (e.key !== 'Escape') return true;
+      e.preventDefault();
+      answer('');
+      return true;
+    };
+    const layer = { contains: () => true, close: () => {}, keydown: escape };
+    form.onsubmit = e => answer(e.submitter?.value ?? '');
+    dialog.oncancel = () => answer('');
+    dialog.onclose = () => answer(dialog.returnValue);
+    openLayer(layer);
+    dialog.showModal();
+  });
 }
 
 export async function confirmAction(text, okLabel) {

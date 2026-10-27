@@ -169,8 +169,10 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 #ctx button.danger, .dialog .danger { color: var(--rm); }
 #ctx hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
 #v-cut { color: var(--rm); }
-#push fieldset { display: grid; gap: 8px; margin: 0 0 16px; padding: 0; border: 0; }
-#push label { display: flex; gap: 8px; align-items: baseline; cursor: pointer; }
+.dialog fieldset { display: grid; gap: 8px; margin: 0 0 16px; padding: 0; border: 0; }
+.dialog label { display: flex; gap: 8px; align-items: baseline; cursor: pointer; }
+.dialog label.option { margin: 0 0 16px; color: var(--dim); }
+.dialog label:has(:disabled) { opacity: .45; cursor: default; }
 #push select { margin-left: 4px; }
 #push-note { color: var(--dim); }
 .dialog { max-width: min(460px, 90vw); padding: 18px 20px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); box-shadow: 0 12px 40px rgba(0,0,0,.35); }

@@ -50,10 +50,10 @@
 
 | On | Items |
 |---|---|
-| any commit | Compare with selected (when another commit is selected) · Checkout commit (detached) · Copy commit hash |
-| local branch | Checkout · Push (normal, force with lease or force, to the remote of your choice) · Copy branch name · Delete remote branch, when its remote is on the same commit |
-| remote branch | Checkout (creates the local tracking branch) · Copy branch name · Delete remote branch |
-| tag | Checkout tag (detached) · Copy tag name |
+| any commit | Compare with selected (when another commit is selected) · Checkout commit (detached) · Merge commit into the current branch · Copy commit hash |
+| local branch | Checkout · Merge into the current branch · Push (normal, force with lease or force, to the remote of your choice) · Copy branch name · Delete remote branch, when its remote is on the same commit |
+| remote branch | Checkout (creates the local tracking branch) · Merge into the current branch · Copy branch name · Delete remote branch |
+| tag | Checkout tag (detached) · Merge into the current branch · Copy tag name |
 
 ## Graph
 

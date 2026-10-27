@@ -76,6 +76,7 @@ fn route(config: &Config, post: bool, path: &str, q: &Query) -> Result<Reply, St
         "/api/fetch" => done(fetch(&action()?, q.get("auto") == "1")?),
         "/api/checkout" => done(action()?.checkout(q.get("ref"))?),
         "/api/push" => done(action()?.push(q.get("ref"), q.get("remote"), q.get("mode"))?),
+        "/api/merge" => done(action()?.merge(q.get("ref"), q.get("mode"), q.get("commit") != "0")?),
         "/api/delete-remote" => done(action()?.delete_remote_branch(q.get("ref"))?),
         _ => Reply::failed(404, "not found".into()),
     })

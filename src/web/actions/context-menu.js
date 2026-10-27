@@ -3,16 +3,19 @@ import { SHORT_HASH, esc } from '../shared/format.js';
 import * as log from '../history/list.js';
 import * as panel from '../changes/panel.js';
 import { commitAt, state } from '../shared/state.js';
-import { checkout, deleteRemote, push } from './commands.js';
+import { checkout, deleteRemote, merge, push } from './commands.js';
 
 const menuLayer = { contains: target => $('ctx').contains(target), close: () => { $('ctx').hidden = true; } };
 
 function menuItems(i, commit, label) {
   const items = [];
+  const into = state.repo.branch || 'HEAD';
+  const mergeItem = (name, shown = name) => [`Merge ${shown} into ${into}…`, () => merge(name)];
   const base = commitAt(state.cursor);
   if (base && state.cursor !== i) items.push([`Compare with selected ${base.h.slice(0, SHORT_HASH)}`, () => panel.showCompare(state.cursor, i)], null);
   if (label?.kind === 'head') {
     items.push([`Checkout ${label.name}`, () => checkout(label.name)]);
+    if (!label.current) items.push(mergeItem(label.name));
     const upstream = label.upstream && { name: label.upstream, remote: label.upstreamRemote };
     if (state.repo.remotes.length) items.push([upstream ? `Push ${label.name}…` : `Push ${label.name} to a remote…`, () => push(label.name, upstream)]);
     items.push(['Copy branch name', () => copy(label.name)]);
@@ -20,16 +23,19 @@ function menuItems(i, commit, label) {
   if (label?.kind === 'remote') {
     const [remote] = label.remotes;
     items.push([`Checkout ${remote.name}`, () => checkout(remote.name)]);
+    items.push(mergeItem(remote.name));
     items.push(['Copy branch name', () => copy(remote.branch ?? remote.name)]);
   }
   label?.remotes.forEach(r => items.push([`Delete remote branch ${r.name}`, () => deleteRemote(r.name), 'danger']));
   if (label?.kind === 'tag') {
     items.push([`Checkout tag ${label.name} (detached)`, () => checkout(label.name)]);
+    items.push(mergeItem(label.name));
     items.push(['Copy tag name', () => copy(label.name)]);
   }
   if (items.length && items.at(-1) !== null) items.push(null);
   const short = commit.h.slice(0, SHORT_HASH);
   items.push([`Checkout commit ${short} (detached)`, () => checkout(commit.h, short)]);
+  if (commit.h !== state.repo.head) items.push(mergeItem(commit.h, `commit ${short}`));
   items.push(['Copy commit hash', () => copy(commit.h)]);
   return items;
 }

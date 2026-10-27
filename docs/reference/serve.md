@@ -46,6 +46,7 @@ request takes `repo=<path>`, defaulting to `dir`. Errors come back as `400` with
 | `/api/state` | GET | `history`, a fingerprint of the refs, HEAD and shallow boundary; `worktree`, one of `git status` and the changed files; `status`, the staged, unstaged and untracked counts |
 | `/api/fetch` | POST | `git fetch --all --prune` |
 | `/api/checkout?ref=…` | POST | switch to a branch, a remote branch, a tag or a commit |
+| `/api/merge?ref=…&mode=…&commit=0` | POST | merge a branch, remote branch, tag or commit into the current branch; `mode` is `fast-forward`, `merge-commit` or `squash`; `commit=0` stops before committing; conflicts answer `400` and leave the merge to resolve |
 | `/api/push?ref=<branch>&remote=…&mode=…` | POST | push a local branch to the branch of the same name; `mode` is `normal`, `force-with-lease` or `force`; the branch then tracks what it was pushed to |
 | `/api/delete-remote?ref=<remote>/<branch>` | POST | `git push <remote> --delete <branch>` |
 

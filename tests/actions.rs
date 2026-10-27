@@ -83,6 +83,52 @@ fn checkout_switches_to_a_local_branch_and_tracks_a_remote_one() {
 }
 
 #[test]
+fn checkout_of_a_remote_branch_brings_a_stale_local_copy_up_to_it() {
+    // Given.
+    let sb = Sandbox::new();
+    let (origin, copy) = cloned_with_feature(&sb);
+    git(&copy, &["switch", "-q", "feature"]);
+    git(&copy, &["switch", "-q", "main"]);
+    git(&origin, &["switch", "-q", "feature"]);
+    let newer = commit(&origin, "f2", "F2 upstream");
+    git(&origin, &["switch", "-q", "main"]);
+    git(&copy, &["fetch", "-q"]);
+    let port = start(vec![sb.0.clone()], None);
+
+    // When.
+    let (status, body) = post(port, &format!("/api/checkout?{}&ref={}", repo_query(&copy), encode("origin/feature")));
+
+    // Then.
+    assert_eq!(status, 200, "{body}");
+    assert!(body.contains("brought it up to origin/feature"), "{body}");
+    assert_eq!(git(&copy, &["branch", "--show-current"]), "feature");
+    assert_eq!(git(&copy, &["rev-parse", "HEAD"]), newer);
+}
+
+#[test]
+fn checkout_of_a_remote_branch_refuses_when_the_local_copy_has_diverged() {
+    // Given.
+    let sb = Sandbox::new();
+    let (origin, copy) = cloned_with_feature(&sb);
+    git(&copy, &["switch", "-q", "feature"]);
+    commit(&copy, "local.txt", "local only");
+    git(&copy, &["switch", "-q", "main"]);
+    git(&origin, &["switch", "-q", "feature"]);
+    commit(&origin, "remote.txt", "remote only");
+    git(&origin, &["switch", "-q", "main"]);
+    git(&copy, &["fetch", "-q"]);
+    let port = start(vec![sb.0.clone()], None);
+
+    // When.
+    let (status, body) = post(port, &format!("/api/checkout?{}&ref={}", repo_query(&copy), encode("origin/feature")));
+
+    // Then.
+    assert_eq!(status, 400);
+    assert!(body.contains("have diverged"), "{body}");
+    assert_eq!(git(&copy, &["branch", "--show-current"]), "main", "nothing moved");
+}
+
+#[test]
 fn checkout_accepts_a_branch_with_a_component_starting_with_a_dash() {
     // Given.
     let sb = Sandbox::new();
@@ -273,6 +319,108 @@ fn push_refuses_unknown_branches_remotes_and_modes() {
 
     // Then.
     assert_eq!(refused, [400; 4]);
+}
+
+fn with_side_branch(sb: &Sandbox) -> (std::path::PathBuf, String) {
+    let repo = sb.path("repo");
+    init(&repo);
+    commit(&repo, "a.txt", "base");
+    git(&repo, &["switch", "-q", "-c", "side"]);
+    let side = commit(&repo, "b.txt", "side work");
+    git(&repo, &["switch", "-q", "main"]);
+    (repo, side)
+}
+
+#[test]
+fn merge_fast_forwards_by_default_and_can_force_a_merge_commit() {
+    // Given.
+    let sb = Sandbox::new();
+    let (repo, side) = with_side_branch(&sb);
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&repo);
+
+    // When.
+    let (as_get, _) = get(port, &format!("/api/merge?{q}&ref=side&mode=fast-forward"));
+    let (forward, body) = post(port, &format!("/api/merge?{q}&ref=side&mode=fast-forward"));
+    let after_forward = git(&repo, &["rev-parse", "HEAD"]);
+    git(&repo, &["reset", "-q", "--hard", "HEAD~1"]);
+    let (merged, _) = post(port, &format!("/api/merge?{q}&ref=side&mode=merge-commit"));
+
+    // Then.
+    assert_eq!(as_get, 400);
+    assert_eq!(forward, 200, "{body}");
+    assert_eq!(after_forward, side);
+    assert_eq!(merged, 200);
+    assert_eq!(git(&repo, &["rev-list", "--parents", "-n", "1", "HEAD"]).split(' ').count(), 3, "a merge commit has two parents");
+    assert_eq!(git(&repo, &["log", "-1", "--format=%s"]), "Merge branch 'side'");
+}
+
+#[test]
+fn merge_can_squash_or_stop_before_committing() {
+    // Given.
+    let sb = Sandbox::new();
+    let (repo, _) = with_side_branch(&sb);
+    let base = git(&repo, &["rev-parse", "HEAD"]);
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&repo);
+
+    // When.
+    let (squashed, body) = post(port, &format!("/api/merge?{q}&ref=side&mode=squash"));
+    let staged = git(&repo, &["diff", "--cached", "--name-only"]);
+    let head_after_squash = git(&repo, &["rev-parse", "HEAD"]);
+    git(&repo, &["reset", "-q", "--hard"]);
+    let (pending, _) = post(port, &format!("/api/merge?{q}&ref=side&mode=fast-forward&commit=0"));
+
+    // Then.
+    assert_eq!(squashed, 200, "{body}");
+    assert_eq!((staged.as_str(), head_after_squash.as_str()), ("b.txt", base.as_str()), "a squash only stages the changes");
+    assert_eq!(pending, 200);
+    assert_eq!(git(&repo, &["rev-parse", "HEAD"]), base, "nothing is committed yet");
+    assert!(git_succeeds(&repo, &["rev-parse", "-q", "--verify", "MERGE_HEAD"]), "the merge waits to be committed");
+}
+
+#[test]
+fn merge_reports_conflicts_and_leaves_them_to_resolve() {
+    // Given.
+    let sb = Sandbox::new();
+    let (repo, _) = with_side_branch(&sb);
+    git(&repo, &["switch", "-q", "side"]);
+    commit(&repo, "a.txt", "theirs");
+    git(&repo, &["switch", "-q", "main"]);
+    commit(&repo, "a.txt", "ours");
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&repo);
+
+    // When.
+    let (status, body) = post(port, &format!("/api/merge?{q}&ref=side&mode=fast-forward"));
+
+    // Then.
+    assert_eq!(status, 400);
+    assert!(body.contains("conflicts in a.txt") && body.contains("git merge --abort"), "{body}");
+    assert_eq!(json(port, &format!("/api/state?{q}"))["status"]["unstaged"], 1);
+}
+
+#[test]
+fn merge_refuses_what_it_cannot_merge() {
+    // Given.
+    let sb = Sandbox::new();
+    let (repo, _) = with_side_branch(&sb);
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&repo);
+    let merge = |rest: &str| post(port, &format!("/api/merge?{q}&{rest}"));
+
+    // When.
+    let refused = [
+        merge("ref=nope&mode=fast-forward").0,
+        merge("ref=main&mode=fast-forward").0,
+        merge("ref=side&mode=sideways").0,
+        merge(&format!("ref={}&mode=fast-forward", encode("--strategy=ours"))).0,
+    ];
+    let (_, already) = merge(&format!("ref={}&mode=fast-forward", git(&repo, &["rev-parse", "HEAD~0"])));
+
+    // Then.
+    assert_eq!(refused, [400; 4]);
+    assert!(already.contains("already contains"), "{already}");
 }
 
 #[cfg(unix)]

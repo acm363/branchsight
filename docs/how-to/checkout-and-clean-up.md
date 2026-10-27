@@ -10,7 +10,8 @@ Choose **Checkout `<branch>`**.
 
 - On a local branch, BranchSight switches to it.
 - On a remote branch such as `origin/feature/sync`, it creates the local `feature/sync` tracking it and switches to
-  it; if that local branch already exists, it switches to it as it is.
+  it. If that local branch already exists, it switches to it and brings it up to the remote one when it is only
+  behind; when both have commits of their own, it changes nothing and says so, so that you can merge instead.
 
 Git refuses when your uncommitted changes would be overwritten; the reason appears at the bottom of the window.
 
@@ -20,6 +21,19 @@ Choose **Checkout tag `<tag>` (detached)** or **Checkout commit `<hash>` (detach
 commit without being on a branch, which is how git lets you inspect old states. Check out a branch to leave it.
 
 After any checkout the graph keeps your branch selection and scrolls to the new HEAD.
+
+## Merge a branch into yours
+
+Choose **Merge `<branch>` into `<current>`…** on a branch, a remote branch, a tag or a commit, then pick how:
+
+- **Fast-forward when possible** moves your branch forward if it has no commits of its own, and otherwise creates a
+  merge commit, as `git merge` does;
+- **Always create a merge commit** keeps a merge commit even when a fast-forward was possible (`--no-ff`);
+- **Squash** stages all of the branch's changes as one, for you to commit (`--squash`).
+
+Tick **Don't commit** to stop before the merge commit and review the result in **Uncommitted changes** first. When
+the branches conflict, the merge stops: the conflicted files appear in **Uncommitted changes** marked `U`; resolve
+them in your editor and commit, or run `git merge --abort` to go back.
 
 ## Push a branch
 

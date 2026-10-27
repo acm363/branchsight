@@ -141,6 +141,18 @@
     <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Push</button></div>
   </form>
 </dialog>
+<dialog id="merge" class="dialog">
+  <form method="dialog">
+    <p>Merge <b id="merge-source"></b> into <b id="merge-target"></b></p>
+    <fieldset>
+      <label><input type="radio" name="mode" value="fast-forward" checked> Fast-forward when possible, otherwise create a merge commit</label>
+      <label><input type="radio" name="mode" value="merge-commit"> Always create a merge commit</label>
+      <label><input type="radio" name="mode" value="squash"> Squash: stage all its changes as one, without committing</label>
+    </fieldset>
+    <label class="option"><input type="checkbox" id="merge-no-commit"> Don't commit: stop so I can review the result first</label>
+    <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Merge</button></div>
+  </form>
+</dialog>
 <dialog id="confirm" class="dialog">
   <form method="dialog">
     <p id="confirm-text"></p>

@@ -32,11 +32,28 @@ impl Repo {
         }
         let (_, branch) = self.split_remote_branch(name)?;
         if self.has_ref(&format!("refs/heads/{branch}")) {
-            self.switch(&["--no-guess", "--end-of-options", branch])?;
-            return Ok(format!("switched to the existing local {branch}"));
+            return self.checkout_existing(branch, name);
         }
         self.switch(&["--create", branch, "--track", "--end-of-options", name])?;
         Ok(format!("created {branch} tracking {name} and switched to it"))
+    }
+
+    fn checkout_existing(&self, branch: &str, remote: &str) -> Result<String, String> {
+        let contains = |a: &str, b: &str| self.git(&["merge-base", "--is-ancestor", "--end-of-options", b, a]).is_ok();
+        let local = format!("refs/heads/{branch}");
+        let (behind, ahead) = (contains(remote, &local), contains(&local, remote));
+        if !behind && !ahead {
+            return Err(format!("{branch} and {remote} have diverged: check out {branch} and merge {remote} into it, or check out the commit itself"));
+        }
+        self.switch(&["--no-guess", "--end-of-options", branch])?;
+        if ahead {
+            let extra = if behind { "already at" } else { "which is ahead of" };
+            return Ok(format!("switched to {branch}, {extra} {remote}"));
+        }
+        let args = ["merge", "--quiet", "--ff-only", "--end-of-options", remote];
+        run::run(&self.root, &Call { timeout: ACTION_TIMEOUT, ..Call::new(&args) })
+            .map_err(|e| format!("switched to {branch} but could not bring it up to {remote}: {}", main_reason(e)))?;
+        Ok(format!("switched to {branch} and brought it up to {remote}"))
     }
 
     pub fn delete_remote_branch(&self, name: &str) -> Result<String, String> {
@@ -74,6 +91,42 @@ impl Repo {
         let how = if mode == "normal" { String::new() } else { format!(" ({mode})") };
         let tracking = if tracks_it { String::new() } else { format!("; it now tracks {remote}/{branch}") };
         Ok(format!("pushed {branch} to {remote}{how}{tracking}"))
+    }
+
+    pub fn merge(&self, name: &str, mode: &str, commit: bool) -> Result<String, String> {
+        let how = match (mode, commit) {
+            ("fast-forward", true) => vec![],
+            ("fast-forward" | "merge-commit", false) => vec!["--no-ff", "--no-commit"],
+            ("merge-commit", true) => vec!["--no-ff"],
+            ("squash", _) => vec!["--squash"],
+            _ => return Err(format!("unknown merge mode {mode}")),
+        };
+        self.mergeable(name)?;
+        let into = self.git(&["branch", "--show-current"])?.trim().to_owned();
+        let into = if into.is_empty() { "HEAD".to_owned() } else { into };
+        if into == name {
+            return Err(format!("{name} is the branch you are on"));
+        }
+        if self.git(&["merge-base", "--is-ancestor", "--end-of-options", name, "HEAD"]).is_ok() {
+            return Ok(format!("{into} already contains {name}"));
+        }
+        let args = [&["merge", "--quiet", "--no-edit"], &how[..], &["--end-of-options", name]].concat();
+        run::run(&self.root, &Call { timeout: ACTION_TIMEOUT, accepted_exit: 1, ..Call::new(&args) })?;
+        let conflicts = self.git(&["diff", "--name-only", "--diff-filter=U", "-z"])?;
+        let conflicts: Vec<&str> = conflicts.split('\0').filter(|p| !p.is_empty()).collect();
+        if !conflicts.is_empty() {
+            return Err(format!("merging {name} stopped on conflicts in {}: resolve them and commit, or run git merge --abort", conflicts.join(", ")));
+        }
+        Ok(match (mode, commit) {
+            ("squash", _) => format!("{name} is squashed into the staged changes of {into}: review and commit"),
+            (_, false) => format!("{name} is merged into {into} but not committed: review and commit"),
+            _ => format!("merged {name} into {into}"),
+        })
+    }
+
+    fn mergeable(&self, name: &str) -> Result<(), String> {
+        let named = ["refs/heads/", "refs/remotes/", "refs/tags/"].iter().any(|kind| self.has_ref(&format!("{kind}{name}")));
+        if named || self.check_commit(name).is_ok() { Ok(()) } else { Err(format!("nothing named {name} to merge")) }
     }
 
     fn switch(&self, args: &[&str]) -> Result<(), String> {

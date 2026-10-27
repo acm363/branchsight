@@ -6,6 +6,7 @@ import * as log from '../history/list.js';
 import { state } from '../shared/state.js';
 import { poll, reload } from '../history/sync.js';
 
+const enterOnlyOnButtons = e => e.key === 'Enter' && !e.target.closest('button') && e.preventDefault();
 const AUTO_FETCH_MS = 120000, AUTO_FETCH_CHECK_MS = 10000, ACTION_MS = 15 * 60 * 1000;
 
 let fetching = false, lastFetch = 0;
@@ -46,13 +47,27 @@ export async function push(branch, upstream) {
   };
   note();
   select.onchange = note;
-  dialog.onkeydown = e => e.key === 'Enter' && !e.target.closest('button') && e.preventDefault();
+  dialog.onkeydown = enterOnlyOnButtons;
   dialog.querySelector('[name="mode"][value="normal"]').checked = true;
   if ((await ask(dialog)) !== 'ok') return;
   const remote = select.value, mode = dialog.querySelector('[name="mode"]:checked').value;
   const lost = `Commits on ${remote}/${branch} that you do not have are lost for everyone who uses it.`;
   if (mode === 'force' && !(await confirmAction(`Force-push ${branch} to ${remote}? ${lost}`, 'Force push'))) return;
   await run('/api/push', { ref: branch, remote, mode }, `pushing ${branch} to ${remote}…`);
+}
+
+export async function merge(name) {
+  const dialog = $('merge'), noCommit = $('merge-no-commit');
+  const into = state.repo.branch || 'HEAD';
+  const mode = () => dialog.querySelector('[name="mode"]:checked').value;
+  $('merge-source').textContent = name;
+  $('merge-target').textContent = into;
+  dialog.querySelector('[name="mode"][value="fast-forward"]').checked = true;
+  noCommit.checked = noCommit.disabled = false;
+  dialog.onchange = () => { noCommit.disabled = mode() === 'squash'; };
+  dialog.onkeydown = enterOnlyOnButtons;
+  if ((await ask(dialog)) !== 'ok') return;
+  await run('/api/merge', { ref: name, mode: mode(), commit: noCommit.checked ? '0' : '1' }, `merging ${name} into ${into}…`);
 }
 
 export async function fetchRemotes({ unattended = false } = {}) {
