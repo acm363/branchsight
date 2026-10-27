@@ -10,8 +10,10 @@ const AUTO_FETCH_MS = 120000, AUTO_FETCH_CHECK_MS = 10000;
 
 let fetching = false, lastFetch = 0;
 
+const ACTION_MS = 15 * 60 * 1000;
+
 async function run(endpoint, params, busy) {
-  toast(busy, 60000);
+  toast(busy, ACTION_MS);
   try {
     const { out } = await post(endpoint, params);
     toast(out, 3000);
@@ -46,9 +48,10 @@ export async function push(branch, upstream) {
   };
   note();
   select.onchange = note;
+  dialog.onkeydown = e => e.key === 'Enter' && e.target.type === 'radio' && e.preventDefault();
   dialog.querySelector('[name="mode"][value="normal"]').checked = true;
   if ((await ask(dialog)) !== 'ok') return;
-  const remote = $('push-remote').value, mode = dialog.querySelector('[name="mode"]:checked').value;
+  const remote = select.value, mode = dialog.querySelector('[name="mode"]:checked').value;
   const lost = `Commits on ${remote}/${branch} that you do not have are lost for everyone who uses it.`;
   if (mode === 'force' && !(await confirmAction(`Force-push ${branch} to ${remote}? ${lost}`, 'Force push'))) return;
   await run('/api/push', { ref: branch, remote, mode }, `pushing ${branch} to ${remote}…`);

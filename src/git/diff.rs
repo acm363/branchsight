@@ -46,7 +46,10 @@ impl Repo {
         let output = match which {
             FileDiff::Untracked => self.untracked_diff(&paths[0], &specs[0])?,
             _ => {
-                let source = self.source(which)?;
+                let mut source = self.source(which)?;
+                if let FileDiff::Unstaged = which {
+                    source.push("--ours");
+                }
                 let specs: Vec<&str> = specs.iter().map(String::as_str).collect();
                 self.capped(&Call::new(&[&source[..], &["--no-ext-diff", "-M", WHOLE_FILE, "--"], &specs[..]].concat()))?
             }

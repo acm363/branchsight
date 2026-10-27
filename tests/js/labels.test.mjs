@@ -43,12 +43,11 @@ test('refs are grouped by commit, local branches before remotes and tags', () =>
   assert.equal(refName(undefined), undefined);
 });
 
-test('a local branch joins the remote branch it tracks, whatever its name', () => {
+test('a local branch started from a differently named remote branch keeps both labels', () => {
   // When.
-  const labels = refLabels([{ ...head('feat'), upstream: 'origin/feature/x' }, remote('origin', 'feature/x'), remote('origin', 'feat')], { branch: '' });
+  const labels = refLabels([{ ...head('fix'), upstream: 'origin/main' }, remote('origin', 'main')], { branch: '' });
 
   // Then.
-  assert.deepEqual(labels.map(l => [l.kind, l.name, l.remotes.map(r => r.name)]), [
-    ['head', 'feat', ['origin/feature/x']], ['remote', 'origin/feat', ['origin/feat']],
-  ]);
+  assert.deepEqual(labels.map(l => [l.kind, l.name]), [['head', 'fix'], ['remote', 'origin/main']]);
+  assert.equal(labels[0].upstream, 'origin/main');
 });

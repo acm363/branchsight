@@ -8,7 +8,6 @@ use serde_json::{Value, json};
 use super::Repo;
 
 const REF_KINDS: [(&str, &str); 3] = [("head", "refs/heads/"), ("remote", "refs/remotes/"), ("tag", "refs/tags/")];
-const STAMPED: usize = 2000;
 const REF_GROUPS: [(&str, &str); 3] = [("@local", "--branches"), ("@remotes", "--remotes"), ("@tags", "--tags")];
 
 struct Change<'a> {
@@ -36,7 +35,7 @@ impl Repo {
         let out = self.git(&[
             "for-each-ref",
             "--sort=-creatordate",
-            "--format=%(refname)%1f%(symref)%1f%(objectname)%1f%(*objectname)%1f%(creatordate:unix)%1f%(upstream:remotename)%1f%(upstream:short)",
+            "--format=%(refname)%1f%(symref)%1f%(objectname)%1f%(*objectname)%1f%(creatordate:unix)%1f%(upstream:remotename)%1f%(upstream:lstrip=2)",
             "refs/heads",
             "refs/remotes",
             "refs/tags",
@@ -68,22 +67,31 @@ impl Repo {
     }
 
     pub fn log(&self, refs: &[String], limit: usize) -> Result<Value, String> {
+        let history = self.history()?;
         let limit = format!("--max-count={limit}");
         let mut args = vec!["log", "--date-order", &limit, "--format=%H%x1f%P%x1f%an%x1f%at%x1f%s%x1e"];
-        let mut revisions = Vec::new();
+        let (mut revisions, mut grouped) = (Vec::new(), false);
         for name in refs {
             match REF_GROUPS.iter().find(|(group, _)| group == name) {
-                Some((_, option)) => args.push(option),
+                Some((_, option)) => {
+                    args.push(option);
+                    grouped = true;
+                }
                 None => revisions.push(name.as_str()),
             }
         }
         args.push("--end-of-options");
         if refs.is_empty() {
-            args.push("HEAD");
+            revisions.push("HEAD");
+        }
+        if self.git(&["rev-parse", "--verify", "-q", "HEAD"]).is_err() {
+            revisions.retain(|name| *name != "HEAD");
+        }
+        if !grouped && revisions.is_empty() {
+            return Ok(json!({ "history": history, "commits": [] }));
         }
         args.extend(revisions);
         args.push("--");
-        let history = self.history()?;
         let out = self.git(&args)?;
         let commits = out
             .split('\x1e')
@@ -109,7 +117,7 @@ impl Repo {
             .as_deref()
             .map(|out| {
                 let changes = changes(out);
-                let stamps: Vec<(u128, u64)> = changes.iter().take(STAMPED).map(|change| stamp(&self.root.join(change.path))).collect();
+                let stamps: Vec<(u128, u64)> = changes.iter().map(|change| stamp(&self.root.join(change.path))).collect();
                 (digest(&(out, stamps)), counts(&changes))
             })
             .unzip();

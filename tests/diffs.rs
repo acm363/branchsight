@@ -94,6 +94,31 @@ fn a_merge_conflict_keeps_each_file_with_its_own_diff() {
     assert!(patch_of(staged, "m.txt").contains("+merged cleanly"));
     assert_eq!(paths(&worktree["unstaged"]["files"]), ["a.txt"], "a conflicted file is listed once");
     assert!(patch_of(&worktree["unstaged"], "a.txt").contains("<<<<<<<"));
+    let whole = json(port, &format!("/api/filediff?{}&kind=unstaged&path=a.txt", repo_query(&repo)));
+    let patch = whole["patch"].as_str().unwrap();
+    assert!(patch.contains("diff --git a/a.txt b/a.txt") && patch.contains("+<<<<<<<") && patch.contains("\n main\n"), "the diff view gets a plain two-sided diff against the checked-out side: {patch}");
+}
+
+#[test]
+fn a_repository_without_commits_shows_its_staged_files() {
+    // Given.
+    let sb = Sandbox::new();
+    let repo = sb.path("repo");
+    init(&repo);
+    fs::write(repo.join("first.txt"), "hello\n").unwrap();
+    git(&repo, &["add", "first.txt"]);
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&repo);
+
+    // When.
+    let log = json(port, &format!("/api/log?{q}"));
+    let state = json(port, &format!("/api/state?{q}"));
+    let worktree = json(port, &format!("/api/worktree?{q}"));
+
+    // Then.
+    assert_eq!(log["commits"], json!([]));
+    assert_eq!(state["status"]["staged"], 1);
+    assert!(patch_of(&worktree["staged"], "first.txt").contains("+hello"));
 }
 
 #[test]

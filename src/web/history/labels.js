@@ -13,7 +13,7 @@ export function refLabels(refs, { branch, detached }) {
   const remotes = refs.filter(r => r.kind === 'remote');
   const tracked = new Set();
   const local = refs.filter(r => r.kind === 'head').map(h => {
-    const tracking = remotes.filter(r => (h.upstream ? r.name === h.upstream : r.branch === h.name));
+    const tracking = remotes.filter(r => r.branch === h.name);
     tracking.forEach(r => tracked.add(r));
     return { kind: 'head', name: h.name, current: h.name === branch, remotes: tracking, upstream: h.upstream, upstreamRemote: h.upstreamRemote };
   });

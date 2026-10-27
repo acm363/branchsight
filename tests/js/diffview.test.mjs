@@ -93,16 +93,3 @@ test('a new file has nothing on the left and a binary file is flagged', () => {
   assert.equal(image.split.length, 0);
 });
 
-test('a conflict shows the merge result against the checked-out side', () => {
-  // Given.
-  const text = ['diff --cc f', '--- a/f', '+++ b/f', '@@@ -1,2 -1,2 +1,6 @@@', ' +ours', '++<<<<<<< HEAD', '+ theirs', '- dropped by ours', '++>>>>>>> side', '  same', ' -only in theirs'].join('\n');
-
-  // When.
-  const { unified } = buildDiff(text);
-
-  // Then.
-  assert.deepEqual(unified.map(r => [r.kind, r.old, r.new, r.text]), [
-    ['ctx', 1, 1, 'ours'], ['del', 2, null, 'dropped by ours'], ['add', null, 2, '<<<<<<< HEAD'],
-    ['add', null, 3, 'theirs'], ['add', null, 4, '>>>>>>> side'], ['ctx', 3, 5, 'same'],
-  ]);
-});

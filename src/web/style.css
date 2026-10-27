@@ -177,8 +177,7 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 .dialog { max-width: min(460px, 90vw); padding: 18px 20px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); box-shadow: 0 12px 40px rgba(0,0,0,.35); }
 .dialog::backdrop { background: rgba(0,0,0,.35); }
 .dialog p { margin: 0 0 16px; line-height: 1.5; }
-.dialog p[hidden] { display: none; }
-.dialog .actions { display: flex; flex-direction: row-reverse; justify-content: flex-start; gap: 8px; }
+.dialog .actions { display: flex; justify-content: flex-end; gap: 8px; }
 #confirm .danger { font-weight: 600; border-color: var(--rm); }
 #toast { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 4px 12px; border-radius: 4px; font: 12px var(--mono); z-index: 20; opacity: 0; transition: opacity .15s; pointer-events: none; }
 #toast.on { opacity: 1; }
@@ -228,5 +227,5 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 @media (max-width: 760px) { .row .a, #cols .c-a { display: none; } #detail { width: 100%; } }
 header .auto { display: flex; align-items: center; gap: 4px; color: var(--dim); cursor: pointer; }
 button.err { color: var(--rm); border-color: var(--rm); }
-button:disabled { opacity: .45; cursor: default; }
+button:disabled, button:disabled:hover { opacity: .45; cursor: default; background: var(--bg2); }
 header > * { white-space: nowrap; }

@@ -51,7 +51,9 @@ document.addEventListener('keydown', e => {
 });
 
 document.addEventListener('mousedown', e => {
-  if (e.target.closest('button') && !e.target.closest('dialog')) e.preventDefault();
+  if (!e.target.closest('button') || e.target.closest('dialog')) return;
+  e.preventDefault();
+  if (document.activeElement?.matches('select')) document.activeElement.blur();
 });
 
 $('rows').addEventListener('click', e => {

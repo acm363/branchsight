@@ -31,7 +31,7 @@ const PINNED_CONFIG: [&str; 13] = [
 
 pub(crate) struct Call<'a> {
     pub args: &'a [&'a str],
-    pub config: Option<&'a str>,
+    pub config: &'a [&'a str],
     pub limit: Option<usize>,
     pub accepted_exit: i32,
     pub timeout: Duration,
@@ -51,13 +51,15 @@ enum Stream {
 #[derive(Default)]
 struct Collected {
     stdout: Vec<u8>,
-    stderr: Vec<u8>,
+    stderr_head: Vec<u8>,
+    stderr_tail: Vec<u8>,
+    stderr_cut: bool,
     truncated: bool,
 }
 
 impl<'a> Call<'a> {
     pub fn new(args: &'a [&'a str]) -> Call<'a> {
-        Call { args, config: None, limit: None, accepted_exit: 0, timeout: READ_TIMEOUT }
+        Call { args, config: &[], limit: None, accepted_exit: 0, timeout: READ_TIMEOUT }
     }
 }
 
@@ -73,11 +75,19 @@ impl Collected {
             }
             Stream::Out => {}
             Stream::Err => {
-                self.stderr.extend_from_slice(&bytes);
-                let excess = self.stderr.len().saturating_sub(STDERR_KEPT);
-                self.stderr.drain(..excess);
+                let room = (STDERR_KEPT / 2).saturating_sub(self.stderr_head.len()).min(bytes.len());
+                self.stderr_head.extend_from_slice(&bytes[..room]);
+                self.stderr_tail.extend_from_slice(&bytes[room..]);
+                let excess = self.stderr_tail.len().saturating_sub(STDERR_KEPT / 2);
+                self.stderr_tail.drain(..excess);
+                self.stderr_cut |= excess > 0;
             }
         }
+    }
+
+    fn stderr(&self) -> String {
+        let gap = if self.stderr_cut { "\n…\n" } else { "" };
+        format!("{}{gap}{}", String::from_utf8_lossy(&self.stderr_head), String::from_utf8_lossy(&self.stderr_tail)).trim().to_owned()
     }
 }
 
@@ -96,7 +106,7 @@ pub(crate) fn run(dir: &Path, call: &Call) -> Result<Output, String> {
     if collected.truncated {
         return Ok(Output { text: decode(cut_at_line(collected.stdout)), truncated: true });
     }
-    let stderr = String::from_utf8_lossy(&collected.stderr).trim().to_owned();
+    let stderr = collected.stderr();
     if status.success() || status.code() == Some(call.accepted_exit) {
         Ok(Output { text: decode(collected.stdout), truncated: false })
     } else if stderr.is_empty() {
@@ -149,7 +159,7 @@ fn wait(child: &mut Child, chunks: &Receiver<(Stream, Vec<u8>)>, call: &Call) ->
 fn command(dir: &Path, call: &Call) -> Command {
     let mut command = Command::new("git");
     command.arg("-C").arg(dir);
-    for setting in PINNED_CONFIG.iter().copied().chain(call.config) {
+    for setting in PINNED_CONFIG.iter().chain(call.config) {
         command.args(["-c", setting]);
     }
     command
@@ -159,7 +169,6 @@ fn command(dir: &Path, call: &Call) -> Command {
         .env("GIT_TERMINAL_PROMPT", "0")
         .env("GIT_ASKPASS", "")
         .env("SSH_ASKPASS_REQUIRE", "never")
-        .env("GCM_INTERACTIVE", "never")
         .env("GIT_OPTIONAL_LOCKS", "0")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

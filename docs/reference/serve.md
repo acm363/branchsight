@@ -53,5 +53,5 @@ request takes `repo=<path>`, defaulting to `dir`. Errors come back as `400` with
 rename, `add` and `del` (null for a binary file or a conflict) and its own `patch`, plus `truncated`. Patches are cut
 at 4 MB in total; the file list and the counts are always complete. git runs with terminal and askpass prompts
 disabled, and ssh in batch mode unless you configured your own ssh command; a credential helper that opens its own
-window can still do so. Reads stop after 2 minutes, actions after 15; a stopped git gets the time to remove its lock
-files.
+window can still do so. An HTTPS transfer slower than 1 KB/s for a minute is dropped. Reads stop after 2 minutes,
+actions after 15; on Linux and macOS a stopped git gets the time to remove its lock files.

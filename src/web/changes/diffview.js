@@ -1,22 +1,4 @@
 const HUNK = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
-const COMBINED_HUNK = /^@@@ -(\d+)(?:,\d+)? -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@@/;
-
-function againstFirstParent(lines) {
-  let combined = false;
-  return lines.flatMap(line => {
-    const hunk = line.match(COMBINED_HUNK);
-    if (hunk) {
-      combined = true;
-      return [`@@ -${hunk[1]} +${hunk[2]} @@`];
-    }
-    if (line.startsWith('diff ') || line.startsWith('@@ ')) combined = false;
-    if (!combined || line.startsWith('\\')) return [line];
-    const [ours, theirs, rest] = [line[0], line[1], line.slice(2)];
-    if (ours === '-' || ours === '+') return [ours + rest];
-    return theirs === '-' ? [] : [` ${rest}`];
-  });
-}
-
 function inlineRanges(a, b) {
   let start = 0;
   while (start < a.length && start < b.length && a[start] === b[start]) start++;
@@ -44,7 +26,7 @@ export function buildDiff(text) {
     adds = [];
   };
 
-  for (const line of againstFirstParent(text.split('\n'))) {
+  for (const line of text.split('\n')) {
     const hunk = line.match(HUNK);
     if (hunk) {
       flush();

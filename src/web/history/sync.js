@@ -10,7 +10,7 @@ const POLL_MS = 5000, LOG_CACHE_SIZE = 16;
 const logCache = new Map();
 const refListeners = [], logListeners = [];
 
-let seen = null, shown = null, failed = false, polling = false, request = null;
+let seen = null, shown = null, polling = false, request = null;
 
 export const onRefs = listener => refListeners.push(listener);
 
@@ -37,8 +37,7 @@ async function fetchLog(params, fresh, signal) {
 function withWorktree(loaded, status) {
   const dirty = status && status.staged + status.unstaged + status.untracked > 0;
   const { head } = state.repo;
-  const attached = head ? loaded.commits.some(c => c.h === head) : !loaded.commits.length;
-  if (!dirty || !attached) return { entries: loaded.commits, rows: loaded.rows, lanes: loaded.lanes };
+  if (!dirty || (head && !loaded.commits.some(c => c.h === head))) return { entries: loaded.commits, rows: loaded.rows, lanes: loaded.lanes };
   const entries = [{ kind: 'worktree', h: '', p: head ? [head] : [], status }, ...loaded.commits];
   if (loaded.withRow?.head !== head) loaded.withRow = { head, ...layout(entries) };
   return { entries, rows: loaded.withRow.rows, lanes: loaded.withRow.lanes };
@@ -54,12 +53,11 @@ export async function loadLog({ keepScroll = false, fresh = false } = {}) {
     if (mine !== request) return;
     shown = loaded;
     log.show(withWorktree(loaded, seen?.status), { cursorKey: cursorKey(), top: keepScroll ? log.anchor() : null });
-    failed = false;
     const limit = +$('limit').value, count = loaded.commits.length;
     $('count').textContent = `${plural(count, 'commit')}${count >= limit ? ' (limit)' : ''}`;
   } catch (e) {
     if (e.name === 'AbortError' || mine !== request) return;
-    failed = true;
+    seen = null;
     log.show({ entries: [], rows: [], lanes: 1 });
     $('count').textContent = '';
     $('rows').innerHTML = `<div id="error">${esc(e.message)} — retrying…</div>`;
@@ -67,7 +65,7 @@ export async function loadLog({ keepScroll = false, fresh = false } = {}) {
   } finally {
     clearTimeout(pending);
   }
-  logListeners.forEach(listener => listener());
+  logListeners.forEach(listener => listener(seen?.worktree));
 }
 
 export async function reload({ keepScroll = true, fresh = false, now = null } = {}) {
@@ -77,7 +75,7 @@ export async function reload({ keepScroll = true, fresh = false, now = null } = 
     await loadRefs();
     seen = current;
   } catch (e) {
-    failed = true;
+    seen = null;
     throw e;
   }
   await loadLog({ keepScroll, fresh });
@@ -92,7 +90,7 @@ function refreshWorktree(status) {
   } else {
     log.show(next, { cursorKey: cursorKey(), top: log.anchor() });
   }
-  logListeners.forEach(listener => listener());
+  logListeners.forEach(listener => listener(seen?.worktree));
 }
 
 export async function poll() {
@@ -100,7 +98,7 @@ export async function poll() {
   polling = true;
   try {
     const now = await getJson('/api/state');
-    if (failed || !seen || now.history !== seen.history) await reload({ now });
+    if (!seen || now.history !== seen.history) await reload({ now });
     else if (now.worktree !== seen.worktree) {
       seen = now;
       refreshWorktree(now.status);

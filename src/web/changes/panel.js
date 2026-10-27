@@ -12,10 +12,10 @@ const MAX_LINES = 40000;
 
 let shown = null;
 let requested = null;
+let drawnWorktree = null;
 let timer = 0;
 
 export const isOpen = () => !$('detail').hidden;
-
 
 export function showSoon(entry, delay) {
   clearTimeout(timer);
@@ -49,9 +49,9 @@ function showCommit(commit) {
   const parent = commit.p[0];
   const sides = [parent ? `parent · ${sideLabel(parent)}` : 'nothing (first commit)', sideLabel(commit.h)];
   const source = { kind: 'commit', key: commit.h, h: commit.h };
-  return open(source, `${hashSpan(commit.h)}${esc(commit.s)}`, commit.s, async () => {
+  return open(source, `${hashSpan(commit.h)}${esc(commit.s)}`, commit.s, async budget => {
     const changes = await getJson('/api/commit', { h: commit.h });
-    return [{ header: changes.header, ...group('', changes, 'commit', sides) }];
+    return [{ header: changes.header, ...group('', changes, 'commit', sides, budget) }];
   });
 }
 
@@ -63,34 +63,35 @@ export function showCompare(i, j) {
   log.render();
   const source = { kind: 'compare', key: `${older.h}..${newer.h}`, from: older.h, to: newer.h };
   const title = `<span class="cmp-label">Compare</span>${hashSpan(older.h, SHORT_HASH)}<span class="arrow">→</span>${hashSpan(newer.h, SHORT_HASH)}`;
-  return open(source, title, `${older.s} → ${newer.s}`, async () => {
+  return open(source, title, `${older.s} → ${newer.s}`, async budget => {
     const changes = await getJson('/api/compare', { from: older.h, to: newer.h });
-    return [group('', changes, 'compare', [sideLabel(older.h), sideLabel(newer.h)])];
+    return [group('', changes, 'compare', [sideLabel(older.h), sideLabel(newer.h)], budget)];
   });
 }
 
 export function showWorktree({ keep = false } = {}) {
+  if (!keep) drawnWorktree = null;
   clearCompare();
   const head = `HEAD${state.repo.branch ? ` · ${state.repo.branch}` : ''}`;
   const source = { kind: 'worktree', key: 'worktree' };
-  return open(source, '<span class="wt-title">Uncommitted changes</span>', 'Uncommitted changes', async () => {
+  return open(source, '<span class="wt-title">Uncommitted changes</span>', 'Uncommitted changes', async budget => {
     const worktree = await getJson('/api/worktree');
     const untracked = worktree.untracked.map((path, i) => ({
       status: '?', path, add: null, del: null, kind: 'untracked', id: `untracked-${i}`, body: '', sides: ['nothing (new file)', 'Working tree'],
     }));
     return [
-      group('Staged', worktree.staged, 'staged', [head, 'Staged (index)']),
-      group('Not staged', worktree.unstaged, 'unstaged', ['Staged (index)', 'Working tree']),
+      group('Staged', worktree.staged, 'staged', [head, 'Staged (index)'], budget),
+      group('Not staged', worktree.unstaged, 'unstaged', ['Staged (index)', 'Working tree'], budget),
       { title: 'Untracked', files: untracked, note: '' },
     ].filter(g => g.files.length);
   }, keep);
 }
 
-function group(title, { files, truncated }, kind, sides) {
-  let budget = MAX_LINES, hidden = 0;
+function group(title, { files, truncated }, kind, sides, budget) {
+  let hidden = 0;
   const listed = files.map(({ patch, ...file }, i) => {
-    const rendered = patchHtml(patch, budget);
-    budget -= rendered.shown;
+    const rendered = patchHtml(patch, budget.lines);
+    budget.lines -= rendered.shown;
     hidden += rendered.hidden;
     return { ...file, kind, sides, id: `${kind}-${i}`, body: rendered.html };
   });
@@ -106,7 +107,7 @@ async function open(source, titleHtml, title, load, keep = false) {
   $('detail-title').title = title;
   $('open-viewer').disabled = !shown;
   try {
-    const groups = await load();
+    const groups = await load({ lines: MAX_LINES });
     if (requested !== source.key) return;
     const folds = keep ? keptFolds() : null;
     shown = { source, files: groups.flatMap(g => g.files) };
@@ -170,8 +171,9 @@ function openViewer(id) {
   viewer.open(shown.source, shown.files, Math.max(0, shown.files.findIndex(f => f.id === id)));
 }
 
-onLog(() => {
-  if (requested !== 'worktree') return;
+onLog(worktree => {
+  if (requested !== 'worktree' || worktree === drawnWorktree) return;
+  drawnWorktree = worktree;
   if (isWorktree(state.entries[0])) showWorktree({ keep: true });
   else close();
 });

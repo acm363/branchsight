@@ -5,6 +5,7 @@ use super::read::split_remote;
 use super::run::{self, ACTION_TIMEOUT, Call};
 
 const NON_INTERACTIVE_SSH: &str = "core.sshCommand=ssh -o BatchMode=yes -o ConnectTimeout=15";
+const STALLED_HTTP: [&str; 2] = ["http.lowSpeedLimit=1000", "http.lowSpeedTime=60"];
 
 impl Repo {
     pub fn fetch(&self) -> Result<String, String> {
@@ -88,8 +89,9 @@ impl Repo {
     }
 
     fn network(&self, args: &[&str]) -> Result<String, String> {
-        let config = self.uses_default_ssh().then_some(NON_INTERACTIVE_SSH);
-        run::run(&self.root, &Call { config, timeout: ACTION_TIMEOUT, ..Call::new(args) }).map(|output| output.text.trim().to_owned())
+        let mut config = STALLED_HTTP.to_vec();
+        config.extend(self.uses_default_ssh().then_some(NON_INTERACTIVE_SSH));
+        run::run(&self.root, &Call { config: &config, timeout: ACTION_TIMEOUT, ..Call::new(args) }).map(|output| output.text.trim().to_owned())
     }
 
     fn uses_default_ssh(&self) -> bool {
@@ -99,6 +101,7 @@ impl Repo {
 }
 
 fn main_reason(error: String) -> String {
-    let reason = error.lines().find(|l| [" ! ", "error:", "fatal:", "remote: error"].iter().any(|start| l.starts_with(start)));
-    reason.map_or(error.clone(), |line| line.trim().to_owned())
+    let noise = |line: &&str| line.starts_with("To ") || line.starts_with("hint:") || line.starts_with("error: failed to push some refs");
+    let kept: Vec<&str> = error.lines().filter(|line| !noise(line)).collect();
+    if kept.is_empty() { error } else { kept.join("\n") }
 }
