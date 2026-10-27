@@ -100,7 +100,7 @@ try {
     await send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: scene.height || HEIGHT, deviceScaleFactor: 2, mobile: false });
     await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: scene.theme || 'dark' }] });
     await send('Page.navigate', { url: scene.url });
-    await waitFor(() => evaluate(`return document.querySelector(${JSON.stringify(scene.url.includes('start') ? '#plist .ref' : '.row')}) !== null`), `${scene.name} to load`);
+    await waitFor(() => evaluate(`return document.querySelector(${JSON.stringify(scene.url.includes('start') ? '#plist .pick' : '.row')}) !== null`), `${scene.name} to load`);
     await sleep(500);
     if (scene.run) await evaluate(scene.run);
     await sleep(900);

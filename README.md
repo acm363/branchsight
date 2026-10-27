@@ -49,12 +49,13 @@ scripts/check.sh      # unit and end-to-end tests, graph layout tests, desktop a
 
 | Path | Role |
 |---|---|
-| `src/git.rs` | the git commands |
-| `src/server.rs` | the routes shared by the app and `serve`, and the loopback-only guard |
+| `src/git/` | the git commands: `run.rs` starts git, `read.rs` history and status, `diff.rs` changes, `write.rs` actions |
+| `src/api.rs` | the routes shared by the app and `serve` |
+| `src/http.rs` | the `serve` listener and its loopback and same-site guards |
 | `src/projects.rs` | repository discovery |
-| `src/web/` | the page; `graph.js` computes the lanes |
+| `src/web/` | the page, one ES module per part of the screen; `graph.js` computes the lanes |
 | `app/` | the Tauri shell |
-| `tests/` | end-to-end tests against throwaway repositories, layout tests (`node --test`) |
+| `tests/` | end-to-end tests against throwaway repositories, page logic tests in `tests/js` (`node --test`) |
 | `scripts/` | checks, the demo repository and the documentation screenshots |
 
 CI runs the tests on Linux and Windows on every push; pushing a `v*` tag tests on macOS too and drafts a release

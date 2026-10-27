@@ -86,7 +86,7 @@ git branch -q -D feature/search fix/export-crlf
 
 printf '\nexport const version = "0.3.0-dev";\n' >> src/notes.ts
 git add src/notes.ts
-sed -i 's/return input.trim();/return input.trim().toLowerCase();/' src/search.ts
+perl -pi -e 's/return input.trim();/return input.trim().toLowerCase();/' src/search.ts
 printf '# Roadmap\n\n- sync across devices\n- tags\n' > ROADMAP.md
 
 cd ../aurora-site

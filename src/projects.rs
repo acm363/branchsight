@@ -37,8 +37,9 @@ fn scan(dir: &Path, depth: usize, out: &mut Vec<Value>) {
         if name.starts_with('.') || SKIP_DIRS.contains(&name.as_ref()) {
             continue;
         }
-        if entry.file_type().is_ok_and(|t| t.is_dir()) {
-            scan(&entry.path(), depth - 1, out);
+        let path = entry.path();
+        if fs::metadata(&path).is_ok_and(|meta| meta.is_dir()) {
+            scan(&path, depth - 1, out);
         }
     }
 }

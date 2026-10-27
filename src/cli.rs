@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 use std::process::exit;
 
+use branchsight::config::{Config, plain_path};
 use branchsight::git::Repo;
-use branchsight::server::Config;
 
 const DEFAULT_PORT: u16 = 7420;
 const USAGE: &str = "usage: branchsight serve [--port N] [--root DIR]... [dir]
@@ -16,34 +16,54 @@ pub struct Args {
 }
 
 pub fn parse() -> Args {
+    let mut args = std::env::args().skip(1);
+    match args.next().as_deref() {
+        Some("serve") => {}
+        Some("-h" | "--help") => {
+            println!("{USAGE}");
+            exit(0);
+        }
+        Some(other) => fail(&format!("unknown command {other}")),
+        None => fail("a command is required"),
+    }
+
     let mut port = DEFAULT_PORT;
     let mut dir = PathBuf::from(".");
     let mut roots = Vec::new();
-    let mut args = std::env::args().skip(1).peekable();
-    if args.next_if(|a| a == "serve").is_none() {
-        eprintln!("{USAGE}");
-        exit(if args.peek().is_some_and(|a| a == "-h" || a == "--help") { 0 } else { 2 });
-    }
     while let Some(arg) = args.next() {
-        match arg.as_str() {
-            "-p" | "--port" => port = args.next().and_then(|p| p.parse().ok()).unwrap_or(port),
-            "-r" | "--root" => roots.extend(args.next().map(PathBuf::from)),
+        let (flag, inline) = match arg.split_once('=') {
+            Some((flag, value)) if flag.starts_with("--") => (flag.to_owned(), Some(value.to_owned())),
+            _ => (arg.clone(), None),
+        };
+        let mut value = || inline.clone().or_else(|| args.next()).unwrap_or_else(|| fail(&format!("{flag} needs a value")));
+        match flag.as_str() {
+            "-p" | "--port" => {
+                let given = value();
+                port = given.parse().unwrap_or_else(|_| fail(&format!("invalid port {given}")));
+            }
+            "-r" | "--root" => roots.push(PathBuf::from(value())),
             "-h" | "--help" => {
                 println!("{USAGE}");
                 exit(0);
             }
-            other => dir = PathBuf::from(other),
+            unknown if unknown.starts_with('-') => fail(&format!("unknown option {unknown}")),
+            _ => dir = PathBuf::from(arg),
         }
     }
 
-    let dir = dir.canonicalize().unwrap_or(dir);
-    let default_repo = Repo::open(&dir).map(|r| r.root);
+    let dir = dir.canonicalize().map_or(dir, plain_path);
+    let default_repo = Repo::open(&dir).ok().map(|repo| repo.root);
     if roots.is_empty() {
         roots.push(match &default_repo {
             Some(top) => top.parent().unwrap_or(top).to_path_buf(),
             None => dir,
         });
     }
-    let roots = roots.into_iter().map(|r| r.canonicalize().unwrap_or(r)).collect();
+    let roots = roots.into_iter().map(|root| root.canonicalize().map_or(root, plain_path)).collect();
     Args { port, config: Config { roots, default_repo } }
+}
+
+fn fail(message: &str) -> ! {
+    eprintln!("branchsight: {message}\n{USAGE}");
+    exit(2);
 }

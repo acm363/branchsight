@@ -20,8 +20,9 @@ The end-to-end tests send option-like names such as `--orphan=x` and `--output=â
 
 The desktop app has no network port at all. `branchsight serve` listens on `127.0.0.1` and `[::1]` only and answers
 only requests whose `Host` is a loopback name, so a web page you visit cannot reach it by pointing a domain name at
-your machine (DNS rebinding). Actions that change something require `POST`, which a link or an image tag cannot
-send.
+your machine (DNS rebinding). Actions that change something require `POST` with an `X-BranchSight` header. A page
+on another site cannot add that header without the browser asking the server first, and BranchSight never says
+yes, so a link, an image or a hidden form cannot check out or delete anything.
 
 ## Your credentials stay yours
 

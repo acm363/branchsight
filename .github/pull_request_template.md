@@ -4,7 +4,6 @@
 
 ## How it was checked
 
-- [ ] `scripts/check.sh` passes
 - [ ] A visual change comes with updated screenshots (`docs/how-to/update-the-screenshots.md`)
 - [ ] The documentation in `docs/` matches the new behaviour
 - [ ] Every commit is signed off (`git commit -s`)

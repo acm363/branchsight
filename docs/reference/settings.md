@@ -11,7 +11,7 @@
 | remotes / tags in the branch picker | shown / hidden |
 | auto-fetch | off; every 2 minutes when on |
 | change detection | every 5 seconds while the window is visible |
-| columns | graph sized for up to 10 lanes, author 130 px, date 108 px, hash 56 px |
+| columns | graph sized for up to 24 lanes, author 130 px, date 108 px, hash 56 px |
 | project discovery | the home folder, 3 levels deep, skipping hidden folders, `node_modules`, `target`, `dist`, `vendor` |
 
 ## Where your choices are kept
@@ -27,7 +27,7 @@ In the webview's local storage, never in the repositories:
 
 | Scope | Keys |
 |---|---|
-| every project | `branchsight:theme`, `branchsight:fontSize`, `branchsight:cols`, `branchsight:recent`, `branchsight:last` |
+| every project | `branchsight:theme`, `branchsight:fontSize`, `branchsight:cols`, `branchsight:recent`, `branchsight:last`, `branchsight:diffMode`, `branchsight:diffSplit` |
 | one project | `branchsight:<repository path>:` `sel` (branches), `limit`, `remote`, `tag`, `autoFetch`, `detailWidth` |
 
 Deleting the folder or the keys returns BranchSight to its defaults.

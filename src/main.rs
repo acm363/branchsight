@@ -4,14 +4,14 @@ use std::process::exit;
 use std::sync::Arc;
 use std::thread;
 
-use branchsight::{server, url};
+use branchsight::{http, url};
 
 fn main() {
     let cli::Args { port, config } = cli::parse();
 
-    let (ipv4, ipv6) = match server::listen(port) {
+    let (ipv4, ipv6) = match http::listen(port) {
         Ok(servers) => servers,
-        Err(_) if server::is_running(port) => {
+        Err(_) if http::is_running(port) => {
             match &config.default_repo {
                 Some(top) => println!("http://localhost:{port}/?repo={}", url::encode(&top.to_string_lossy())),
                 None => println!("http://localhost:{port}/"),
@@ -35,7 +35,7 @@ fn main() {
     let config = Arc::new(config);
     if let Some(ipv6) = ipv6 {
         let config = Arc::clone(&config);
-        thread::spawn(move || server::serve(ipv6, config));
+        thread::spawn(move || http::serve(ipv6, config));
     }
-    server::serve(ipv4, config);
+    http::serve(ipv4, config);
 }

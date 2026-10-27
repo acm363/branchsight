@@ -39,7 +39,7 @@ jobs:
         with:
           node-version: 24
       - run: cargo test
-      - run: node --test tests/js/graph.test.mjs tests/js/diffview.test.mjs
+      - run: node --test tests/js/*.test.mjs
 
   app-check:
     runs-on: ubuntu-latest

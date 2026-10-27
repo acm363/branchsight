@@ -8,16 +8,18 @@ BranchSight is one Rust core with two ways in, and one web page on top.
    │ webview ── IPC: invoke("api") ──┐ │   │ browser ── HTTP on loopback ─┐ │
    └─────────────────────────────────┼─┘   └──────────────────────────────┼─┘
                                      ▼                                    ▼
-                              server::respond(method, "/api/…")    ← one routing table
+                               api::respond(method, "/api/…")    ← one routing table
                                      │
-                           git.rs ── runs the git binary
+                          src/git/ ── runs the git binary
 ```
 
 ## One page, two transports
 
 The page in `src/web/` does not know where it runs. In the desktop app it calls the Rust core through Tauri's IPC
-channel; in a browser it calls the same routes over HTTP. Both end in `server::respond`, so the end-to-end tests,
-which go through HTTP, also cover what the app does.
+channel; in a browser it calls the same routes over HTTP. Both end in `api::respond`, so the end-to-end tests,
+which go through HTTP, also cover what the app does. The page is plain ES modules, one per part of the screen
+(`log.js` the graph, `panel.js` the files and diff, `viewer.js` the diff view, the pickers), and pure modules such as
+`graph.js` and `diffview.js` that the node tests cover.
 
 The desktop app opens **no network port**: on a machine shared with other users, a port on `127.0.0.1` would let any
 of them read your repositories. `serve` does open one, on loopback only, for the cases where the app cannot reach the
@@ -40,7 +42,9 @@ a canvas, so scrolling stays smooth at any length.
 
 ## Staying current without a refresh button
 
-Every five seconds, while the window is visible, the page asks for a fingerprint of the refs, HEAD, `git status`
-and the size of the unstaged diff. When it changes, the page reloads what it shows and keeps your scroll position.
+Every five seconds, while the window is visible, the page asks for two fingerprints: one of the refs and HEAD, one
+of `git status` and the size and modification time of each changed file. When the first changes, the page reloads
+the graph; when only the second does, it refreshes the uncommitted-changes row and its panel. Both keep your scroll
+position and the files you folded.
 Polling costs about 30 ms of git work per check and works the same on every system, including network drives and
 WSL, where file watchers are unreliable.

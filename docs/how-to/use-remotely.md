@@ -24,7 +24,9 @@ tunnel is the only way in.
 
 ## In a dev container or Codespace
 
-Run `branchsight serve --root /workspaces` in the container and let your editor forward port 7420.
+Run `branchsight serve --root /workspaces` in the container and let your desktop editor forward port 7420 to
+`localhost`. A Codespace opened in the browser forwards it under a `*.app.github.dev` name instead, which is not a
+loopback name, so BranchSight answers `403`: use the Codespace from a desktop editor.
 
 ## Keep it running on Linux
 

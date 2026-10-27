@@ -7,7 +7,7 @@ for tool in git cargo node; do
 done
 
 cargo test
-node --test tests/js/graph.test.mjs tests/js/diffview.test.mjs
+node --test tests/js/*.test.mjs
 
 if [[ "$(uname)" != Linux ]] || pkg-config --exists webkit2gtk-4.1 2>/dev/null; then
   cargo build --release -p branchsight-app

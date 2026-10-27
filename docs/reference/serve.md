@@ -28,7 +28,9 @@ First match wins:
 ## Requests it accepts
 
 Only with a loopback `Host` header (`localhost`, `127.0.0.1`, `[::1]`, `*.localhost`); anything else gets `403`.
-Every `/api/` request takes `repo=<path>`, defaulting to `dir`.
+A `POST` also needs the header `X-BranchSight: 1` and no `Sec-Fetch-Site` other than `same-origin` or `none`, so
+another site cannot trigger an action from your browser. Every `/api/` request takes `repo=<path>`, defaulting to
+`dir`. Errors come back as `400` with git's message as plain text.
 
 | Path | Method | Returns |
 |---|---|---|
@@ -36,15 +38,17 @@ Every `/api/` request takes `repo=<path>`, defaulting to `dir`.
 | `/api/projects` | GET | repositories under the roots, most recently used first |
 | `/api/repo` | GET | path, name, HEAD, current branch |
 | `/api/refs` | GET | branches, remote branches, tags |
-| `/api/log?ref=…&limit=N` | GET | commits of the given refs; `@local`, `@remotes`, `@tags` select them all |
-| `/api/commit?h=<hash>` | GET | the commit and its diff against its first parent |
-| `/api/compare?from=<hash>&to=<hash>` | GET | `git diff from to` |
+| `/api/log?ref=…&limit=N` | GET | commits of the given refs, `HEAD` without any; `@local`, `@remotes`, `@tags` select them all |
+| `/api/commit?h=<hash>` | GET | `header`, plus the changes against the first parent |
+| `/api/compare?from=<hash>&to=<hash>` | GET | the changes of `git diff from to` |
 | `/api/filediff?kind=…&path=…` | GET | one file's diff with the whole file as context; `kind` is `commit` (with `h`), `compare` (with `from`, `to`), `staged`, `unstaged` or `untracked`; a renamed file takes both paths |
 | `/api/status` | GET | counts of staged, unstaged and untracked files |
-| `/api/worktree` | GET | staged diff, unstaged diff, untracked paths |
-| `/api/state` | GET | a fingerprint that changes with refs, HEAD and the working tree |
+| `/api/worktree` | GET | `staged` and `unstaged` changes, `untracked` paths |
+| `/api/state` | GET | `history`, a fingerprint of the refs and HEAD; `worktree`, one of `git status` and the changed files; `status` |
 | `/api/fetch` | POST | `git fetch --all --prune` |
 | `/api/checkout?ref=…` | POST | switch to a branch, a remote branch, a tag or a commit |
 | `/api/delete-remote?ref=<remote>/<branch>` | POST | `git push <remote> --delete <branch>` |
 
-Diffs are cut at 4 MB. Network commands run without prompts and stop after 90 s.
+*Changes* are `files`, each with `status` (`A`, `M`, `D`, `R`…), `path`, `from` for a rename, `add` and `del` (null
+for a binary file), then `patch` with one `diff --git` section per file in the same order, and `truncated`. A patch
+is cut at 4 MB; the file list is always complete. Network commands run without prompts and stop after 90 s.
