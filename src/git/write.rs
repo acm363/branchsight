@@ -1,8 +1,10 @@
+use std::env;
+
 use super::Repo;
 use super::read::split_remote;
-use super::run::{self, Call, NETWORK_TIMEOUT};
+use super::run::{self, ACTION_TIMEOUT, Call};
 
-const PUSH_MODES: [(&str, Option<&str>); 3] = [("normal", None), ("force-with-lease", Some("--force-with-lease")), ("force", Some("--force"))];
+const NON_INTERACTIVE_SSH: &str = "core.sshCommand=ssh -o BatchMode=yes -o ConnectTimeout=15";
 
 impl Repo {
     pub fn fetch(&self) -> Result<String, String> {
@@ -34,38 +36,44 @@ impl Repo {
 
     pub fn delete_remote_branch(&self, name: &str) -> Result<String, String> {
         let (remote, branch) = self.split_remote_branch(name)?;
-        self.network(&["push", "--quiet", "--delete", "--end-of-options", &remote, &format!("refs/heads/{branch}")])?;
+        self.network(&["push", "--quiet", "--delete", "--end-of-options", &remote, &format!("refs/heads/{branch}")]).map_err(main_reason)?;
         Ok(format!("deleted {branch} on {remote}"))
     }
 
     pub fn push(&self, branch: &str, remote: &str, mode: &str) -> Result<String, String> {
-        let (_, flag) = PUSH_MODES.iter().find(|(name, _)| *name == mode).ok_or(format!("unknown push mode {mode}"))?;
-        if !self.has_ref(&format!("refs/heads/{branch}")) {
+        let flag = match mode {
+            "normal" => None,
+            "force-with-lease" => Some("--force-with-lease"),
+            "force" => Some("--force"),
+            other => return Err(format!("unknown push mode {other}")),
+        };
+        let local = format!("refs/heads/{branch}");
+        if !self.has_ref(&local) {
             return Err(format!("no local branch named {branch}"));
         }
         if !self.remotes()?.iter().any(|r| r == remote) {
             return Err(format!("no remote named {remote}"));
         }
-        let tracked = self.git(&["rev-parse", "--verify", "--quiet", "--end-of-options", &format!("{branch}@{{upstream}}")]).is_ok();
-        let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
+        let upstream = self.git(&["for-each-ref", "--format=%(upstream:remotename)%1f%(upstream:remoteref)", &local])?;
+        let tracks_it = upstream.trim_end() == format!("{remote}\x1f{local}");
+        let refspec = format!("{local}:{local}");
         let mut args = vec!["push", "--quiet"];
         args.extend(flag);
-        args.extend((!tracked).then_some("--set-upstream"));
+        args.extend((!tracks_it).then_some("--set-upstream"));
         args.extend(["--end-of-options", remote, &refspec]);
         self.network(&args).map_err(|e| match e {
             e if e.contains("(stale info)") => format!("someone pushed to {remote}/{branch} since your last fetch: fetch and look first"),
             e if e.contains("[rejected]") => format!("{remote}/{branch} has commits you do not have: fetch them, or push with lease"),
-            e => e,
+            e => main_reason(e),
         })?;
-        Ok(match flag {
-            Some(_) => format!("pushed {branch} to {remote} ({mode})"),
-            None => format!("pushed {branch} to {remote}"),
-        })
+        let how = if mode == "normal" { String::new() } else { format!(" ({mode})") };
+        let tracking = if tracks_it { String::new() } else { format!("; it now tracks {remote}/{branch}") };
+        Ok(format!("pushed {branch} to {remote}{how}{tracking}"))
     }
 
     fn switch(&self, args: &[&str]) -> Result<(), String> {
         let args = [&["switch", "--quiet"], args].concat();
-        run::run(&self.root, &Call { timeout: None, ..Call::new(&args) }).map(drop)
+        run::run(&self.root, &Call { timeout: ACTION_TIMEOUT, ..Call::new(&args) }).map(drop)
     }
 
     fn has_ref(&self, full: &str) -> bool {
@@ -80,6 +88,17 @@ impl Repo {
     }
 
     fn network(&self, args: &[&str]) -> Result<String, String> {
-        run::run(&self.root, &Call { timeout: Some(NETWORK_TIMEOUT), ..Call::new(args) }).map(|output| output.text.trim().to_owned())
+        let config = self.uses_default_ssh().then_some(NON_INTERACTIVE_SSH);
+        run::run(&self.root, &Call { config, timeout: ACTION_TIMEOUT, ..Call::new(args) }).map(|output| output.text.trim().to_owned())
     }
+
+    fn uses_default_ssh(&self) -> bool {
+        let from_env = env::var_os("GIT_SSH_COMMAND").is_some() || env::var_os("GIT_SSH").is_some();
+        !from_env && self.git(&["config", "--get", "core.sshCommand"]).is_err()
+    }
+}
+
+fn main_reason(error: String) -> String {
+    let reason = error.lines().find(|l| [" ! ", "error:", "fatal:", "remote: error"].iter().any(|start| l.starts_with(start)));
+    reason.map_or(error.clone(), |line| line.trim().to_owned())
 }

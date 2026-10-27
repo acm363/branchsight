@@ -1,8 +1,7 @@
 import { getJson } from '../shared/api.js';
 import { buildDiff } from './diffview.js';
 import { $, closeLayer, drag, openLayer } from '../shared/dom.js';
-import { clamp, esc } from '../shared/format.js';
-import { fileLabel } from '../history/labels.js';
+import { clamp, esc, fileLabel } from '../shared/format.js';
 import { prefs } from '../shared/prefs.js';
 
 const SPLIT_LIMITS = [0.15, 0.85];
@@ -69,11 +68,14 @@ async function load(atEnd = false) {
   $('v-cut').hidden = true;
   $('v-body').innerHTML = '<div class="v-empty">loading…</div>';
   v.data = null;
+  v.failed = false;
   let diff;
   try {
     diff = await getJson('/api/filediff', diffParams(v.source, file));
   } catch (e) {
-    if (viewer === v && v.files[v.index] === file) $('v-body').innerHTML = `<div class="v-empty">${esc(e.message)}</div>`;
+    if (viewer !== v || v.files[v.index] !== file) return;
+    v.failed = true;
+    $('v-body').innerHTML = `<div class="v-empty">${esc(e.message)}</div>`;
     return;
   }
   if (viewer !== v || v.files[v.index] !== file) return;
@@ -114,7 +116,10 @@ function render() {
 
 function step(direction) {
   const v = viewer, next = v.change + direction;
-  if (!v.data) return;
+  if (!v.data) {
+    if (v.failed) moveFile(direction, direction < 0);
+    return;
+  }
   if (next >= 0 && next < v.data.changes.length) {
     v.change = next;
     showChange();

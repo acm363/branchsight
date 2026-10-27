@@ -8,6 +8,10 @@ export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 export const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+export const fileLabel = file => (file.from ? `${file.from} → ${file.path}` : file.path);
+
+export const statusClass = file => `st-${file.status === '?' ? 'new' : file.status}`;
+
 export const plural = (n, word) => `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`;
 
 export function fmtDate(t) {

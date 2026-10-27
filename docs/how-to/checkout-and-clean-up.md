@@ -30,7 +30,8 @@ to push:
 - **Force with lease** overwrites the remote branch unless someone pushed to it since your last fetch;
 - **Force** overwrites it whatever it holds, after one more confirmation.
 
-A branch pushed for the first time tracks the remote branch from then on, as with `git push -u`.
+The branch is pushed to the remote branch of the same name, and tracks it from then on, as with `git push -u`. When it
+tracked something else, such as the `origin/main` it was started from, the dialog says so before you push.
 
 ## Delete a branch on the remote
 

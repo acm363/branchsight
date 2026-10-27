@@ -31,7 +31,7 @@ fn log_shows_only_the_history_of_the_selected_refs() {
     let mut got = subjects(&both);
     got.sort();
     assert_eq!(got, ["A", "B on main", "C on feature"]);
-    let tip = both.as_array().unwrap().iter().find(|c| c["s"] == "C on feature").unwrap();
+    let tip = both["commits"].as_array().unwrap().iter().find(|c| c["s"] == "C on feature").unwrap();
     assert_eq!(tip["p"].as_array().unwrap().len(), 1);
 }
 
@@ -126,7 +126,7 @@ fn refs_split_remote_names_and_skip_symbolic_heads() {
     assert_eq!((nested["remote"].as_str(), nested["branch"].as_str()), (Some("team/origin"), Some("feature/x")));
     assert_eq!(find("origin/main").unwrap()["branch"], "main");
     assert!(find("origin/HEAD").is_none() && find("origin").is_none());
-    assert_eq!(find("main").unwrap()["upstream"], "origin");
+    assert_eq!((find("main").unwrap()["upstream"].as_str(), find("main").unwrap()["upstreamRemote"].as_str()), (Some("origin/main"), Some("origin")));
     let tag = find("v1.0.0").unwrap();
     assert_eq!((tag["kind"].as_str(), tag["hash"].as_str()), (Some("tag"), Some(a.as_str())));
 }
@@ -235,7 +235,8 @@ fn user_settings_do_not_change_what_is_parsed() {
     let shown = json(port, &format!("/api/commit?{q}&h={second}"));
 
     // Then.
-    assert_eq!(log[0]["h"], second.as_str());
+    assert_eq!(log["commits"][0]["h"], second.as_str());
+    assert_eq!(log["history"], json(port, &format!("/api/state?{q}"))["history"], "a log says which history it was read from");
     assert_eq!(paths(&shown["files"]), ["README.md"]);
     assert!(shown["header"].as_str().unwrap().starts_with(&format!("commit {second}")));
     let patch = file(&shown["files"], "README.md")["patch"].as_str().unwrap();

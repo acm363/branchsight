@@ -1,5 +1,5 @@
 import { $, drag } from '../shared/dom.js';
-import { clamp, color, esc, fmtDate } from '../shared/format.js';
+import { SHORT_HASH, clamp, color, esc, fmtDate } from '../shared/format.js';
 import { refLabels } from './labels.js';
 import { prefs } from '../shared/prefs.js';
 import { isWorktree, state } from '../shared/state.js';
@@ -117,7 +117,7 @@ function rowHtml(entry, i) {
   }
   return `${open}<span class="s">${labelsHtml(entry, color(state.rows[i].color))}<span class="t">${esc(entry.s)}</span></span>`
     + `<span class="a">${esc(entry.a)}</span><span class="d">${fmtDate(entry.t)}</span>`
-    + `<span class="h" title="Copy ${entry.h}">${entry.h.slice(0, 7)}</span></div>`;
+    + `<span class="h" title="Copy ${entry.h}">${entry.h.slice(0, SHORT_HASH)}</span></div>`;
 }
 
 function labelsHtml(commit, laneColor) {
@@ -132,12 +132,13 @@ function labelsHtml(commit, laneColor) {
 function draw(first, last, width) {
   const canvas = $('graph'), dpr = window.devicePixelRatio || 1, height = Math.max(1, (last - first) * ROW);
   canvas.style.top = `${first * ROW}px`;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
   const g = canvas.getContext('2d');
-  if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
+  const [pixelsWide, pixelsHigh] = [Math.round(width * dpr), Math.round(height * dpr)];
+  if (canvas.width !== pixelsWide || canvas.height !== pixelsHigh) {
+    canvas.width = pixelsWide;
+    canvas.height = pixelsHigh;
   } else {
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, canvas.width, canvas.height);

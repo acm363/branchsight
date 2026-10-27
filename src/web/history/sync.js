@@ -4,16 +4,17 @@ import { esc, plural } from '../shared/format.js';
 import { layout } from './graph.js';
 import { indexRefs } from './labels.js';
 import * as log from './list.js';
-import * as panel from '../changes/panel.js';
 import { isWorktree, state } from '../shared/state.js';
 
 const POLL_MS = 5000, LOG_CACHE_SIZE = 16;
 const logCache = new Map();
-const refListeners = [];
+const refListeners = [], logListeners = [];
 
 let seen = null, shown = null, failed = false, polling = false, request = null;
 
 export const onRefs = listener => refListeners.push(listener);
+
+export const onLog = listener => logListeners.push(listener);
 
 const cursorKey = () => log.entryKey(state.entries[state.cursor]) ?? null;
 
@@ -24,11 +25,11 @@ async function loadRefs() {
 }
 
 async function fetchLog(params, fresh, signal) {
-  const key = `${state.repo.path}|${seen?.history}|${params}`;
-  if (!fresh && logCache.has(key)) return logCache.get(key);
-  const commits = await getJson('/api/log', params, signal);
+  const key = history => `${state.repo.path}|${history}|${params}`;
+  if (!fresh && logCache.has(key(seen?.history))) return logCache.get(key(seen.history));
+  const { history, commits } = await getJson('/api/log', params, signal);
   const loaded = { commits, ...layout(commits), withRow: null };
-  logCache.set(key, loaded);
+  logCache.set(key(history), loaded);
   if (logCache.size > LOG_CACHE_SIZE) logCache.delete(logCache.keys().next().value);
   return loaded;
 }
@@ -36,8 +37,9 @@ async function fetchLog(params, fresh, signal) {
 function withWorktree(loaded, status) {
   const dirty = status && status.staged + status.unstaged + status.untracked > 0;
   const { head } = state.repo;
-  if (!dirty || !head || !loaded.commits.some(c => c.h === head)) return { entries: loaded.commits, rows: loaded.rows, lanes: loaded.lanes };
-  const entries = [{ kind: 'worktree', h: '', p: [head], status }, ...loaded.commits];
+  const attached = head ? loaded.commits.some(c => c.h === head) : !loaded.commits.length;
+  if (!dirty || !attached) return { entries: loaded.commits, rows: loaded.rows, lanes: loaded.lanes };
+  const entries = [{ kind: 'worktree', h: '', p: head ? [head] : [], status }, ...loaded.commits];
   if (loaded.withRow?.head !== head) loaded.withRow = { head, ...layout(entries) };
   return { entries, rows: loaded.withRow.rows, lanes: loaded.withRow.lanes };
 }
@@ -65,7 +67,7 @@ export async function loadLog({ keepScroll = false, fresh = false } = {}) {
   } finally {
     clearTimeout(pending);
   }
-  syncWorktreePanel();
+  logListeners.forEach(listener => listener());
 }
 
 export async function reload({ keepScroll = true, fresh = false, now = null } = {}) {
@@ -90,13 +92,7 @@ function refreshWorktree(status) {
   } else {
     log.show(next, { cursorKey: cursorKey(), top: log.anchor() });
   }
-  syncWorktreePanel();
-}
-
-function syncWorktreePanel() {
-  if (!panel.showingWorktree()) return;
-  if (isWorktree(state.entries[0])) panel.showWorktree({ keep: true });
-  else panel.close();
+  logListeners.forEach(listener => listener());
 }
 
 export async function poll() {

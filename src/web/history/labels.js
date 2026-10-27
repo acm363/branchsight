@@ -13,9 +13,9 @@ export function refLabels(refs, { branch, detached }) {
   const remotes = refs.filter(r => r.kind === 'remote');
   const tracked = new Set();
   const local = refs.filter(r => r.kind === 'head').map(h => {
-    const tracking = remotes.filter(r => r.branch === h.name);
+    const tracking = remotes.filter(r => (h.upstream ? r.name === h.upstream : r.branch === h.name));
     tracking.forEach(r => tracked.add(r));
-    return { kind: 'head', name: h.name, current: h.name === branch, remotes: tracking, upstream: h.upstream };
+    return { kind: 'head', name: h.name, current: h.name === branch, remotes: tracking, upstream: h.upstream, upstreamRemote: h.upstreamRemote };
   });
   const remoteOnly = remotes.filter(r => !tracked.has(r)).map(r => ({ kind: 'remote', name: r.name, remotes: [r] }));
   const tags = refs.filter(r => r.kind === 'tag').map(r => ({ kind: 'tag', name: r.name, remotes: [] }));
@@ -26,5 +26,3 @@ export function refLabels(refs, { branch, detached }) {
 export function refName(refs = []) {
   return (refs.find(r => r.kind === 'head') || refs.find(r => r.kind === 'remote') || refs.find(r => r.kind === 'tag'))?.name;
 }
-
-export const fileLabel = file => (file.from ? `${file.from} → ${file.path}` : file.path);

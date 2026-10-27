@@ -48,8 +48,7 @@ impl Repo {
             _ => {
                 let source = self.source(which)?;
                 let specs: Vec<&str> = specs.iter().map(String::as_str).collect();
-                let args = [&source[..], &["--no-ext-diff", "-M", WHOLE_FILE, "--"], &specs[..]].concat();
-                run::run(&self.root, &Call { limit: Some(DIFF_LIMIT), ..Call::new(&args) })?
+                self.capped(&Call::new(&[&source[..], &["--no-ext-diff", "-M", WHOLE_FILE, "--"], &specs[..]].concat()))?
             }
         };
         Ok(json!({ "patch": output.text, "truncated": output.truncated }))
@@ -78,7 +77,7 @@ impl Repo {
             return Err(format!("{path} is not an untracked file"));
         }
         let args = ["diff", "--no-ext-diff", "--no-index", WHOLE_FILE, "--", "/dev/null", path];
-        let output = run::run(&self.root, &Call { accepted_exit: 1, limit: Some(DIFF_LIMIT), ..Call::new(&args) })?;
+        let output = self.capped(&Call { accepted_exit: 1, ..Call::new(&args) })?;
         if output.text.is_empty() {
             return Err(format!("{path} cannot be read as a file"));
         }
@@ -86,15 +85,12 @@ impl Repo {
     }
 
     fn changes(&self, source: &[&str]) -> Result<Value, String> {
-        let raw = self.git(&[source, &["-M", "--raw", "-z", "--"]].concat())?;
-        let patch_args = [source, &["-M", "--no-ext-diff", "--patch", "--"]].concat();
-        let patch = run::run(&self.root, &Call { limit: Some(DIFF_LIMIT), ..Call::new(&patch_args) })?;
+        let with = |options: &[&'static str]| [source, options, &["--"]].concat();
+        let raw = self.git(&with(&["-M", "--raw", "-z"]))?;
+        let patch = self.capped(&Call::new(&with(&["-M", "--no-ext-diff", "--patch"])))?;
         let entries = patch::entries(&raw);
         let bodies = patch::split(&patch.text, &entries);
-        let exact = match patch.truncated {
-            true => patch::numstat(&self.git(&[source, &["-M", "--numstat", "-z", "--"]].concat())?),
-            false => HashMap::new(),
-        };
+        let exact = if patch.truncated { patch::numstat(&self.git(&with(&["-M", "--numstat", "-z"]))?) } else { HashMap::new() };
         let files: Vec<Value> = entries
             .into_iter()
             .zip(bodies)
@@ -104,5 +100,9 @@ impl Repo {
             })
             .collect();
         Ok(json!({ "files": files, "truncated": patch.truncated }))
+    }
+
+    fn capped(&self, call: &Call) -> Result<Output, String> {
+        run::run(&self.root, &Call { limit: Some(DIFF_LIMIT), ..*call })
     }
 }

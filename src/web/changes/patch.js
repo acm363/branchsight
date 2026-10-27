@@ -10,7 +10,8 @@ export function patchHtml(patch, budget) {
     inHunk ||= line.startsWith('@@');
     html += lineHtml(line, lineClass(line, inHunk));
   }
-  return { html, used: lines.length, hidden: Math.max(0, lines.length - budget) };
+  const shown = Math.min(lines.length, Math.max(0, budget));
+  return { html, shown, hidden: lines.length - shown };
 }
 
 function lineClass(line, inHunk) {

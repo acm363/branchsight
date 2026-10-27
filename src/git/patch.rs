@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde_json::{Value, json};
 
@@ -10,16 +10,19 @@ pub(super) struct Entry {
 
 pub(super) type Counts = (Option<u64>, Option<u64>);
 
+const COMBINED: [&str; 2] = ["diff --cc ", "diff --combined "];
+
 pub(super) fn entries(raw: &str) -> Vec<Entry> {
     let mut tokens = raw.split('\0');
-    let mut entries: Vec<Entry> = Vec::new();
+    let mut entries = Vec::new();
+    let mut seen = HashSet::new();
     while let Some(token) = tokens.next() {
         let Some(fields) = token.strip_prefix(':') else { continue };
         let letter = fields.rsplit(' ').next().and_then(|s| s.get(..1)).unwrap_or("M");
         let status = if fields.starts_with(':') { "U" } else { letter };
         let first = tokens.next().unwrap_or_default().to_owned();
         let (from, path) = if matches!(status, "R" | "C") { (Some(first), tokens.next().unwrap_or_default().to_owned()) } else { (None, first) };
-        if !entries.iter().any(|e| e.path == path) {
+        if seen.insert(path.clone()) {
             entries.push(Entry { status: status.to_owned(), path, from });
         }
     }
@@ -27,15 +30,19 @@ pub(super) fn entries(raw: &str) -> Vec<Entry> {
 }
 
 pub(super) fn split(patch: &str, entries: &[Entry]) -> Vec<String> {
-    let headers: Vec<String> = entries
-        .iter()
-        .map(|e| format!("diff --git {} {}", quote(&format!("a/{}", e.from.as_deref().unwrap_or(&e.path))), quote(&format!("b/{}", e.path))))
-        .collect();
+    let mut owners = HashMap::new();
+    for (i, e) in entries.iter().enumerate() {
+        let source = e.from.as_deref().unwrap_or(&e.path);
+        owners.insert(format!("diff --git {} {}", quote(&format!("a/{source}")), quote(&format!("b/{}", e.path))), i);
+        owners.insert(e.path.clone(), i);
+        owners.insert(quote(&e.path), i);
+    }
     let mut bodies = vec![String::new(); entries.len()];
     let mut current = None;
     for line in patch.split_inclusive('\n') {
-        if let Some(owner) = section_owner(line.trim_end_matches('\n'), entries, &headers) {
-            current = owner;
+        let text = line.trim_end_matches('\n');
+        if let Some(key) = section_key(text) {
+            current = owners.get(key).copied();
         }
         if let Some(i) = current {
             bodies[i].push_str(line);
@@ -44,18 +51,17 @@ pub(super) fn split(patch: &str, entries: &[Entry]) -> Vec<String> {
     bodies
 }
 
-fn section_owner(line: &str, entries: &[Entry], headers: &[String]) -> Option<Option<usize>> {
-    let named = |name: &str| entries.iter().position(|e| e.path == name || quote(&e.path) == name);
+fn section_key(line: &str) -> Option<&str> {
     if line.starts_with("diff --git ") {
-        return Some(headers.iter().position(|h| h == line));
+        return Some(line);
     }
-    ["diff --cc ", "diff --combined ", "* Unmerged path "].iter().find_map(|prefix| line.strip_prefix(prefix)).map(named)
+    COMBINED.iter().chain(&["* Unmerged path "]).find_map(|prefix| line.strip_prefix(prefix))
 }
 
 pub(super) fn counts(body: &str) -> Counts {
     let (mut added, mut deleted, mut in_hunk) = (0, 0, false);
     for line in body.lines() {
-        if line.starts_with("diff --cc ") || line.starts_with("diff --combined ") || (!in_hunk && line.starts_with("Binary files ")) {
+        if COMBINED.iter().any(|prefix| line.starts_with(prefix)) || (!in_hunk && line.starts_with("Binary files ")) {
             return (None, None);
         }
         if line.starts_with("diff --git ") {

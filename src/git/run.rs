@@ -1,12 +1,12 @@
 use std::io::{ErrorKind, Read};
 use std::path::Path;
-use std::process::{Child, Command, Stdio};
-use std::sync::mpsc::{self, RecvTimeoutError, Sender};
+use std::process::{Child, Command, ExitStatus, Stdio};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
 
 pub(crate) const DIFF_LIMIT: usize = 4 * 1024 * 1024;
-pub(crate) const NETWORK_TIMEOUT: Duration = Duration::from_secs(90);
+pub(crate) const ACTION_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 const READ_TIMEOUT: Duration = Duration::from_secs(120);
 const STDERR_KEPT: usize = 64 * 1024;
 const TICK: Duration = Duration::from_millis(50);
@@ -31,9 +31,10 @@ const PINNED_CONFIG: [&str; 13] = [
 
 pub(crate) struct Call<'a> {
     pub args: &'a [&'a str],
+    pub config: Option<&'a str>,
     pub limit: Option<usize>,
     pub accepted_exit: i32,
-    pub timeout: Option<Duration>,
+    pub timeout: Duration,
 }
 
 pub(crate) struct Output {
@@ -47,9 +48,36 @@ enum Stream {
     Err,
 }
 
+#[derive(Default)]
+struct Collected {
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+    truncated: bool,
+}
+
 impl<'a> Call<'a> {
     pub fn new(args: &'a [&'a str]) -> Call<'a> {
-        Call { args, limit: None, accepted_exit: 0, timeout: Some(READ_TIMEOUT) }
+        Call { args, config: None, limit: None, accepted_exit: 0, timeout: READ_TIMEOUT }
+    }
+}
+
+impl Collected {
+    fn take(&mut self, (stream, bytes): (Stream, Vec<u8>), limit: Option<usize>) {
+        match stream {
+            Stream::Out if !self.truncated => {
+                self.stdout.extend_from_slice(&bytes);
+                if let Some(limit) = limit.filter(|limit| self.stdout.len() > *limit) {
+                    self.stdout.truncate(limit);
+                    self.truncated = true;
+                }
+            }
+            Stream::Out => {}
+            Stream::Err => {
+                self.stderr.extend_from_slice(&bytes);
+                let excess = self.stderr.len().saturating_sub(STDERR_KEPT);
+                self.stderr.drain(..excess);
+            }
+        }
     }
 }
 
@@ -58,51 +86,19 @@ pub(crate) fn git(dir: &Path, args: &[&str]) -> Result<String, String> {
 }
 
 pub(crate) fn run(dir: &Path, call: &Call) -> Result<Output, String> {
-    let mut child = command(dir, call.args).spawn().map_err(|e| {
+    let mut child = command(dir, call).spawn().map_err(|e| {
         if e.kind() == ErrorKind::NotFound { "git is not installed or not on the PATH".to_owned() } else { e.to_string() }
     })?;
     let (sender, chunks) = mpsc::channel();
     forward(child.stdout.take().expect("stdout is piped"), Stream::Out, sender.clone());
     forward(child.stderr.take().expect("stderr is piped"), Stream::Err, sender);
-
-    let started = Instant::now();
-    let (mut stdout, mut stderr, mut truncated, mut exited) = (Vec::new(), Vec::new(), false, None);
-    loop {
-        match chunks.recv_timeout(TICK) {
-            Ok((Stream::Out, bytes)) if !truncated => {
-                stdout.extend_from_slice(&bytes);
-                if let Some(limit) = call.limit.filter(|limit| stdout.len() > *limit) {
-                    stdout.truncate(limit);
-                    truncated = true;
-                    stop(&mut child);
-                }
-            }
-            Ok((Stream::Out, _)) => {}
-            Ok((Stream::Err, bytes)) => stderr.extend_from_slice(&bytes[..bytes.len().min(STDERR_KEPT.saturating_sub(stderr.len()))]),
-            Err(RecvTimeoutError::Timeout) => {}
-            Err(RecvTimeoutError::Disconnected) => break,
-        }
-        if exited.is_none() {
-            exited = child.try_wait().map_err(|e| e.to_string())?.map(|status| (status, Instant::now()));
-        }
-        if exited.is_some_and(|(_, at)| at.elapsed() > PIPES_GRACE) {
-            break;
-        }
-        if let Some(limit) = call.timeout.filter(|limit| exited.is_none() && started.elapsed() > *limit) {
-            stop(&mut child);
-            return Err(format!("git {} took longer than {} s and was stopped", call.args[0], limit.as_secs()));
-        }
+    let (status, collected) = wait(&mut child, &chunks, call)?;
+    if collected.truncated {
+        return Ok(Output { text: decode(cut_at_line(collected.stdout)), truncated: true });
     }
-    let status = match exited {
-        Some((status, _)) => status,
-        None => child.wait().map_err(|e| e.to_string())?,
-    };
-    if truncated {
-        return Ok(Output { text: decode(cut_at_line(stdout)), truncated });
-    }
-    let stderr = String::from_utf8_lossy(&stderr).trim().to_owned();
+    let stderr = String::from_utf8_lossy(&collected.stderr).trim().to_owned();
     if status.success() || status.code() == Some(call.accepted_exit) {
-        Ok(Output { text: decode(stdout), truncated })
+        Ok(Output { text: decode(collected.stdout), truncated: false })
     } else if stderr.is_empty() {
         Err(format!("git {} failed ({status})", call.args[0]))
     } else {
@@ -110,19 +106,60 @@ pub(crate) fn run(dir: &Path, call: &Call) -> Result<Output, String> {
     }
 }
 
-fn command(dir: &Path, args: &[&str]) -> Command {
+fn wait(child: &mut Child, chunks: &Receiver<(Stream, Vec<u8>)>, call: &Call) -> Result<(ExitStatus, Collected), String> {
+    let mut collected = Collected::default();
+    let mut deadline = Instant::now() + call.timeout;
+    let (mut status, mut pipes_open) = (None, true);
+    loop {
+        if pipes_open {
+            match chunks.recv_timeout(TICK) {
+                Ok(chunk) => collected.take(chunk, call.limit),
+                Err(RecvTimeoutError::Timeout) => {}
+                Err(RecvTimeoutError::Disconnected) => pipes_open = false,
+            }
+        } else {
+            thread::sleep(TICK);
+        }
+        if status.is_none() {
+            status = child.try_wait().map_err(|e| e.to_string())?;
+            if status.is_none() && collected.truncated {
+                stop(child);
+                status = child.try_wait().map_err(|e| e.to_string())?;
+            }
+            if status.is_some() {
+                deadline = Instant::now() + PIPES_GRACE;
+            }
+        }
+        match status {
+            Some(exited) if !pipes_open || Instant::now() > deadline => {
+                while let Ok(chunk) = chunks.try_recv() {
+                    collected.take(chunk, call.limit);
+                }
+                return Ok((exited, collected));
+            }
+            None if Instant::now() > deadline => {
+                stop(child);
+                return Err(format!("git {} took longer than {} s and was stopped", call.args[0], call.timeout.as_secs()));
+            }
+            _ => {}
+        }
+    }
+}
+
+fn command(dir: &Path, call: &Call) -> Command {
     let mut command = Command::new("git");
     command.arg("-C").arg(dir);
-    for setting in PINNED_CONFIG {
+    for setting in PINNED_CONFIG.iter().copied().chain(call.config) {
         command.args(["-c", setting]);
     }
     command
-        .args(args)
+        .args(call.args)
         .env_remove("LC_ALL")
         .env("LC_MESSAGES", "C")
         .env("GIT_TERMINAL_PROMPT", "0")
         .env("GIT_ASKPASS", "")
         .env("SSH_ASKPASS_REQUIRE", "never")
+        .env("GCM_INTERACTIVE", "never")
         .env("GIT_OPTIONAL_LOCKS", "0")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -175,21 +212,27 @@ fn stop(child: &mut Child) {
         if let Ok(Some(_)) = child.try_wait() {
             return;
         }
-        thread::sleep(TICK);
+        thread::sleep(Duration::from_millis(5));
     }
     unsafe { libc::kill(group, libc::SIGKILL) };
     let _ = child.wait();
 }
 
 #[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+#[cfg(windows)]
 fn detach(command: &mut Command) {
     use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     command.creation_flags(CREATE_NO_WINDOW);
 }
 
 #[cfg(windows)]
 fn stop(child: &mut Child) {
-    let _ = child.kill();
+    use std::os::windows::process::CommandExt;
+    let tree = Command::new("taskkill").args(["/T", "/F", "/PID", &child.id().to_string()]).creation_flags(CREATE_NO_WINDOW).output();
+    if !tree.is_ok_and(|out| out.status.success()) {
+        let _ = child.kill();
+    }
     let _ = child.wait();
 }

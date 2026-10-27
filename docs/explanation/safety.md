@@ -6,7 +6,7 @@ BranchSight is a viewer first. Reading never changes a repository; five actions 
 |---|---|---|
 | fetch | remote-tracking branches; `--prune` removes those deleted on the remote | yes, fetch again |
 | checkout | your working copy and HEAD; git refuses if uncommitted work would be lost | yes, check out the previous branch |
-| push | the branch on the remote; normal by default, force with lease or force only when you pick it | a normal push only adds commits; a force push asks for confirmation, since what it overwrites is lost |
+| push | the branch on the remote; normal by default, force with lease or force only when you pick it | a normal push only adds commits; force with lease refuses if someone pushed since your last fetch; force asks once more, since what it overwrites is lost |
 | delete remote branch | the branch on the remote, for everyone | not from BranchSight; asks for confirmation first |
 | (nothing else) | BranchSight never commits, stages, resets or rebases | |
 
@@ -14,8 +14,9 @@ BranchSight is a viewer first. Reading never changes a repository; five actions 
 
 A branch, tag or commit name from the page reaches git only after BranchSight has verified that it exists as that
 kind of ref, remote or commit present in the repository, and every name is passed after `--end-of-options`, so git
-never reads one as an option. git runs without a terminal and with every password prompt disabled, so a request
-can never wait on a password. The end-to-end tests send option-like names such as `--orphan=x`, `--output=…` and
+never reads one as an option. git runs without a terminal, with its password prompts disabled and ssh in batch mode
+(unless you set your own ssh command), so a request does not wait on a password; your credential helper, if it has
+a window of its own, is the one exception. The end-to-end tests send option-like names such as `--orphan=x`, `--output=…` and
 `--receive-pack=x` and check that they are refused.
 
 ## Only your own machine can talk to it

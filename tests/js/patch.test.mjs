@@ -26,15 +26,15 @@ test('a second section of the same file starts over with its own headers', () =>
 
 test('lines past the budget are counted, not rendered', () => {
   // When.
-  const { html, used, hidden } = patchHtml(patch, 3);
+  const { html, shown, hidden } = patchHtml(patch, 3);
 
   // Then.
-  assert.equal(used, 7);
+  assert.equal(shown, 3);
   assert.equal(hidden, 4);
   assert.doesNotMatch(html, /@@/);
 });
 
 test('an empty patch renders nothing', () => {
   // Then.
-  assert.deepEqual(patchHtml('', 10), { html: '', used: 0, hidden: 0 });
+  assert.deepEqual(patchHtml('', 10), { html: '', shown: 0, hidden: 0 });
 });

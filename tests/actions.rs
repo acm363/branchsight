@@ -211,6 +211,26 @@ fn push_sends_a_new_branch_and_sets_its_upstream() {
 }
 
 #[test]
+fn push_of_a_branch_started_from_another_remote_branch_tracks_its_own_name() {
+    // Given.
+    let sb = Sandbox::new();
+    let (origin, copy) = cloned_with_feature(&sb);
+    git(&copy, &["switch", "-q", "-c", "fix", "origin/main"]);
+    let tip = commit(&copy, "fix.txt", "the fix");
+    let port = start(vec![sb.0.clone()], None);
+
+    // When.
+    let (pushed, body) = post(port, &format!("/api/push?{}&ref=fix&remote=origin&mode=normal", repo_query(&copy)));
+
+    // Then.
+    assert_eq!(pushed, 200, "{body}");
+    assert!(body.contains("now tracks origin/fix"), "{body}");
+    assert_eq!(git(&origin, &["rev-parse", "refs/heads/fix"]), tip);
+    assert_ne!(git(&origin, &["rev-parse", "refs/heads/main"]), tip, "main on the remote is untouched");
+    assert_eq!(git(&copy, &["rev-parse", "--abbrev-ref", "fix@{upstream}"]), "origin/fix");
+}
+
+#[test]
 fn push_overwrites_a_rewritten_branch_only_when_asked() {
     // Given.
     let sb = Sandbox::new();

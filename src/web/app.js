@@ -31,8 +31,8 @@ const shortcuts = {
   c: () => commitAt(state.cursor) && copy(commitAt(state.cursor).h),
 };
 
-const typing = target => target.closest?.('input, select, textarea');
-const pressingKeyboardFocusedButton = e => e.key === 'Enter' && e.target.closest?.('button')?.matches(':focus-visible');
+const typing = target => target.closest?.('input, select');
+const pressingFocusedButton = e => e.key === 'Enter' && e.target.closest?.('button');
 
 document.addEventListener('keydown', e => {
   const layer = topLayer();
@@ -43,11 +43,15 @@ document.addEventListener('keydown', e => {
     else panel.close();
     return;
   }
-  if (typing(e.target) || pressingKeyboardFocusedButton(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (typing(e.target) || pressingFocusedButton(e) || e.ctrlKey || e.metaKey || e.altKey) return;
   const action = shortcuts[e.key];
   if (!action) return;
   action();
   e.preventDefault();
+});
+
+document.addEventListener('mousedown', e => {
+  if (e.target.closest('button') && !e.target.closest('dialog')) e.preventDefault();
 });
 
 $('rows').addEventListener('click', e => {
@@ -114,7 +118,9 @@ async function init() {
   state.store = repoPrefs(state.repo.path);
   projects.setCurrent(state.repo);
   restoreView(state.store);
-  await sync.reload({ keepScroll: false });
+  await sync.reload({ keepScroll: false }).catch(e => {
+    $('rows').innerHTML = `<div id="error">${esc(e.message)} — retrying…</div>`;
+  });
   branches.saveSelection();
   $('list').focus();
   sync.startPolling();

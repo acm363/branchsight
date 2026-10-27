@@ -142,7 +142,7 @@ pub fn repo_query(repo: &Path) -> String {
 }
 
 pub fn subjects(log: &Value) -> Vec<String> {
-    log.as_array().unwrap().iter().map(|c| c["s"].as_str().unwrap().to_owned()).collect()
+    log["commits"].as_array().unwrap().iter().map(|c| c["s"].as_str().unwrap().to_owned()).collect()
 }
 
 pub fn file<'a>(files: &'a Value, path: &str) -> &'a Value {

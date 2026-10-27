@@ -13,7 +13,8 @@ function menuItems(i, commit, label) {
   if (base && state.cursor !== i) items.push([`Compare with selected ${base.h.slice(0, SHORT_HASH)}`, () => panel.showCompare(state.cursor, i)], null);
   if (label?.kind === 'head') {
     items.push([`Checkout ${label.name}`, () => checkout(label.name)]);
-    if (state.repo.remotes.length) items.push([label.upstream ? `Push ${label.name}…` : `Push ${label.name} to a remote…`, () => push(label.name, label.upstream)]);
+    const upstream = label.upstream && { name: label.upstream, remote: label.upstreamRemote };
+    if (state.repo.remotes.length) items.push([upstream ? `Push ${label.name}…` : `Push ${label.name} to a remote…`, () => push(label.name, upstream)]);
     items.push(['Copy branch name', () => copy(label.name)]);
   }
   if (label?.kind === 'remote') {

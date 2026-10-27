@@ -11,7 +11,7 @@ export function picker({ anchor, panel, input, list, items, row, choose, empty, 
       panel.hidden = true;
     },
     keydown(e) {
-      if (e.target !== input) return false;
+      if (e.target !== input && e.target !== document.body) return e.key !== 'Escape';
       const move = { ArrowDown: 1, ArrowUp: -1 }[e.key];
       if (move) {
         cursor = clamp(cursor + move, 0, shown.length - 1);

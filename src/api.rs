@@ -38,8 +38,16 @@ impl Reply {
     }
 }
 
+pub fn path(url: &str) -> &str {
+    url.split('?').next().unwrap_or("/")
+}
+
+pub fn needs_page(path: &str) -> bool {
+    path.starts_with("/api/") && path != "/api/ping"
+}
+
 pub fn respond(config: &Config, post: bool, url: &str) -> Reply {
-    let path = url.split('?').next().unwrap_or("/");
+    let path = path(url);
     if let Some(asset) = assets::get(path) {
         return Reply::ok(asset.content_type, asset.body.to_owned());
     }

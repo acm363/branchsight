@@ -129,21 +129,22 @@
   <div id="v-divider" title="Drag to resize the two sides, double-click to reset"></div>
 </div>
 <div id="ctx" hidden></div>
-<dialog id="push">
+<dialog id="push" class="dialog">
   <form method="dialog">
     <p>Push <b id="push-branch"></b> to <select id="push-remote"></select></p>
-    <fieldset id="push-mode">
+    <p id="push-note" hidden></p>
+    <fieldset>
       <label><input type="radio" name="mode" value="normal" checked> Normal: only if the remote has nothing you would lose</label>
       <label><input type="radio" name="mode" value="force-with-lease"> Force with lease: overwrite, unless someone pushed since your last fetch</label>
       <label class="danger"><input type="radio" name="mode" value="force"> Force: overwrite whatever the remote has</label>
     </fieldset>
-    <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Push</button></div>
+    <div class="actions"><button value="ok" autofocus>Push</button><button value="cancel">Cancel</button></div>
   </form>
 </dialog>
-<dialog id="confirm">
+<dialog id="confirm" class="dialog">
   <form method="dialog">
     <p id="confirm-text"></p>
-    <div class="actions"><button value="cancel" autofocus>Cancel</button><button value="ok" class="danger"></button></div>
+    <div class="actions"><button value="ok" class="danger"></button><button value="cancel" autofocus>Cancel</button></div>
   </form>
 </dialog>
 <div id="toast"></div>

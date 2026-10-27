@@ -15,7 +15,9 @@ function url(path, params = {}) {
 
 async function call(method, path, signal) {
   if (tauri) {
-    const [status, body] = await tauri.invoke('api', { method, path });
+    const [status, body] = await tauri.invoke('api', { method, path }).catch(e => {
+      throw e instanceof Error ? e : new Error(String(e));
+    });
     if (signal?.aborted) throw new DOMException('superseded', 'AbortError');
     if (status !== 200) throw new Error(body);
     return body;

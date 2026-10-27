@@ -42,3 +42,13 @@ test('refs are grouped by commit, local branches before remotes and tags', () =>
   assert.equal(refName(byHash.get('a')), 'x');
   assert.equal(refName(undefined), undefined);
 });
+
+test('a local branch joins the remote branch it tracks, whatever its name', () => {
+  // When.
+  const labels = refLabels([{ ...head('feat'), upstream: 'origin/feature/x' }, remote('origin', 'feature/x'), remote('origin', 'feat')], { branch: '' });
+
+  // Then.
+  assert.deepEqual(labels.map(l => [l.kind, l.name, l.remotes.map(r => r.name)]), [
+    ['head', 'feat', ['origin/feature/x']], ['remote', 'origin/feat', ['origin/feat']],
+  ]);
+});

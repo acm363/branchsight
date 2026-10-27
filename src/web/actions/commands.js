@@ -33,12 +33,19 @@ export async function deleteRemote(name) {
   if (ok) await run('/api/delete-remote', { ref: name }, `deleting ${name}…`);
 }
 
-export async function push(branch, tracking) {
+export async function push(branch, upstream) {
   const { remotes } = state.repo;
-  const dialog = $('push');
+  const dialog = $('push'), select = $('push-remote');
   $('push-branch').textContent = branch;
-  $('push-remote').innerHTML = remotes.map(r => `<option>${esc(r)}</option>`).join('');
-  $('push-remote').value = tracking ?? (remotes.includes('origin') ? 'origin' : remotes[0]);
+  select.innerHTML = remotes.map(r => `<option>${esc(r)}</option>`).join('');
+  select.value = [upstream?.remote, 'origin'].find(r => remotes.includes(r)) ?? remotes[0];
+  const note = () => {
+    const target = `${select.value}/${branch}`;
+    $('push-note').hidden = !upstream || upstream.name === target;
+    $('push-note').textContent = `${branch} tracks ${upstream?.name} today; after this push it tracks ${target}.`;
+  };
+  note();
+  select.onchange = note;
   dialog.querySelector('[name="mode"][value="normal"]').checked = true;
   if ((await ask(dialog)) !== 'ok') return;
   const remote = $('push-remote').value, mode = dialog.querySelector('[name="mode"]:checked').value;

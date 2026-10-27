@@ -37,8 +37,8 @@ request takes `repo=<path>`, defaulting to `dir`. Errors come back as `400` with
 | `/api/context` | GET | version, roots, default repository |
 | `/api/projects` | GET | repositories under the roots, most recently used first |
 | `/api/repo` | GET | path, name, HEAD, current branch, remotes |
-| `/api/refs` | GET | branches (with their `upstream` remote), remote branches, tags |
-| `/api/log?ref=…&limit=N` | GET | commits of the given refs, `HEAD` without any; `@local`, `@remotes`, `@tags` select them all |
+| `/api/refs` | GET | branches (with the `upstream` they track and its `upstreamRemote`), remote branches, tags |
+| `/api/log?ref=…&limit=N` | GET | `commits` of the given refs, `HEAD` without any, and the `history` fingerprint they were read under; `@local`, `@remotes`, `@tags` select them all |
 | `/api/commit?h=<hash>` | GET | `header`, plus the changes against the first parent |
 | `/api/compare?from=<hash>&to=<hash>` | GET | the changes of `git diff from to` |
 | `/api/filediff?kind=…&path=…` | GET | `patch`, one file's diff with the whole file as context, and `truncated`; `kind` is `commit` (with `h`), `compare` (with `from`, `to`), `staged`, `unstaged` or `untracked`; a renamed file takes both paths |
@@ -46,10 +46,12 @@ request takes `repo=<path>`, defaulting to `dir`. Errors come back as `400` with
 | `/api/state` | GET | `history`, a fingerprint of the refs, HEAD and shallow boundary; `worktree`, one of `git status` and the changed files; `status`, the staged, unstaged and untracked counts |
 | `/api/fetch` | POST | `git fetch --all --prune` |
 | `/api/checkout?ref=…` | POST | switch to a branch, a remote branch, a tag or a commit |
-| `/api/push?ref=<branch>&remote=…&mode=…` | POST | push a local branch; `mode` is `normal`, `force-with-lease` or `force`; sets the upstream when it has none |
+| `/api/push?ref=<branch>&remote=…&mode=…` | POST | push a local branch to the branch of the same name; `mode` is `normal`, `force-with-lease` or `force`; the branch then tracks what it was pushed to |
 | `/api/delete-remote?ref=<remote>/<branch>` | POST | `git push <remote> --delete <branch>` |
 
 *Changes* are `files`, each with `status` (`A`, `M`, `D`, `R`, `T`, `U` for a conflict…), `path`, `from` for a
 rename, `add` and `del` (null for a binary file or a conflict) and its own `patch`, plus `truncated`. Patches are cut
-at 4 MB in total; the file list and the counts are always complete. Network commands never prompt, neither on a
-terminal nor in a window, and stop after 90 s; checkout has no time limit, so git is never stopped halfway.
+at 4 MB in total; the file list and the counts are always complete. git runs with terminal and askpass prompts
+disabled, and ssh in batch mode unless you configured your own ssh command; a credential helper that opens its own
+window can still do so. Reads stop after 2 minutes, actions after 15; a stopped git gets the time to remove its lock
+files.

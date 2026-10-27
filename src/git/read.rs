@@ -8,6 +8,7 @@ use serde_json::{Value, json};
 use super::Repo;
 
 const REF_KINDS: [(&str, &str); 3] = [("head", "refs/heads/"), ("remote", "refs/remotes/"), ("tag", "refs/tags/")];
+const STAMPED: usize = 2000;
 const REF_GROUPS: [(&str, &str); 3] = [("@local", "--branches"), ("@remotes", "--remotes"), ("@tags", "--tags")];
 
 struct Change<'a> {
@@ -35,7 +36,7 @@ impl Repo {
         let out = self.git(&[
             "for-each-ref",
             "--sort=-creatordate",
-            "--format=%(refname)%1f%(symref)%1f%(objectname)%1f%(*objectname)%1f%(creatordate:unix)%1f%(upstream:remotename)",
+            "--format=%(refname)%1f%(symref)%1f%(objectname)%1f%(*objectname)%1f%(creatordate:unix)%1f%(upstream:remotename)%1f%(upstream:short)",
             "refs/heads",
             "refs/remotes",
             "refs/tags",
@@ -43,7 +44,9 @@ impl Repo {
         let refs = out
             .lines()
             .filter_map(|line| {
-                let [refname, symref, object, peeled, date, upstream] = line.split('\x1f').collect::<Vec<_>>()[..] else { return None };
+                let [refname, symref, object, peeled, date, upstream_remote, upstream] = line.split('\x1f').collect::<Vec<_>>()[..] else {
+                    return None;
+                };
                 if !symref.is_empty() {
                     return None;
                 }
@@ -52,6 +55,7 @@ impl Repo {
                 let mut entry = json!({ "name": name, "kind": kind, "hash": hash, "date": date.parse::<i64>().unwrap_or(0) });
                 if !upstream.is_empty() {
                     entry["upstream"] = json!(upstream);
+                    entry["upstreamRemote"] = json!(upstream_remote);
                 }
                 if let Some((remote, branch)) = (kind == "remote").then(|| split_remote(&remotes, name)).flatten() {
                     entry["remote"] = json!(remote);
@@ -79,6 +83,7 @@ impl Repo {
         }
         args.extend(revisions);
         args.push("--");
+        let history = self.history()?;
         let out = self.git(&args)?;
         let commits = out
             .split('\x1e')
@@ -94,29 +99,32 @@ impl Repo {
                     "s": f.get(4).copied().unwrap_or(""),
                 })
             })
-            .collect();
-        Ok(Value::Array(commits))
+            .collect::<Vec<_>>();
+        Ok(json!({ "history": history, "commits": commits }))
     }
 
     pub fn state(&self) -> Result<Value, String> {
+        let porcelain = self.git(&["status", "--porcelain=v2", "-z", "--untracked-files=all"]).ok();
+        let (worktree, status) = porcelain
+            .as_deref()
+            .map(|out| {
+                let changes = changes(out);
+                let stamps: Vec<(u128, u64)> = changes.iter().take(STAMPED).map(|change| stamp(&self.root.join(change.path))).collect();
+                (digest(&(out, stamps)), counts(&changes))
+            })
+            .unzip();
+        Ok(json!({ "history": self.history()?, "worktree": worktree, "status": status }))
+    }
+
+    fn history(&self) -> Result<String, String> {
         let refs = self.git(&["for-each-ref", "--format=%(HEAD)%(objectname)%(refname)"])?;
         let head = self.git(&["rev-parse", "--verify", "-q", "HEAD"]).unwrap_or_default();
-        let history = digest(&(refs, head, stamp(&self.shallow)));
-        let porcelain = self.git(&["status", "--porcelain=v2", "-z", "--untracked-files=all"]).ok();
-        let (worktree, status) = match porcelain.as_deref().map(|out| (out, changes(out))) {
-            Some((out, changes)) => {
-                let stamps: Vec<(u128, u64)> = changes.iter().map(|change| stamp(&self.root.join(change.path))).collect();
-                (Some(digest(&(out, stamps))), Some(counts(&changes)))
-            }
-            None => (None, None),
-        };
-        Ok(json!({ "history": history, "worktree": worktree, "status": status }))
+        Ok(digest(&(refs, head, stamp(&self.shallow))))
     }
 
     pub(super) fn remotes(&self) -> Result<Vec<String>, String> {
         Ok(self.git(&["remote"])?.lines().map(str::to_owned).collect())
     }
-
 }
 
 fn stamp(path: &Path) -> (u128, u64) {

@@ -43,9 +43,7 @@ fn handle(config: &Config, request: Request) {
         let _ = request.respond(Response::from_string("forbidden host").with_status_code(403));
         return;
     }
-    let path = request.url().split('?').next().unwrap_or("/");
-    let runs_git = path.starts_with("/api/") && path != "/api/ping";
-    if runs_git && !is_own_page(header(PAGE_HEADER).as_deref(), header("Sec-Fetch-Site").as_deref()) {
+    if api::needs_page(api::path(request.url())) && !is_own_page(header(PAGE_HEADER).as_deref(), header("Sec-Fetch-Site").as_deref()) {
         let _ = request.respond(Response::from_string("only the BranchSight page can call the API").with_status_code(403));
         return;
     }
