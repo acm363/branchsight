@@ -14,8 +14,9 @@ editor.
   your uncommitted work split into staged, not staged and untracked.
 - **Read a diff properly**: a full-window diff view, *FROM* one side *TO* the other with branch names, whole files
   side by side, next and previous change across every file.
-- **Act from the graph**: right-click to check out a branch, a tag or a commit, copy a name or a hash, or delete a
-  branch on the remote.
+- **Act from the graph**: right-click to check out, merge, rebase, push (normal, with lease or forced), cherry-pick,
+  revert, drop or reset, copy a name or a hash, or delete a branch on the remote; anything that rewrites history
+  asks first.
 - **Always current**: commits, checkouts and file edits made elsewhere show up within five seconds.
 - **Your git, your machine**: it runs your own `git`, opens no network port, and changes a repository only when you
   ask.
