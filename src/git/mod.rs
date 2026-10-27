@@ -1,4 +1,5 @@
 mod diff;
+mod history;
 mod patch;
 mod read;
 mod run;

@@ -183,6 +183,8 @@ fn command(dir: &Path, call: &Call) -> Command {
         .env_remove("LC_ALL")
         .env("LC_MESSAGES", "C")
         .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GIT_EDITOR", "true")
+        .env("GIT_SEQUENCE_EDITOR", "true")
         .env("GIT_ASKPASS", "")
         .env("SSH_ASKPASS_REQUIRE", "never")
         .env("GIT_OPTIONAL_LOCKS", "0")

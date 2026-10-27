@@ -153,6 +153,24 @@
     <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Merge</button></div>
   </form>
 </dialog>
+<dialog id="apply" class="dialog">
+  <form method="dialog">
+    <p id="apply-text"></p>
+    <label class="option"><input type="checkbox" id="apply-no-commit"> Don't commit: stage the changes so I can review them first</label>
+    <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus id="apply-ok"></button></div>
+  </form>
+</dialog>
+<dialog id="reset" class="dialog">
+  <form method="dialog">
+    <p>Reset <b id="reset-branch"></b> to <b id="reset-commit"></b></p>
+    <fieldset>
+      <label><input type="radio" name="mode" value="soft"> Soft: keep every change since, staged</label>
+      <label><input type="radio" name="mode" value="mixed" checked> Mixed: keep every change since, not staged</label>
+      <label class="danger"><input type="radio" name="mode" value="hard"> Hard: discard every change since, committed or not</label>
+    </fieldset>
+    <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Reset</button></div>
+  </form>
+</dialog>
 <dialog id="confirm" class="dialog">
   <form method="dialog">
     <p id="confirm-text"></p>

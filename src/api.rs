@@ -77,6 +77,11 @@ fn route(config: &Config, post: bool, path: &str, q: &Query) -> Result<Reply, St
         "/api/checkout" => done(action()?.checkout(q.get("ref"))?),
         "/api/push" => done(action()?.push(q.get("ref"), q.get("remote"), q.get("mode"))?),
         "/api/merge" => done(action()?.merge(q.get("ref"), q.get("mode"), q.get("commit") != "0")?),
+        "/api/cherry-pick" => done(action()?.cherry_pick(q.get("h"), q.get("commit") != "0")?),
+        "/api/revert" => done(action()?.revert(q.get("h"), q.get("commit") != "0")?),
+        "/api/drop" => done(action()?.drop_commit(q.get("h"))?),
+        "/api/rebase" => done(action()?.rebase(q.get("ref"))?),
+        "/api/reset" => done(action()?.reset(q.get("h"), q.get("mode"))?),
         "/api/delete-remote" => done(action()?.delete_remote_branch(q.get("ref"))?),
         _ => Reply::failed(404, "not found".into()),
     })

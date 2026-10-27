@@ -1,7 +1,7 @@
 import { post } from '../shared/api.js';
 import { setSelection } from '../header/branches.js';
 import { $, ask, confirmAction, toast } from '../shared/dom.js';
-import { esc } from '../shared/format.js';
+import { SHORT_HASH, esc } from '../shared/format.js';
 import * as log from '../history/list.js';
 import { state } from '../shared/state.js';
 import { poll, reload } from '../history/sync.js';
@@ -56,18 +56,59 @@ export async function push(branch, upstream) {
   await run('/api/push', { ref: branch, remote, mode }, `pushing ${branch} to ${remote}…`);
 }
 
-export async function merge(name) {
+const currentBranch = () => state.repo.branch || 'HEAD';
+
+export async function merge(name, shown = name) {
   const dialog = $('merge'), noCommit = $('merge-no-commit');
-  const into = state.repo.branch || 'HEAD';
+  const into = currentBranch();
   const mode = () => dialog.querySelector('[name="mode"]:checked').value;
-  $('merge-source').textContent = name;
+  $('merge-source').textContent = shown;
   $('merge-target').textContent = into;
   dialog.querySelector('[name="mode"][value="fast-forward"]').checked = true;
   noCommit.checked = noCommit.disabled = false;
   dialog.onchange = () => { noCommit.disabled = mode() === 'squash'; };
   dialog.onkeydown = enterOnlyOnButtons;
   if ((await ask(dialog)) !== 'ok') return;
-  await run('/api/merge', { ref: name, mode: mode(), commit: noCommit.checked ? '0' : '1' }, `merging ${name} into ${into}…`);
+  await run('/api/merge', { ref: name, mode: mode(), commit: noCommit.checked ? '0' : '1' }, `merging ${shown} into ${into}…`);
+}
+
+async function apply(endpoint, verb, commit) {
+  const dialog = $('apply'), noCommit = $('apply-no-commit'), short = commit.h.slice(0, SHORT_HASH);
+  $('apply-text').textContent = `${verb} ${short} "${commit.s}" on ${currentBranch()}`;
+  $('apply-ok').textContent = verb;
+  noCommit.checked = false;
+  dialog.onkeydown = enterOnlyOnButtons;
+  if ((await ask(dialog)) !== 'ok') return;
+  await run(endpoint, { h: commit.h, commit: noCommit.checked ? '0' : '1' }, `${verb.toLowerCase()} ${short}…`);
+}
+
+export const cherryPick = commit => apply('/api/cherry-pick', 'Cherry pick', commit);
+
+export const revert = commit => apply('/api/revert', 'Revert', commit);
+
+export async function drop(commit) {
+  const short = commit.h.slice(0, SHORT_HASH), into = currentBranch();
+  const text = `Drop ${short} "${commit.s}" from ${into}? Its changes leave the branch and every commit after it is rewritten; if they were pushed, the branch will need a force push.`;
+  if (await confirmAction(text, 'Drop')) await run('/api/drop', { h: commit.h }, `dropping ${short}…`);
+}
+
+export async function rebase(name, shown = name) {
+  const into = currentBranch();
+  const text = `Rebase ${into} on ${shown}? Its own commits are replayed on top of ${shown} and get new hashes; if they were pushed, the branch will need a force push.`;
+  if (await confirmAction(text, 'Rebase')) await run('/api/rebase', { ref: name }, `rebasing ${into} on ${shown}…`);
+}
+
+export async function reset(commit) {
+  const dialog = $('reset'), short = commit.h.slice(0, SHORT_HASH), into = currentBranch();
+  $('reset-branch').textContent = into;
+  $('reset-commit').textContent = `${short} "${commit.s}"`;
+  dialog.querySelector('[name="mode"][value="mixed"]').checked = true;
+  dialog.onkeydown = enterOnlyOnButtons;
+  if ((await ask(dialog)) !== 'ok') return;
+  const mode = dialog.querySelector('[name="mode"]:checked').value;
+  const lost = `Every commit after ${short} and every uncommitted change are discarded; git cannot bring back uncommitted work.`;
+  if (mode === 'hard' && !(await confirmAction(`Hard reset ${into} to ${short}? ${lost}`, 'Discard and reset'))) return;
+  await run('/api/reset', { h: commit.h, mode }, `resetting ${into} to ${short}…`);
 }
 
 export async function fetchRemotes({ unattended = false } = {}) {
