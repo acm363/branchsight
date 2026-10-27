@@ -111,7 +111,7 @@ fn a_repository_without_commits_shows_its_staged_files() {
     let q = repo_query(&repo);
 
     // When.
-    let log = json(port, &format!("/api/log?{q}"));
+    let log = json(port, &format!("/api/commits?{q}"));
     let state = json(port, &format!("/api/state?{q}"));
     let worktree = json(port, &format!("/api/worktree?{q}"));
 

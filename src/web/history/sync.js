@@ -27,7 +27,7 @@ async function loadRefs() {
 async function fetchLog(params, fresh, signal) {
   const key = history => `${state.repo.path}|${history}|${params}`;
   if (!fresh && logCache.has(key(seen?.history))) return logCache.get(key(seen.history));
-  const { history, commits } = await getJson('/api/log', params, signal);
+  const { history, commits } = await getJson('/api/commits', params, signal);
   const loaded = { commits, ...layout(commits), withRow: null };
   logCache.set(key(history), loaded);
   if (logCache.size > LOG_CACHE_SIZE) logCache.delete(logCache.keys().next().value);

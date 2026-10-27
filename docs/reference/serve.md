@@ -38,7 +38,7 @@ request takes `repo=<path>`, defaulting to `dir`. Errors come back as `400` with
 | `/api/projects` | GET | repositories under the roots, most recently used first |
 | `/api/repo` | GET | path, name, HEAD, current branch, remotes |
 | `/api/refs` | GET | branches (with the `upstream` they track and its `upstreamRemote`), remote branches, tags |
-| `/api/log?ref=…&limit=N` | GET | `commits` of the given refs, `HEAD` without any, and the `history` fingerprint they were read under; `@local`, `@remotes`, `@tags` select them all |
+| `/api/commits?ref=…&limit=N` | GET | `commits` of the given refs, `HEAD` without any, and the `history` fingerprint they were read under; `@local`, `@remotes`, `@tags` select them all |
 | `/api/commit?h=<hash>` | GET | `header`, plus the changes against the first parent |
 | `/api/compare?from=<hash>&to=<hash>` | GET | the changes of `git diff from to` |
 | `/api/filediff?kind=…&path=…` | GET | `patch`, one file's diff with the whole file as context, and `truncated`; `kind` is `commit` (with `h`), `compare` (with `from`, `to`), `staged`, `unstaged` or `untracked`; a renamed file takes both paths |

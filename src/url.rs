@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn query_decodes_repeated_keys_and_escapes() {
         // When.
-        let q = Query::parse("/api/log?ref=feature%2Flogin&ref=origin%2Fmain&repo=%2Fhome%2Fa+b&flag");
+        let q = Query::parse("/api/commits?ref=feature%2Flogin&ref=origin%2Fmain&repo=%2Fhome%2Fa+b&flag");
 
         // Then.
         assert_eq!(q.all("ref"), ["feature/login", "origin/main"]);

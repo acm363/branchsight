@@ -67,7 +67,7 @@ fn route(config: &Config, post: bool, path: &str, q: &Query) -> Result<Reply, St
         "/api/projects" => Reply::json(projects::list(&config.roots)),
         "/api/repo" => Reply::json(repo()?.info()?),
         "/api/refs" => Reply::json(repo()?.refs()?),
-        "/api/log" => Reply::json(repo()?.log(&q.all("ref"), limit(q))?),
+        "/api/commits" => Reply::json(repo()?.log(&q.all("ref"), limit(q))?),
         "/api/state" => Reply::json(repo()?.state()?),
         "/api/commit" => Reply::json(repo()?.show(q.get("h"))?),
         "/api/compare" => Reply::json(repo()?.compare(q.get("from"), q.get("to"))?),

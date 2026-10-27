@@ -23,8 +23,8 @@ fn log_shows_only_the_history_of_the_selected_refs() {
     let q = repo_query(&repo);
 
     // When.
-    let feature = json(port, &format!("/api/log?{q}&ref=feature"));
-    let both = json(port, &format!("/api/log?{q}&ref=feature&ref=main"));
+    let feature = json(port, &format!("/api/commits?{q}&ref=feature"));
+    let both = json(port, &format!("/api/commits?{q}&ref=feature&ref=main"));
 
     // Then.
     assert_eq!(subjects(&feature), ["C on feature", "A"]);
@@ -52,9 +52,9 @@ fn log_groups_select_every_local_or_remote_branch() {
     let q = repo_query(&copy);
 
     // When.
-    let both = subjects(&json(port, &format!("/api/log?{q}&ref=@local&ref=@remotes")));
-    let local = subjects(&json(port, &format!("/api/log?{q}&ref=@local")));
-    let (unknown, body) = get(port, &format!("/api/log?{q}&ref=@nothing-like-this"));
+    let both = subjects(&json(port, &format!("/api/commits?{q}&ref=@local&ref=@remotes")));
+    let local = subjects(&json(port, &format!("/api/commits?{q}&ref=@local")));
+    let (unknown, body) = get(port, &format!("/api/commits?{q}&ref=@nothing-like-this"));
 
     // Then.
     assert!(both.contains(&"R remote only".into()) && both.contains(&"L local only".into()), "{both:?}");
@@ -74,7 +74,7 @@ fn a_branch_named_like_a_group_is_still_a_branch() {
     let port = start(vec![sb.0.clone()], None);
 
     // When.
-    let log = json(port, &format!("/api/log?{}&ref={}", repo_query(&repo), encode("@wip")));
+    let log = json(port, &format!("/api/commits?{}&ref={}", repo_query(&repo), encode("@wip")));
 
     // Then.
     assert_eq!(subjects(&log), ["work in progress", "A"]);
@@ -93,7 +93,7 @@ fn log_and_commit_reject_option_injection() {
     let q = repo_query(&repo);
 
     // When.
-    let (log, _) = get(port, &format!("/api/log?{q}&ref={}", encode(&format!("--output={}", target.display()))));
+    let (log, _) = get(port, &format!("/api/commits?{q}&ref={}", encode(&format!("--output={}", target.display()))));
     let commits: Vec<u16> = ["--help", "HEAD", "abc", "zzzzzzz", &blob].iter().map(|h| get(port, &format!("/api/commit?{q}&h={}", encode(h))).0).collect();
 
     // Then.
@@ -231,7 +231,7 @@ fn user_settings_do_not_change_what_is_parsed() {
     let q = repo_query(&repo);
 
     // When.
-    let log = json(port, &format!("/api/log?{q}"));
+    let log = json(port, &format!("/api/commits?{q}"));
     let shown = json(port, &format!("/api/commit?{q}&h={second}"));
 
     // Then.
