@@ -150,7 +150,7 @@ dependencies = [
 
 [[package]]
 name = "branchsight"
-version = "0.4.5"
+version = "0.4.6"
 dependencies = [
  "libc",
  "serde_json",
@@ -159,7 +159,7 @@ dependencies = [
 
 [[package]]
 name = "branchsight-app"
-version = "0.4.5"
+version = "0.4.6"
 dependencies = [
  "branchsight",
  "glib",
