@@ -2,8 +2,9 @@ import { post } from '../shared/api.js';
 import { setSelection } from '../header/branches.js';
 import { $, ask, confirmAction, toast } from '../shared/dom.js';
 import { SHORT_HASH, esc, plural } from '../shared/format.js';
+import * as panel from '../changes/panel.js';
 import * as log from '../history/list.js';
-import { state } from '../shared/state.js';
+import { commitAt, state } from '../shared/state.js';
 import { poll, reload } from '../history/sync.js';
 
 const enterOnlyOnButtons = e => e.key === 'Enter' && !e.target.closest('button') && e.preventDefault();
@@ -11,27 +12,38 @@ const AUTO_FETCH_MS = 120000, AUTO_FETCH_CHECK_MS = 10000, ACTION_MS = 15 * 60 *
 
 let fetching = false, lastFetch = 0;
 
-async function run(endpoint, params, busy) {
+const headCommit = () => state.repo.head;
+const tipOf = branch => () => state.refs.find(r => r.kind === 'head' && r.name === branch)?.hash;
+
+async function run(endpoint, params, busy, focus = headCommit) {
   toast(busy, ACTION_MS);
+  let done = false;
   try {
     const { out } = await post(endpoint, params);
     toast(out, 3000);
+    done = true;
   } catch (e) {
     toast(e.message.split('\n').slice(0, 3).join('\n'), 9000);
   }
   await reload().catch(() => {});
+  if (done && focus) await focusOn(focus());
+}
+
+async function focusOn(hash) {
+  if (!hash) return;
+  const hidden = !state.entries.some(e => e.h === hash);
+  if (hidden && hash === state.repo.head && !state.selected.includes('HEAD')) await setSelection([...state.selected, 'HEAD']);
+  log.focus(hash);
+  if (panel.isOpen() && commitAt(state.cursor)?.h === hash) panel.showSoon(state.entries[state.cursor], 0);
 }
 
 export async function checkout(name, label = name) {
   await run('/api/checkout', { ref: name }, `checking out ${label}…`);
-  const { head } = state.repo;
-  if (head && !state.entries.some(e => e.h === head) && !state.selected.includes('HEAD')) await setSelection([...state.selected, 'HEAD']);
-  log.focus(head);
 }
 
 export async function deleteRemote(name) {
   const ok = await confirmAction(`Delete ${name} on the remote? Everyone who uses it loses the branch; BranchSight cannot undo it.`, 'Delete');
-  if (ok) await run('/api/delete-remote', { ref: name }, `deleting ${name}…`);
+  if (ok) await run('/api/delete-remote', { ref: name }, `deleting ${name}…`, null);
 }
 
 export async function push(branch, upstream, initialMode = 'normal') {
@@ -53,14 +65,14 @@ export async function push(branch, upstream, initialMode = 'normal') {
   const remote = select.value, mode = dialog.querySelector('[name="mode"]:checked').value;
   const lost = `Commits on ${remote}/${branch} that you do not have are lost for everyone who uses it.`;
   if (mode === 'force' && !(await confirmAction(`Force-push ${branch} to ${remote}? ${lost}`, 'Force push'))) return;
-  await run('/api/push', { ref: branch, remote, mode }, `pushing ${branch} to ${remote}…`);
+  await run('/api/push', { ref: branch, remote, mode }, `pushing ${branch} to ${remote}…`, null);
 }
 
 const currentBranch = () => state.repo.branch || 'HEAD';
 
 export async function resetToRemote(branch, remote, own) {
   const text = `Reset ${branch} to ${remote}? It drops the ${plural(own, 'commit')} that ${remote} does not have; git reflog can still bring them back. Uncommitted changes are kept, or git refuses.`;
-  if (await confirmAction(text, 'Reset')) await run('/api/reset-to-remote', { branch, from: remote }, `resetting ${branch} to ${remote}…`);
+  if (await confirmAction(text, 'Reset')) await run('/api/reset-to-remote', { branch, from: remote }, `resetting ${branch} to ${remote}…`, tipOf(branch));
 }
 
 export async function pull(branch, from) {
@@ -73,7 +85,7 @@ export async function pull(branch, from) {
   dialog.onkeydown = enterOnlyOnButtons;
   if ((await ask(dialog)) !== 'ok') return;
   const mode = dialog.querySelector('[name="mode"]:checked').value;
-  await run('/api/pull', { branch, from, mode }, `syncing ${branch} with ${from}…`);
+  await run('/api/pull', { branch, from, mode }, `syncing ${branch} with ${from}…`, tipOf(branch));
 }
 
 export async function merge(name, shown = name) {
