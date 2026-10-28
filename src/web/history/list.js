@@ -182,11 +182,11 @@ function draw(first, last, width) {
     r.out.forEach(([lane, n, known]) => line(x, mid, X(lane), bottom, wt ? dim : color(n), wt || !known));
     if (x > width) continue;
     const merge = entry.p.length > 1, node = color(r.color);
-    if (wt) dot(x, mid, ROW * 0.24, background, dim, true);
-    else dot(x, mid, ROW * (merge ? 0.2 : 0.24), merge ? background : node, node);
+    if (wt) dot(x, mid, ROW * 0.18, background, dim, true);
+    else dot(x, mid, ROW * (merge ? 0.15 : 0.18), merge ? background : node, node);
     if (!wt && entry.h === state.repo.head) {
       g.beginPath();
-      g.arc(x, mid, ROW * 0.39, 0, Math.PI * 2);
+      g.arc(x, mid, ROW * 0.3, 0, Math.PI * 2);
       g.stroke();
     }
   }
