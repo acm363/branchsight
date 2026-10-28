@@ -1,7 +1,7 @@
 import { post } from '../shared/api.js';
 import { setSelection } from '../header/branches.js';
 import { $, ask, confirmAction, toast } from '../shared/dom.js';
-import { SHORT_HASH, esc } from '../shared/format.js';
+import { SHORT_HASH, esc, plural } from '../shared/format.js';
 import * as log from '../history/list.js';
 import { state } from '../shared/state.js';
 import { poll, reload } from '../history/sync.js';
@@ -34,7 +34,7 @@ export async function deleteRemote(name) {
   if (ok) await run('/api/delete-remote', { ref: name }, `deleting ${name}…`);
 }
 
-export async function push(branch, upstream) {
+export async function push(branch, upstream, initialMode = 'normal') {
   const { remotes } = state.repo;
   const dialog = $('push'), select = $('push-remote');
   $('push-branch').textContent = branch;
@@ -48,7 +48,7 @@ export async function push(branch, upstream) {
   note();
   select.onchange = note;
   dialog.onkeydown = enterOnlyOnButtons;
-  dialog.querySelector('[name="mode"][value="normal"]').checked = true;
+  dialog.querySelector(`[name="mode"][value="${initialMode}"]`).checked = true;
   if ((await ask(dialog)) !== 'ok') return;
   const remote = select.value, mode = dialog.querySelector('[name="mode"]:checked').value;
   const lost = `Commits on ${remote}/${branch} that you do not have are lost for everyone who uses it.`;
@@ -57,6 +57,11 @@ export async function push(branch, upstream) {
 }
 
 const currentBranch = () => state.repo.branch || 'HEAD';
+
+export async function resetToRemote(branch, remote, own) {
+  const text = `Reset ${branch} to ${remote}? It drops the ${plural(own, 'commit')} that ${remote} does not have; git reflog can still bring them back. Uncommitted changes are kept, or git refuses.`;
+  if (await confirmAction(text, 'Reset')) await run('/api/reset-to-remote', { branch, from: remote }, `resetting ${branch} to ${remote}…`);
+}
 
 export async function pull(branch, from) {
   const dialog = $('pull'), elsewhere = branch !== state.repo.branch;

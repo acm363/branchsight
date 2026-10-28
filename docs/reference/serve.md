@@ -37,7 +37,7 @@ request takes `repo=<path>`, defaulting to `dir`. Errors come back as `400` with
 | `/api/context` | GET | version, roots, default repository |
 | `/api/projects` | GET | repositories under the roots, most recently used first |
 | `/api/repo` | GET | path, name, HEAD, current branch, remotes |
-| `/api/refs` | GET | branches (with the `upstream` they track and its `upstreamRemote`), remote branches, tags |
+| `/api/refs` | GET | branches (with the `upstream` they track, its `upstreamRemote`, and how many commits they are `ahead` of it and `behind` it), remote branches, tags |
 | `/api/commits?ref=…&limit=N` | GET | `commits` of the given refs, `HEAD` without any, and the `history` fingerprint they were read under; `@local`, `@remotes`, `@tags` select them all |
 | `/api/commit?h=<hash>` | GET | `header`, plus the changes against the first parent |
 | `/api/compare?from=<hash>&to=<hash>` | GET | the changes of `git diff from to` |
@@ -48,6 +48,7 @@ request takes `repo=<path>`, defaulting to `dir`. Errors come back as `400` with
 | `/api/checkout?ref=…` | POST | switch to a branch, a remote branch, a tag or a commit |
 | `/api/merge?ref=…&mode=…&commit=0` | POST | merge a branch, remote branch, tag or commit into the current branch; `mode` is `fast-forward`, `merge-commit` or `squash`; `commit=0` stops before committing; conflicts answer `400` and leave the merge to resolve |
 | `/api/pull?branch=<local>&from=<remote>/<branch>&mode=…` | POST | bring a local branch up to a remote one; `mode` is `merge`, `rebase` or `fast-forward`; a branch that is only behind is updated without switching to it |
+| `/api/reset-to-remote?branch=<local>&from=<remote>/<branch>` | POST | make a local branch match a remote one; keeps uncommitted changes, or refuses |
 | `/api/cherry-pick?h=<hash>&commit=0` | POST | copy a commit onto the current branch; `commit=0` only stages it |
 | `/api/revert?h=<hash>&commit=0` | POST | add a commit undoing it; `commit=0` only stages the revert |
 | `/api/drop?h=<hash>` | POST | remove a commit of the current branch, rebasing the ones after it |

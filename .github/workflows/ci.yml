@@ -40,6 +40,9 @@ jobs:
           node-version: 24
       - run: cargo test
       - run: node --test tests/js/*.test.mjs
+      - name: page modules parse as ES modules
+        shell: bash
+        run: for module in $(find src/web -name '*.js'); do node --input-type=module --check < "$module"; done
 
   app-check:
     runs-on: ubuntu-latest

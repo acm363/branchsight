@@ -8,6 +8,9 @@ done
 
 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 cargo test
 node --test tests/js/*.test.mjs
+for module in $(find src/web -name '*.js'); do
+  node --input-type=module --check < "$module" || { echo "syntax error in $module" >&2; exit 1; }
+done
 
 if [[ "$(uname)" != Linux ]] || pkg-config --exists webkit2gtk-4.1 2>/dev/null; then
   cargo build --release -p branchsight-app

@@ -64,6 +64,23 @@ impl Repo {
         Ok(if switching { format!("switched to {branch}, then {done}") } else { done })
     }
 
+    pub fn reset_to_remote(&self, branch: &str, remote: &str) -> Result<String, String> {
+        let local = format!("refs/heads/{branch}");
+        if !self.has_ref(&local) {
+            return Err(format!("no local branch named {branch}"));
+        }
+        if !self.has_ref(&format!("refs/remotes/{remote}")) {
+            return Err(format!("no remote branch named {remote}"));
+        }
+        if self.current()? == branch {
+            let args = ["reset", "--quiet", "--keep", &format!("refs/remotes/{remote}"), "--"];
+            run::run(&self.root, &Call { timeout: ACTION_TIMEOUT, ..Call::new(&args) }).map_err(main_reason)?;
+        } else {
+            self.git(&["branch", "--force", "--end-of-options", branch, &format!("refs/remotes/{remote}")]).map_err(main_reason)?;
+        }
+        Ok(format!("{branch} now matches {remote}"))
+    }
+
     pub fn cherry_pick(&self, hash: &str, commit: bool) -> Result<String, String> {
         self.check_commit(hash)?;
         let into = self.current()?;

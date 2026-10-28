@@ -78,6 +78,7 @@ fn route(config: &Config, post: bool, path: &str, q: &Query) -> Result<Reply, St
         "/api/push" => done(action()?.push(q.get("ref"), q.get("remote"), q.get("mode"))?),
         "/api/merge" => done(action()?.merge(q.get("ref"), q.get("mode"), q.get("commit") != "0")?),
         "/api/pull" => done(action()?.pull(q.get("branch"), q.get("from"), q.get("mode"))?),
+        "/api/reset-to-remote" => done(action()?.reset_to_remote(q.get("branch"), q.get("from"))?),
         "/api/cherry-pick" => done(action()?.cherry_pick(q.get("h"), q.get("commit") != "0")?),
         "/api/revert" => done(action()?.revert(q.get("h"), q.get("commit") != "0")?),
         "/api/drop" => done(action()?.drop_commit(q.get("h"))?),

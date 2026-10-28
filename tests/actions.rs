@@ -153,6 +153,51 @@ fn pull_of_a_diverged_branch_merges_or_rebases_it() {
 }
 
 #[test]
+fn refs_say_how_far_a_branch_is_ahead_of_and_behind_what_it_tracks() {
+    // Given.
+    let sb = Sandbox::new();
+    let (copy, _) = behind_and_ahead(&sb, true);
+    let port = start(vec![sb.0.clone()], None);
+
+    // When.
+    let refs = json(port, &format!("/api/refs?{}", repo_query(&copy)));
+
+    // Then.
+    let feature = refs.as_array().unwrap().iter().find(|r| r["name"] == "feature").unwrap();
+    let main = refs.as_array().unwrap().iter().find(|r| r["name"] == "main").unwrap();
+    assert_eq!((feature["ahead"].as_u64(), feature["behind"].as_u64()), (Some(1), Some(1)));
+    assert_eq!((main["ahead"].as_u64(), main["behind"].as_u64()), (Some(0), Some(0)));
+}
+
+#[test]
+fn reset_to_remote_makes_a_branch_match_it_where_it_is_or_when_checked_out() {
+    // Given.
+    let sb = Sandbox::new();
+    let (copy, newer) = behind_and_ahead(&sb, true);
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&copy);
+    let reset = || post(port, &format!("/api/reset-to-remote?{q}&branch=feature&from={}", encode("origin/feature")));
+
+    // When.
+    let (elsewhere, body) = reset();
+    let moved = git(&copy, &["rev-parse", "feature"]);
+    git(&copy, &["switch", "-q", "feature"]);
+    commit(&copy, "again.txt", "local again");
+    std::fs::write(copy.join("draft.txt"), "uncommitted\n").unwrap();
+    let (here, _) = reset();
+    let refused = post(port, &format!("/api/reset-to-remote?{q}&branch=feature&from=main")).0;
+
+    // Then.
+    assert_eq!(elsewhere, 200, "{body}");
+    assert_eq!(moved, newer);
+    assert_eq!(git(&copy, &["branch", "--show-current"]), "feature");
+    assert_eq!(here, 200);
+    assert_eq!(git(&copy, &["rev-parse", "HEAD"]), newer);
+    assert!(copy.join("draft.txt").exists(), "uncommitted work is kept");
+    assert_eq!(refused, 400);
+}
+
+#[test]
 fn pull_into_the_current_branch_merges_and_refuses_unknown_names() {
     // Given.
     let sb = Sandbox::new();

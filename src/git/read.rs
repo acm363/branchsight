@@ -35,7 +35,7 @@ impl Repo {
         let out = self.git(&[
             "for-each-ref",
             "--sort=-creatordate",
-            "--format=%(refname)%1f%(symref)%1f%(objectname)%1f%(*objectname)%1f%(creatordate:unix)%1f%(upstream:remotename)%1f%(upstream:lstrip=2)",
+            "--format=%(refname)%1f%(symref)%1f%(objectname)%1f%(*objectname)%1f%(creatordate:unix)%1f%(upstream:remotename)%1f%(upstream:lstrip=2)%1f%(upstream:track,nobracket)",
             "refs/heads",
             "refs/remotes",
             "refs/tags",
@@ -43,7 +43,7 @@ impl Repo {
         let refs = out
             .lines()
             .filter_map(|line| {
-                let [refname, symref, object, peeled, date, upstream_remote, upstream] = line.split('\x1f').collect::<Vec<_>>()[..] else {
+                let [refname, symref, object, peeled, date, upstream_remote, upstream, track] = line.split('\x1f').collect::<Vec<_>>()[..] else {
                     return None;
                 };
                 if !symref.is_empty() {
@@ -55,6 +55,8 @@ impl Repo {
                 if !upstream.is_empty() {
                     entry["upstream"] = json!(upstream);
                     entry["upstreamRemote"] = json!(upstream_remote);
+                    entry["ahead"] = json!(count(track, "ahead "));
+                    entry["behind"] = json!(count(track, "behind "));
                 }
                 if let Some((remote, branch)) = (kind == "remote").then(|| split_remote(&remotes, name)).flatten() {
                     entry["remote"] = json!(remote);
@@ -138,6 +140,10 @@ impl Repo {
     pub(super) fn remotes(&self) -> Result<Vec<String>, String> {
         Ok(self.git(&["remote"])?.lines().map(str::to_owned).collect())
     }
+}
+
+fn count(track: &str, word: &str) -> u64 {
+    track.split(", ").find_map(|part| part.strip_prefix(word)).and_then(|n| n.parse().ok()).unwrap_or(0)
 }
 
 fn stamp(path: &Path) -> (u128, u64) {

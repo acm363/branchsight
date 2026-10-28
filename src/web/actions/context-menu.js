@@ -1,9 +1,26 @@
 import { $, closeLayer, copy, openLayer } from '../shared/dom.js';
-import { SHORT_HASH, esc } from '../shared/format.js';
+import { SHORT_HASH, esc, plural } from '../shared/format.js';
 import * as log from '../history/list.js';
 import * as panel from '../changes/panel.js';
 import { commitAt, state } from '../shared/state.js';
-import { checkout, cherryPick, deleteRemote, drop, merge, pull, push, rebase, reset, revert } from './commands.js';
+import { checkout, cherryPick, deleteRemote, drop, merge, pull, push, rebase, reset, resetToRemote, revert } from './commands.js';
+
+const commits = n => plural(n, 'commit');
+
+function syncItems(head, remote) {
+  const { name, ahead = 0, behind = 0 } = head, upstream = { name: remote, remote: head.upstreamRemote };
+  if (!ahead && !behind) return [];
+  if (!ahead) return [[`Pull ${remote} into ${name} (${commits(behind)} to bring in)…`, () => pull(name, remote)]];
+  if (!behind) return [[`Push ${name} to ${remote} (${commits(ahead)} to send)…`, () => push(name, upstream)]];
+  return [
+    [`${name} and ${remote} have diverged: ${commits(ahead)} only here, ${commits(behind)} only there`, null, 'note'],
+    [`Pull ${remote} into ${name} (merge or rebase)…`, () => pull(name, remote)],
+    [`Reset ${name} to ${remote}, dropping its ${commits(ahead)}…`, () => resetToRemote(name, remote, ahead), 'danger'],
+    [`Push ${name} over ${remote} (force with lease)…`, () => push(name, upstream, 'force-with-lease')],
+  ];
+}
+
+const tracks = (head, remote) => head?.upstream === remote && head.upstream === `${head.upstreamRemote}/${head.name}`;
 
 const menuLayer = { contains: target => $('ctx').contains(target), close: () => { $('ctx').hidden = true; } };
 
@@ -17,18 +34,22 @@ function menuItems(i, commit, label) {
   if (label?.kind === 'head') {
     items.push([`Checkout ${label.name}`, () => checkout(label.name)]);
     if (!label.current) items.push(mergeItem(label.name), rebaseItem(label.name));
+    const head = state.refs.find(r => r.kind === 'head' && r.name === label.name);
     const upstream = label.upstream && { name: label.upstream, remote: label.upstreamRemote };
-    const pushed = label.remotes.some(r => !upstream || r.name === upstream.name);
     const tracked = upstream && state.refs.some(r => r.kind === 'remote' && r.name === upstream.name);
-    if (tracked && !pushed) items.push([`Pull ${upstream.name} into ${label.name}…`, () => pull(label.name, upstream.name)]);
-    if (state.repo.remotes.length && !pushed) items.push([upstream ? `Push ${label.name}…` : `Push ${label.name} to a remote…`, () => push(label.name, upstream)]);
+    if (tracked && tracks(head, upstream.name)) items.push(...syncItems(head, upstream.name));
+    else {
+      if (tracked && head?.behind) items.push([`Pull ${upstream.name} into ${label.name}…`, () => pull(label.name, upstream.name)]);
+      if (state.repo.remotes.length) items.push([upstream ? `Push ${label.name}…` : `Push ${label.name} to a remote…`, () => push(label.name, upstream)]);
+    }
     items.push(['Copy branch name', () => copy(label.name)]);
   }
   if (label?.kind === 'remote') {
     const [remote] = label.remotes;
-    const local = remote.branch && state.refs.some(r => r.kind === 'head' && r.name === remote.branch);
+    const head = remote.branch && state.refs.find(r => r.kind === 'head' && r.name === remote.branch);
     items.push([`Checkout ${remote.name}`, () => checkout(remote.name)]);
-    if (local) items.push([`Pull ${remote.name} into ${remote.branch}…`, () => pull(remote.branch, remote.name)]);
+    if (tracks(head, remote.name)) items.push(...syncItems(head, remote.name));
+    else if (head) items.push([`Pull ${remote.name} into ${remote.branch}…`, () => pull(remote.branch, remote.name)]);
     items.push(mergeItem(remote.name), rebaseItem(remote.name));
     items.push(['Copy branch name', () => copy(remote.branch ?? remote.name)]);
   }
@@ -59,7 +80,12 @@ export function openContextMenu(e) {
   const label = clicked && log.labelsOf(commit).find(l => l.kind === clicked.kind && l.name === clicked.name);
   const items = menuItems(i, commit, label);
   const menu = $('ctx');
-  menu.innerHTML = items.map((item, k) => item ? `<button data-i="${k}"${item[2] ? ` class="${item[2]}"` : ''}>${esc(item[0])}</button>` : '<hr>').join('');
+  const html = (item, k) => {
+    if (!item) return '<hr>';
+    if (!item[1]) return `<div class="note">${esc(item[0])}</div>`;
+    return `<button data-i="${k}"${item[2] ? ` class="${item[2]}"` : ''}>${esc(item[0])}</button>`;
+  };
+  menu.innerHTML = items.map(html).join('');
   menu.onclick = ev => {
     const button = ev.target.closest('button[data-i]');
     if (!button) return;

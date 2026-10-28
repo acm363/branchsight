@@ -22,10 +22,23 @@ commit without being on a branch, which is how git lets you inspect old states. 
 
 After any checkout the graph keeps your branch selection and scrolls to the new HEAD.
 
-## Pull a remote branch into its local copy
+## Bring a branch and its remote branch back in line
 
-Choose **Pull `origin/<branch>` into `<branch>`…** on the remote branch, or on the local branch that tracks it, then
-pick how:
+Right-click the local branch or its remote branch. The menu says where they stand and offers what fits:
+
+| They are | The menu offers |
+|---|---|
+| on the same commit | nothing to do |
+| local only behind | **Pull `origin/<branch>` into `<branch>` (n commits to bring in)…** |
+| local only ahead | **Push `<branch>` to `origin/<branch>` (n commits to send)…** |
+| diverged | the count on each side, then **Pull** (merge or rebase), **Reset `<branch>` to `origin/<branch>`**, which drops its own commits, or **Push `<branch>` over `origin/<branch>`** with force with lease |
+
+The counts are against the last fetch: **⇣ fetch** first to get the latest. A reset keeps uncommitted changes, or
+git refuses; the dropped commits stay reachable through `git reflog` for a while.
+
+### Pull
+
+Pull asks how:
 
 - **Merge** fast-forwards when the local branch has no commits of its own, and otherwise creates a merge commit, as
   `git pull` does;
@@ -33,8 +46,7 @@ pick how:
 - **Fast-forward only** refuses when the local branch has commits of its own.
 
 A local branch you are not on, and that only lags behind, is brought up where it is: you stay on your branch. When it
-has diverged, BranchSight switches to it first. Pull uses the remote branch as last fetched; **⇣ fetch** first to
-get the latest.
+has diverged, BranchSight switches to it first.
 
 ## Merge a branch into yours
 

@@ -167,6 +167,7 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 #ctx button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: none; padding: 5px 14px; white-space: nowrap; }
 #ctx button:hover { background: var(--hover); }
 #ctx button.danger, .dialog .danger { color: var(--rm); }
+#ctx .note { max-width: 340px; padding: 5px 14px; color: var(--dim); font-size: calc(var(--fs) - 1px); white-space: normal; }
 #ctx hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
 #v-cut { color: var(--rm); }
 .dialog fieldset { display: grid; gap: 8px; margin: 0 0 16px; padding: 0; border: 0; }
