@@ -132,7 +132,10 @@ function groupAction(act, kind) {
 
 async function open(source, titleHtml, title, load, keep = false) {
   requested = source.key;
-  if (!keep) shown = null;
+  if (!keep) {
+    shown = null;
+    treeCollapsed.clear();
+  }
   $('detail').hidden = $('split').hidden = false;
   $('detail-title').innerHTML = titleHtml;
   $('detail-title').title = title;
@@ -163,6 +166,54 @@ function counts(f) {
   return `<span class="n"><b>+${f.add}</b> <i>−${f.del}</i></span>`;
 }
 
+const treeCollapsed = new Set();
+
+function treeOf(files) {
+  const root = { dirs: new Map(), files: [] };
+  for (const f of files) {
+    const parts = f.path.split('/');
+    const name = parts.pop();
+    let node = root;
+    for (const part of parts) {
+      if (!node.dirs.has(part)) node.dirs.set(part, { dirs: new Map(), files: [] });
+      node = node.dirs.get(part);
+    }
+    node.files.push({ file: f, name });
+  }
+  const out = [];
+  renderNode(root, '', 0, out);
+  return out.join('');
+}
+
+function renderNode(node, prefix, depth, out) {
+  for (const [dirName, dirNode] of node.dirs) {
+    let name = dirName, path = prefix ? `${prefix}/${dirName}` : dirName, dir = dirNode;
+    while (dir.dirs.size === 1 && !dir.files.length) {
+      const [childName, child] = dir.dirs.entries().next().value;
+      name += ` / ${childName}`;
+      path += `/${childName}`;
+      dir = child;
+    }
+    const collapsed = treeCollapsed.has(path);
+    out.push(`<div class="fdir${collapsed ? ' collapsed' : ''}" data-folder="${esc(path)}" style="--d:${depth}"><span class="tcaret">▾</span><span class="tname">${esc(name)}</span></div>`);
+    out.push(`<div class="fkids${collapsed ? ' hidden' : ''}">`);
+    renderNode(dir, path, depth + 1, out);
+    out.push('</div>');
+  }
+  for (const { file, name } of node.files) {
+    out.push(`<div class="file" data-id="${file.id}" style="--d:${depth}" title="${esc(fileLabel(file))}">`
+      + `<span class="st ${statusClass(file)}">${file.status}</span><span class="p">${esc(name)}</span>${counts(file)}</div>`);
+  }
+}
+
+function toggleFolder(dir) {
+  const collapsed = dir.classList.toggle('collapsed');
+  if (collapsed) treeCollapsed.add(dir.dataset.folder);
+  else treeCollapsed.delete(dir.dataset.folder);
+  const kids = dir.nextElementSibling;
+  if (kids?.classList.contains('fkids')) kids.classList.toggle('hidden', collapsed);
+}
+
 function keptFolds() {
   const closed = new Set([...$('diff').querySelectorAll('.fsec.closed')].map(s => s.dataset.key));
   return { closed, diff: $('diff').scrollTop, files: $('files').scrollTop };
@@ -184,9 +235,7 @@ function fill(groups, folds) {
   $('commit-btn').hidden = !editable;
   $('diff').innerHTML = header + groups.map(g => (titled ? `<div class="grp">${esc(g.title)} · ${g.files.length}${editable && g.kind ? groupActions(g) : ''}</div>` : '')
     + g.files.map(section).join('') + (g.note ? lineHtml(g.note, 'mt') : '')).join('');
-  $('files').innerHTML = groups.map(g => (titled ? `<div class="file-grp">${esc(g.title)}</div>` : '')
-    + g.files.map(f => `<div class="file" data-id="${f.id}" title="${label(f)}"><span class="st ${statusClass(f)}">${f.status}</span>`
-      + `<span class="p">${label(f)}</span>${counts(f)}</div>`).join('')).join('')
+  $('files').innerHTML = groups.map(g => (titled ? `<div class="file-grp">${esc(g.title)}</div>` : '') + treeOf(g.files)).join('')
     || '<div class="file"><span class="p">no file changes</span></div>';
   $('diff').scrollTop = folds?.diff ?? 0;
   $('files').scrollTop = folds?.files ?? 0;
@@ -225,6 +274,8 @@ $('detail-title').addEventListener('click', e => {
 });
 
 $('files').addEventListener('click', e => {
+  const dir = e.target.closest('.fdir');
+  if (dir) return toggleFolder(dir);
   const section = document.getElementById(e.target.closest('.file[data-id]')?.dataset.id ?? '');
   if (!section) return;
   section.classList.remove('closed');
@@ -265,3 +316,8 @@ $('open-viewer').addEventListener('click', () => openViewer(shown?.files[0]?.id)
 $('split').addEventListener('mousedown', e => drag(e, ev => {
   $('detail').style.width = `${Math.max(240, window.innerWidth - ev.clientX)}px`;
 }, () => state.store.set('detailWidth', $('detail').offsetWidth)));
+
+$('files-split').addEventListener('mousedown', e => drag(e, ev => {
+  const top = $('files').getBoundingClientRect().top;
+  $('files').style.height = `${Math.max(48, Math.min(ev.clientY - top, $('detail').clientHeight - 140))}px`;
+}, () => state.store.set('filesHeight', $('files').offsetHeight)));

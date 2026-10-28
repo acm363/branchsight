@@ -221,8 +221,15 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 #detail[hidden], #split[hidden] { display: none; }
 #detail-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--bg2); }
 #detail-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-#files { max-height: 32%; overflow: auto; border-bottom: 1px solid var(--line); padding: 4px 0; flex: none; }
-.file { display: flex; gap: 8px; padding: 1px 10px; cursor: pointer; font-family: var(--mono); font-size: calc(var(--fs) - 1px); white-space: nowrap; }
+#files { height: 30%; min-height: 48px; overflow: auto; padding: 4px 0; flex: none; }
+#files-split { height: 5px; cursor: row-resize; background: var(--line); flex: none; }
+.file { display: flex; gap: 8px; padding: 1px 10px 1px calc(10px + var(--d, 0) * 14px); cursor: pointer; font-family: var(--mono); font-size: calc(var(--fs) - 1px); white-space: nowrap; }
+.fdir { display: flex; align-items: center; gap: 4px; padding: 1px 10px 1px calc(10px + var(--d, 0) * 14px); cursor: pointer; white-space: nowrap; color: var(--dim); font-family: var(--mono); font-size: calc(var(--fs) - 1px); }
+.fdir:hover { background: var(--hover); }
+.tcaret { flex: none; width: 10px; text-align: center; transition: transform .1s; }
+.fdir.collapsed .tcaret { transform: rotate(-90deg); }
+.tname { overflow: hidden; text-overflow: ellipsis; }
+.fkids.hidden { display: none; }
 .file:hover { background: var(--hover); }
 .file .st { width: 12px; font-weight: 700; flex: none; }
 .st-A, .st-new { color: var(--add); } .st-D, .st-U { color: var(--rm); } .st-R, .st-C, .st-T { color: var(--hunk); } .st-M { color: var(--remote); }

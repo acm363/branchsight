@@ -99,6 +99,8 @@ function restoreView(store) {
   $('auto-fetch').checked = store.get('autoFetch') ?? false;
   const width = store.get('detailWidth');
   if (width) $('detail').style.width = `${width}px`;
+  const filesHeight = store.get('filesHeight');
+  if (filesHeight) $('files').style.height = `${filesHeight}px`;
 }
 
 async function init() {
