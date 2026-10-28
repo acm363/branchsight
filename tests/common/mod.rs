@@ -72,7 +72,7 @@ pub fn init(dir: &Path) {
 }
 
 fn identify(dir: &Path) {
-    for (key, value) in [("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false")] {
+    for (key, value) in [("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false"), ("core.autocrlf", "false")] {
         git(dir, &["config", key, value]);
     }
 }
