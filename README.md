@@ -23,13 +23,32 @@ editor.
 
 ![The diff view](docs/images/diff-view.png)
 
-## Install
+## Quick install
 
-Download the AppImage, `.rpm`, `.deb`, `.msi` or `.dmg` from
-[Releases](https://github.com/acm363/branchsight/releases), or [build it from source](docs/how-to/install.md).
-BranchSight needs `git` on the `PATH`. The `branchsight serve` command, which serves the page to a browser, is a
-separate download from the same release: see
-[the `branchsight serve` command](docs/how-to/install.md#the-branchsight-serve-command).
+BranchSight needs `git` on the `PATH`. Set the version once, then pick your system:
+
+```bash
+v=0.4.3
+```
+
+| System | Desktop app |
+|---|---|
+| Fedora, RHEL | `sudo dnf install https://github.com/acm363/branchsight/releases/download/v$v/BranchSight-$v-1.x86_64.rpm` |
+| Debian, Ubuntu | `curl -LO https://github.com/acm363/branchsight/releases/download/v$v/BranchSight_${v}_amd64.deb && sudo apt install ./BranchSight_${v}_amd64.deb` |
+| Any Linux | `curl -L -o BranchSight.AppImage https://github.com/acm363/branchsight/releases/download/v$v/BranchSight_${v}_amd64.AppImage && chmod +x BranchSight.AppImage && ./BranchSight.AppImage` |
+| Windows | download `BranchSight_<version>_x64-setup.exe` from [Releases](https://github.com/acm363/branchsight/releases/latest) and run it (More info → Run anyway) |
+| macOS | download `BranchSight_<version>_aarch64.dmg` from [Releases](https://github.com/acm363/branchsight/releases/latest), drag it to Applications, right-click → Open the first time |
+
+To serve the page to a browser instead (over SSH, in WSL, in a container), install the `branchsight` command:
+
+```bash
+mkdir -p ~/.local/bin
+curl -L -o ~/.local/bin/branchsight https://github.com/acm363/branchsight/releases/latest/download/branchsight-cli-linux-x86_64
+chmod +x ~/.local/bin/branchsight
+branchsight serve --root ~/code        # then open http://localhost:7420
+```
+
+Other systems, upgrades and building from source: [install guide](docs/how-to/install.md).
 
 ## Documentation
 
