@@ -52,3 +52,19 @@ export function buildDiff(text) {
   flush();
   return { split, unified, changes, binary };
 }
+
+export function folds(plain, context = 3) {
+  const runs = [];
+  for (let i = 0; i < plain.length;) {
+    if (!plain[i]) {
+      i++;
+      continue;
+    }
+    let end = i;
+    while (end < plain.length && plain[end]) end++;
+    const from = i === 0 ? 0 : i + context, to = end === plain.length ? end : end - context;
+    if (to - from > context) runs.push({ from, to });
+    i = end;
+  }
+  return runs;
+}

@@ -1,7 +1,7 @@
 import { getJson } from '../shared/api.js';
-import { buildDiff } from './diffview.js';
+import { buildDiff, folds } from './diffview.js';
 import { $, closeLayer, drag, openLayer } from '../shared/dom.js';
-import { clamp, esc, fileLabel } from '../shared/format.js';
+import { clamp, esc, fileLabel, plural } from '../shared/format.js';
 import { prefs } from '../shared/prefs.js';
 
 const SPLIT_LIMITS = [0.15, 0.85];
@@ -69,6 +69,7 @@ async function load(atEnd = false) {
   $('v-body').innerHTML = '<div class="v-empty">loading…</div>';
   v.data = null;
   v.failed = false;
+  v.open = new Set();
   let diff;
   try {
     diff = await getJson('/api/filediff', diffParams(v.source, file));
@@ -103,11 +104,22 @@ function render() {
   }
   const starts = new Map(d.changes.map((c, k) => [v.mode === 'split' ? c.split : c.unified, k]));
   const tag = i => starts.has(i) ? ` data-change="${starts.get(i)}"` : '';
-  const rows = v.mode === 'split'
-    ? d.split.map((r, i) => r.gap ? '<div class="v-row gap">⋯</div>'
+  const split = v.mode === 'split', list = split ? d.split : d.unified;
+  v.rows = split
+    ? list.map((r, i) => r.gap ? '<div class="v-row gap">⋯</div>'
       : `<div class="v-row${r.change ? ' chg' : ''}"${tag(i)}><span class="ln">${r.left?.n ?? ''}</span>${codeCell(r.left)}<span class="ln">${r.right?.n ?? ''}</span>${codeCell(r.right)}</div>`)
-    : d.unified.map((r, i) => r.gap ? '<div class="v-row u gap">⋯</div>'
+    : list.map((r, i) => r.gap ? '<div class="v-row u gap">⋯</div>'
       : `<div class="v-row u${r.kind !== 'ctx' ? ' chg' : ''}"${tag(i)}><span class="ln">${r.old ?? ''}</span><span class="ln">${r.new ?? ''}</span>${codeCell(r, SIGNS[r.kind])}</div>`);
+  const lineOf = r => split ? r.right.n : r.new;
+  const rows = [];
+  let next = 0;
+  for (const { from, to } of folds(list.map(r => !r.gap && (split ? !r.change : r.kind === 'ctx')))) {
+    const key = lineOf(list[from]);
+    if (v.open.has(key)) continue;
+    rows.push(...v.rows.slice(next, from), `<div class="v-row unfold" data-key="${key}" data-from="${from}" data-to="${to}">⇕ ${plural(to - from, 'unmodified line')}</div>`);
+    next = to;
+  }
+  rows.push(...v.rows.slice(next));
   $('v-body').innerHTML = rows.join('') || '<div class="v-empty">No change in this file.</div>';
   $('v-body').scrollTop = 0;
   geometry = null;
@@ -169,6 +181,13 @@ $('v-prev-file').addEventListener('click', () => moveFile(-1));
 $('v-next-file').addEventListener('click', () => moveFile(1));
 $('v-prev').addEventListener('click', () => step(-1));
 $('v-next').addEventListener('click', () => step(1));
+
+$('v-body').addEventListener('click', e => {
+  const fold = e.target.closest('.unfold');
+  if (!fold) return;
+  viewer.open.add(+fold.dataset.key);
+  fold.outerHTML = viewer.rows.slice(+fold.dataset.from, +fold.dataset.to).join('');
+});
 
 $('v-file').addEventListener('change', e => {
   viewer.index = +e.target.value;

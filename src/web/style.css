@@ -163,6 +163,8 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 .code.add mark { background: color-mix(in srgb, var(--add) 38%, transparent); }
 .v-row.cur .ln:first-child { box-shadow: inset 3px 0 0 var(--remote); }
 .v-row.gap { display: block; padding: 2px; text-align: center; color: var(--dim); background: var(--bg2); }
+.v-row.unfold { display: block; padding: 2px 12px; color: var(--dim); background: var(--bg2); cursor: pointer; user-select: none; }
+.v-row.unfold:hover { color: var(--fg); text-decoration: underline; }
 .v-empty { padding: 48px; text-align: center; color: var(--dim); }
 .fsec > .fh .open-v { flex: none; width: 22px; padding: 0; line-height: 18px; }
 #ctx { position: fixed; z-index: 30; min-width: 220px; padding: 4px 0; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 8px 28px rgba(0,0,0,.25); }

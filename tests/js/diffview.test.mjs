@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildDiff } from '../../src/web/changes/diffview.js';
+import { buildDiff, folds } from '../../src/web/changes/diffview.js';
 
 const diff = (...lines) => ['diff --git a/f b/f', 'index 1..2 100644', '--- a/f', '+++ b/f', ...lines].join('\n');
 
@@ -91,4 +91,39 @@ test('a new file has nothing on the left and a binary file is flagged', () => {
   assert.ok(created.split.every(r => r.left === null && r.right.kind === 'add'));
   assert.equal(image.binary, true);
   assert.equal(image.split.length, 0);
+});
+
+const rows = pattern => [...pattern].map(c => c === '.');
+
+test('unchanged lines away from a change fold, keeping three lines around it', () => {
+  // Given.
+  const plain = rows('..........x..........');
+
+  // When.
+  const runs = folds(plain);
+
+  // Then.
+  assert.deepEqual(runs, [{ from: 0, to: 7 }, { from: 14, to: 21 }]);
+});
+
+test('a run between two changes keeps three lines on each side', () => {
+  // Given.
+  const plain = rows('x..........x');
+
+  // When.
+  const runs = folds(plain);
+
+  // Then.
+  assert.deepEqual(runs, [{ from: 4, to: 8 }]);
+});
+
+test('a run too short to save space is left open', () => {
+  // Given.
+  const plain = rows('x.........x.......');
+
+  // When.
+  const runs = folds(plain);
+
+  // Then.
+  assert.deepEqual(runs, [{ from: 14, to: 18 }]);
 });

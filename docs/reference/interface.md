@@ -92,4 +92,5 @@ are still in conflict, **Continue** and **Abort**.
 | Side by side / Unified | two columns with the whole files, or one column; remembered |
 | divider between the sides | drag it to give one side more room, double-click it to reset; remembered |
 | highlight inside a line | the part of a modified line that changed |
+| N unmodified lines | lines more than 3 away from a change, folded; click to unfold them |
 | `esc` or ✕ Close | back to the graph |
