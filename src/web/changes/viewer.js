@@ -11,6 +11,7 @@ const SIGNS = { del: '−', add: '+', ctx: ' ' };
 let viewer = null;
 let split = 0.5;
 let geometry = null;
+let find = { q: '', matches: [], current: -1 };
 
 const layer = { contains: () => true, close: hide, keydown };
 
@@ -26,12 +27,27 @@ export function open(source, files, index) {
 
 function hide() {
   viewer = null;
+  find = { q: '', matches: [], current: -1 };
+  $('v-find').value = '';
+  updateFind();
   $('viewer').hidden = true;
   $('list').focus();
 }
 
 function keydown(e) {
-  if (e.key === 'Escape') return false;
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+    $('v-find').focus();
+    $('v-find').select();
+    e.preventDefault();
+    return true;
+  }
+  if (e.key === 'Escape') {
+    if (document.activeElement === $('v-find') && find.q) {
+      setFind('');
+      return true;
+    }
+    return false;
+  }
   if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.('input, select')) return true;
   const action = {
     n: () => step(1), p: () => step(-1), N: () => step(-1), F7: () => step(e.shiftKey ? -1 : 1),
@@ -124,6 +140,7 @@ function render() {
   $('v-body').scrollTop = 0;
   geometry = null;
   placeDivider();
+  if (find.q) applyFind(true);
 }
 
 function step(direction) {
@@ -157,6 +174,64 @@ function moveFile(step, atEnd = false) {
   load(atEnd);
 }
 
+function setFind(value) {
+  find.q = value;
+  $('v-find').value = value;
+  applyFind(false);
+}
+
+function applyFind(keep) {
+  const body = $('v-body');
+  body.querySelectorAll('mark.find').forEach(m => m.replaceWith(document.createTextNode(m.textContent)));
+  body.normalize();
+  const needle = find.q.toLowerCase();
+  if (needle) {
+    const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (n.nodeValue.toLowerCase().includes(needle)) nodes.push(n);
+    }
+    nodes.forEach(n => wrapMatches(n, needle));
+  }
+  find.matches = needle ? [...body.querySelectorAll('mark.find')] : [];
+  find.current = find.matches.length ? clamp(keep && find.current >= 0 ? find.current : 0, 0, find.matches.length - 1) : -1;
+  showMatch(!keep);
+  updateFind();
+}
+
+function wrapMatches(node, needle) {
+  const text = node.nodeValue, lower = text.toLowerCase(), frag = document.createDocumentFragment();
+  let i = 0, at;
+  while ((at = lower.indexOf(needle, i)) >= 0) {
+    if (at > i) frag.append(text.slice(i, at));
+    const mark = document.createElement('mark');
+    mark.className = 'find';
+    mark.textContent = text.slice(at, at + needle.length);
+    frag.append(mark);
+    i = at + needle.length;
+  }
+  if (i < text.length) frag.append(text.slice(i));
+  node.replaceWith(frag);
+}
+
+function showMatch(scroll) {
+  find.matches.forEach((m, i) => m.classList.toggle('on', i === find.current));
+  if (scroll && find.current >= 0) find.matches[find.current].scrollIntoView({ block: 'center' });
+}
+
+function stepFind(direction) {
+  if (!find.matches.length) return;
+  find.current = (find.current + direction + find.matches.length) % find.matches.length;
+  showMatch(true);
+  updateFind();
+}
+
+function updateFind() {
+  const total = find.matches.length;
+  $('v-find-count').textContent = find.q ? `${total ? find.current + 1 : 0}/${total}` : '';
+  $('v-find-prev').disabled = $('v-find-next').disabled = !total;
+}
+
 function measure() {
   const body = $('v-body');
   const gutter = parseFloat(getComputedStyle(body).fontSize) * GUTTER_EM;
@@ -182,11 +257,27 @@ $('v-next-file').addEventListener('click', () => moveFile(1));
 $('v-prev').addEventListener('click', () => step(-1));
 $('v-next').addEventListener('click', () => step(1));
 
+let findTimer = 0;
+$('v-find').addEventListener('input', e => {
+  find.q = e.target.value;
+  clearTimeout(findTimer);
+  findTimer = setTimeout(() => applyFind(false), 100);
+});
+$('v-find').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    stepFind(e.shiftKey ? -1 : 1);
+  }
+});
+$('v-find-prev').addEventListener('click', () => stepFind(-1));
+$('v-find-next').addEventListener('click', () => stepFind(1));
+
 $('v-body').addEventListener('click', e => {
   const fold = e.target.closest('.unfold');
   if (!fold) return;
   viewer.open.add(+fold.dataset.key);
   fold.outerHTML = viewer.rows.slice(+fold.dataset.from, +fold.dataset.to).join('');
+  if (find.q) applyFind(true);
 });
 
 $('v-file').addEventListener('change', e => {

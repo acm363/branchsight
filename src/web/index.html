@@ -127,6 +127,11 @@
     <button id="v-next" title="Next change (n or F7)">↓ Next change</button>
     <span id="v-pos"></span>
     <span id="v-cut" hidden>this file's diff is cut at 4 MB</span>
+    <span class="v-sep"></span>
+    <input id="v-find" type="search" placeholder="Find in file" autocomplete="off" spellcheck="false">
+    <button id="v-find-prev" title="Previous match (Shift+Enter)" disabled>↑</button>
+    <button id="v-find-next" title="Next match (Enter)" disabled>↓</button>
+    <span id="v-find-count"></span>
     <span class="spacer"></span>
     <span class="seg" id="v-mode"><button data-mode="split">Side by side</button><button data-mode="unified">Unified</button></span>
     <button id="v-close" title="Close (esc)">✕ Close</button>
