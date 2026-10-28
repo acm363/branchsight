@@ -4,6 +4,7 @@ import * as log from '../history/list.js';
 import * as panel from '../changes/panel.js';
 import { commitAt, state } from '../shared/state.js';
 import { checkout, cherryPick, deleteRemote, drop, merge, pull, push, rebase, reset, resetToRemote, revert } from './commands.js';
+import { createBranch, createTag, deleteTag, pushTag } from './edit.js';
 
 const commits = n => plural(n, 'commit');
 
@@ -70,11 +71,13 @@ function menuItems(i, commit, label) {
   if (label?.kind === 'tag') {
     items.push([`Checkout tag ${label.name} (detached)`, () => checkout(label.name)]);
     if (!history.mine(commit.h)) items.push(mergeItem(label.name));
-    items.push(['Copy tag name', () => copy(label.name)]);
+    if (state.repo.remotes.length) items.push([`Push tag ${label.name}…`, () => pushTag(label.name)]);
+    items.push(['Copy tag name', () => copy(label.name)], [`Delete tag ${label.name}`, () => deleteTag(label.name), 'danger']);
   }
   if (items.length && items.at(-1) !== null) items.push(null);
   const short = commit.h.slice(0, SHORT_HASH), here = commit.h === state.repo.head;
   items.push([`Checkout commit ${short} (detached)`, () => checkout(commit.h, short)]);
+  items.push(['Create branch here…', () => createBranch(commit)], ['Create tag here…', () => createTag(commit)]);
   if (!history.mine(commit.h)) items.push(['Cherry pick…', () => cherryPick(commit)]);
   if (!history.foreign(commit.h)) items.push(['Revert…', () => revert(commit)], ['Drop…', () => drop(commit), 'danger']);
   items.push(null);

@@ -139,7 +139,7 @@ fn the_page_and_every_module_it_imports_are_served() {
     // Then.
     assert!(index.content_type.starts_with("text/html"), "{}", index.content_type);
     assert!(served.contains("/app.js") && served.contains("/history/graph.js") && served.contains("/style.css"), "{served:?}");
-    assert_eq!(served.iter().filter(|a| a.ends_with(".js")).count(), 21, "{served:?}");
+    assert_eq!(served.iter().filter(|a| a.ends_with(".js")).count(), 22, "{served:?}");
 }
 
 fn resolve(folder: &str, import: &str) -> String {

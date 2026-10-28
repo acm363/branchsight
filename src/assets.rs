@@ -13,6 +13,7 @@ const FILES: &[(&str, &str)] = web_files![
     "favicon.svg",
     "actions/commands.js",
     "actions/context-menu.js",
+    "actions/edit.js",
     "actions/operation.js",
     "app.js",
     "changes/diffview.js",

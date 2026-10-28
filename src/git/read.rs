@@ -127,7 +127,7 @@ impl Repo {
         Ok(json!({ "history": self.history()?, "worktree": worktree, "status": status, "operation": self.operation() }))
     }
 
-    fn unborn(&self) -> bool {
+    pub(super) fn unborn(&self) -> bool {
         self.git(&["rev-parse", "--verify", "-q", "HEAD"]).is_err()
             && self.git(&["symbolic-ref", "-q", "HEAD"]).is_ok_and(|target| self.git(&["show-ref", "--verify", "-q", target.trim()]).is_err())
     }

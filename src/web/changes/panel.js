@@ -4,6 +4,7 @@ import { SHORT_HASH, esc, fileLabel, plural, statusClass } from '../shared/forma
 import { refName } from '../history/labels.js';
 import * as log from '../history/list.js';
 import { lineHtml, patchHtml } from './patch.js';
+import * as edit from '../actions/edit.js';
 import { commitAt, isWorktree, state } from '../shared/state.js';
 import { onLog } from '../history/sync.js';
 import * as viewer from './viewer.js';
@@ -26,7 +27,7 @@ export function close() {
   clearTimeout(timer);
   requested = shown = null;
   state.compareHash = null;
-  $('detail').hidden = $('split').hidden = true;
+  $('detail').hidden = $('split').hidden = $('commit-btn').hidden = true;
   requestAnimationFrame(log.render);
 }
 
@@ -82,7 +83,7 @@ export function showWorktree({ keep = false } = {}) {
     return [
       group('Staged', worktree.staged, 'staged', [head, 'Staged (index)'], budget),
       group('Not staged', worktree.unstaged, 'unstaged', ['Staged (index)', 'Working tree'], budget),
-      { title: 'Untracked', files: untracked, note: '' },
+      { title: 'Untracked', kind: 'untracked', files: untracked, note: '' },
     ].filter(g => g.files.length);
   }, keep);
 }
@@ -98,7 +99,35 @@ function group(title, { files, truncated }, kind, sides, budget) {
     return { ...file, kind, sides: fileSides, id: `${kind}-${i}`, body: rendered.html };
   });
   const notes = [hidden && `${plural(hidden, 'more line')} not shown here`, truncated && 'the diff is cut at 4 MB'].filter(Boolean);
-  return { title, files: listed, note: notes.length ? `${notes.join(', ')}: open a file in the diff view to see all of it` : '' };
+  return { title, kind, files: listed, note: notes.length ? `${notes.join(', ')}: open a file in the diff view to see all of it` : '' };
+}
+
+const STAGE = { staged: 'unstage', unstaged: 'stage', untracked: 'stage' };
+const cap = verb => verb[0].toUpperCase() + verb.slice(1);
+
+function fileActions(f) {
+  const verb = STAGE[f.kind];
+  return `<button class="fact" data-act="${verb}" title="${cap(verb)} this file">${cap(verb)}</button>`
+    + '<button class="fact danger" data-act="discard" title="Discard this file">Discard</button>';
+}
+
+function groupActions(g) {
+  const verb = STAGE[g.kind];
+  return `<button class="gact" data-act="${verb}-group" data-kind="${g.kind}">${cap(verb)} all</button>`
+    + `<button class="gact danger" data-act="discard-group" data-kind="${g.kind}">Discard all</button>`;
+}
+
+function fileAction(act, key) {
+  const path = key.slice(key.indexOf(':') + 1);
+  ({ stage: edit.stage, unstage: edit.unstage, discard: edit.discard }[act])([path]);
+}
+
+function groupAction(act, kind) {
+  const paths = shown.files.filter(f => f.kind === kind).map(f => f.path);
+  if (!paths.length) return;
+  if (act === 'stage-group') edit.stage(paths);
+  else if (act === 'unstage-group') edit.unstage(paths);
+  else edit.discard(paths);
 }
 
 async function open(source, titleHtml, title, load, keep = false) {
@@ -141,17 +170,19 @@ function keptFolds() {
 
 function fill(groups, folds) {
   const titled = groups.length > 1 || Boolean(groups[0]?.title);
+  const editable = shown.source.kind === 'worktree';
   const untracked = f => f.kind === 'untracked';
   const label = f => esc(fileLabel(f));
   const section = f => {
     const closed = untracked(f) || folds?.closed.has(fileKey(f));
     return `<div class="fsec${closed ? ' closed' : ''}${untracked(f) ? ' untracked' : ''}" id="${f.id}" data-key="${esc(fileKey(f))}">`
       + `<div class="fh"><span class="st ${statusClass(f)}">${f.status}</span><span class="p">${label(f)}</span>${counts(f)}`
-      + '<button class="open-v" title="Open in the diff view">⤢</button>'
+      + `${editable ? fileActions(f) : ''}<button class="open-v" title="Open in the diff view">⤢</button>`
       + `${untracked(f) ? '' : '<button class="fold" title="Fold or unfold this file">▾</button>'}</div><div class="fbody">${f.body}</div></div>`;
   };
   const header = groups[0]?.header?.replace(/\n$/, '').split('\n').map(line => lineHtml(line)).join('') ?? '';
-  $('diff').innerHTML = header + groups.map(g => (titled ? `<div class="grp">${esc(g.title)} · ${g.files.length}</div>` : '')
+  $('commit-btn').hidden = !editable;
+  $('diff').innerHTML = header + groups.map(g => (titled ? `<div class="grp">${esc(g.title)} · ${g.files.length}${editable && g.kind ? groupActions(g) : ''}</div>` : '')
     + g.files.map(section).join('') + (g.note ? lineHtml(g.note, 'mt') : '')).join('');
   $('files').innerHTML = groups.map(g => (titled ? `<div class="file-grp">${esc(g.title)}</div>` : '')
     + g.files.map(f => `<div class="file" data-id="${f.id}" title="${label(f)}"><span class="st ${statusClass(f)}">${f.status}</span>`
@@ -208,13 +239,19 @@ $('files').addEventListener('dblclick', e => {
 });
 
 $('diff').addEventListener('click', e => {
+  const groupBtn = e.target.closest('.gact');
+  if (groupBtn) return groupAction(groupBtn.dataset.act, groupBtn.dataset.kind);
   const section = e.target.closest('.fsec');
   if (!section) return;
+  const fileBtn = e.target.closest('.fact');
+  if (fileBtn) return fileAction(fileBtn.dataset.act, section.dataset.key);
   if (e.target.closest('.open-v')) return openViewer(section.id);
   if (!e.target.closest('.fh') || section.classList.contains('untracked')) return;
   section.classList.toggle('closed');
   updateFoldAll();
 });
+
+$('commit-btn').addEventListener('click', () => edit.commit());
 
 $('fold-all').addEventListener('click', () => {
   const sections = [...$('diff').querySelectorAll('.fsec:not(.untracked)')];

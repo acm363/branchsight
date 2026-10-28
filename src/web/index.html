@@ -111,7 +111,7 @@
   <div id="split" hidden></div>
   <aside id="detail" hidden>
     <div id="detail-head"><span id="detail-title"></span><button id="close" title="Close (esc)">✕</button></div>
-    <div id="detail-tools"><button id="fold-all" title="Fold or unfold every file">Collapse all</button><button id="open-viewer" title="Each file side by side, with next and previous change">Open diff view</button><span id="files-count"></span></div>
+    <div id="detail-tools"><button id="commit-btn" title="Commit the staged changes" hidden>Commit…</button><button id="fold-all" title="Fold or unfold every file">Collapse all</button><button id="open-viewer" title="Each file side by side, with next and previous change">Open diff view</button><span id="files-count"></span></div>
     <div id="files"></div>
     <pre id="diff"></pre>
   </aside>
@@ -193,6 +193,38 @@
   <form method="dialog">
     <p id="confirm-text"></p>
     <div class="actions"><button value="cancel" autofocus>Cancel</button><button value="ok" class="danger"></button></div>
+  </form>
+</dialog>
+<dialog id="commit" class="dialog">
+  <form method="dialog">
+    <p>Commit <span id="commit-count"></span></p>
+    <div id="commit-files"></div>
+    <textarea id="commit-message" rows="4" placeholder="Commit message (Ctrl+Enter to commit)" autocomplete="off" spellcheck="false" autofocus></textarea>
+    <label class="option"><input type="checkbox" id="commit-amend"> Amend the last commit instead of adding a new one</label>
+    <p id="commit-amend-note" class="warn" hidden>This commit is already on its remote; amending it will need a force push.</p>
+    <div class="actions"><button value="cancel">Cancel</button><button value="ok">Commit</button></div>
+  </form>
+</dialog>
+<dialog id="tag" class="dialog">
+  <form method="dialog">
+    <p>Tag <b id="tag-commit"></b></p>
+    <input id="tag-name" placeholder="Tag name (e.g. v1.2.0)" autocomplete="off" spellcheck="false" autofocus>
+    <input id="tag-message" placeholder="Message (optional — empty makes a lightweight tag)" autocomplete="off" spellcheck="false">
+    <div class="option" id="tag-push-row"><label><input type="checkbox" id="tag-push"> Push it to</label> <select id="tag-remote"></select> after creating</div>
+    <div class="actions"><button value="cancel">Cancel</button><button value="ok">Create tag</button></div>
+  </form>
+</dialog>
+<dialog id="pushtag" class="dialog">
+  <form method="dialog">
+    <p>Push tag <b id="pushtag-name"></b> to <select id="pushtag-remote"></select></p>
+    <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Push</button></div>
+  </form>
+</dialog>
+<dialog id="branch" class="dialog">
+  <form method="dialog">
+    <p>Branch from <b id="branch-commit"></b></p>
+    <input id="branch-name" placeholder="Branch name" autocomplete="off" spellcheck="false" autofocus>
+    <div class="actions"><button value="cancel">Cancel</button><button value="ok">Create branch</button></div>
   </form>
 </dialog>
 <div id="toast"></div>

@@ -87,6 +87,14 @@ fn route(config: &Config, post: bool, path: &str, q: &Query) -> Result<Reply, St
         "/api/rebase" => done(action()?.rebase(q.get("ref"))?),
         "/api/reset" => done(action()?.reset(q.get("h"), q.get("mode"))?),
         "/api/delete-remote" => done(action()?.delete_remote_branch(q.get("ref"))?),
+        "/api/stage" => done(action()?.stage(&q.all("path"), q.get("all") == "1")?),
+        "/api/unstage" => done(action()?.unstage(&q.all("path"), q.get("all") == "1")?),
+        "/api/discard" => done(action()?.discard(&q.all("path"), q.get("all") == "1")?),
+        "/api/commit-staged" => done(action()?.commit(q.get("message"), q.get("amend") == "1")?),
+        "/api/tag" => done(action()?.create_tag(q.get("name"), q.get("h"), q.get("message"))?),
+        "/api/delete-tag" => done(action()?.delete_tag(q.get("name"))?),
+        "/api/push-tag" => done(action()?.push_tag(q.get("name"), q.get("remote"), q.get("delete") == "1")?),
+        "/api/branch" => done(action()?.create_branch(q.get("name"), q.get("h"))?),
         _ => Reply::failed(404, "not found".into()),
     })
 }

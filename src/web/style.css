@@ -186,6 +186,20 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 .dialog p { margin: 0 0 16px; line-height: 1.5; }
 .dialog .actions { display: flex; justify-content: flex-end; gap: 8px; }
 #confirm .danger { font-weight: 600; border-color: var(--rm); }
+.dialog input:not([type="checkbox"]):not([type="radio"]) { width: 100%; box-sizing: border-box; margin: 0 0 10px; padding: 5px 8px; background: var(--bg2); border: 1px solid var(--line); border-radius: 4px; }
+.dialog .warn { color: var(--tag); }
+#commit-count { color: var(--dim); font-weight: 400; }
+#commit-files { max-height: 160px; overflow: auto; margin: 0 0 12px; border: 1px solid var(--line); border-radius: 4px; }
+.cfile { display: flex; align-items: center; gap: 8px; padding: 2px 8px; white-space: nowrap; }
+.cfile .st { width: 12px; font-weight: 700; flex: none; }
+.cfile .p { overflow: hidden; text-overflow: ellipsis; }
+.cfile.none { color: var(--dim); }
+#commit-message { width: 100%; box-sizing: border-box; resize: vertical; margin: 0 0 12px; padding: 6px 8px; background: var(--bg2); border: 1px solid var(--line); border-radius: 4px; font: inherit; }
+#tag-push-row { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; color: var(--dim); }
+#tag-push-row[hidden] { display: none; }
+#tag-push-row label { margin: 0; }
+.fact, .gact { flex: none; padding: 0 7px; line-height: 18px; font-weight: 400; font-size: calc(var(--fs) - 2px); text-transform: none; letter-spacing: normal; }
+.fact.danger, .gact.danger { color: var(--rm); }
 #toast { white-space: pre-line; max-width: min(720px, 92vw); position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 4px 12px; border-radius: 4px; font: 12px var(--mono); z-index: 20; opacity: 0; transition: opacity .15s; pointer-events: none; }
 #toast.on { opacity: 1; }
 .row .s { flex: 1; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 5px; align-items: center; min-width: 140px; }
@@ -198,7 +212,8 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 .row.cmp { background: color-mix(in srgb, var(--sel) 55%, transparent); box-shadow: inset 3px 0 0 var(--remote); }
 .wt-title, .cmp-label { font-style: italic; margin-right: 8px; }
 #detail-title .arrow { margin: 0 6px; color: var(--dim); }
-.grp { padding: 10px 10px 4px; color: var(--dim); font-weight: 700; font-size: calc(var(--fs) - 1.5px); text-transform: uppercase; letter-spacing: .04em; }
+.grp { display: flex; align-items: center; gap: 6px; padding: 10px 10px 4px; color: var(--dim); font-weight: 700; font-size: calc(var(--fs) - 1.5px); text-transform: uppercase; letter-spacing: .04em; }
+.grp button:first-of-type { margin-left: auto; }
 .file-grp { padding: 6px 10px 2px; color: var(--dim); font-weight: 700; font-size: calc(var(--fs) - 2px); text-transform: uppercase; letter-spacing: .04em; }
 .fsec.untracked > .fh { cursor: default; }
 #split { width: 5px; cursor: col-resize; background: var(--line); flex: none; }
