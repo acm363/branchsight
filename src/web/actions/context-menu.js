@@ -18,7 +18,8 @@ function menuItems(i, commit, label) {
     items.push([`Checkout ${label.name}`, () => checkout(label.name)]);
     if (!label.current) items.push(mergeItem(label.name), rebaseItem(label.name));
     const upstream = label.upstream && { name: label.upstream, remote: label.upstreamRemote };
-    if (state.repo.remotes.length) items.push([upstream ? `Push ${label.name}…` : `Push ${label.name} to a remote…`, () => push(label.name, upstream)]);
+    const pushed = label.remotes.some(r => !upstream || r.name === upstream.name);
+    if (state.repo.remotes.length && !pushed) items.push([upstream ? `Push ${label.name}…` : `Push ${label.name} to a remote…`, () => push(label.name, upstream)]);
     items.push(['Copy branch name', () => copy(label.name)]);
   }
   if (label?.kind === 'remote') {

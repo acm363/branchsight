@@ -51,7 +51,7 @@
 | On | Items |
 |---|---|
 | any commit | Compare with selected (when another commit is selected) · Checkout commit (detached) · Cherry pick · Revert · Drop · Merge into the current branch · Rebase the current branch on it · Reset the current branch to it · Copy commit hash |
-| local branch | Checkout · Merge into the current branch · Rebase the current branch on it · Push (normal, force with lease or force, to the remote of your choice) · Copy branch name · Delete remote branch, when its remote is on the same commit |
+| local branch | Checkout · Merge into the current branch · Rebase the current branch on it · Push (normal, force with lease or force, to the remote of your choice), unless the remote branch it tracks is already on the same commit · Copy branch name · Delete remote branch, when its remote is on the same commit |
 | remote branch | Checkout (creates the local tracking branch) · Merge into the current branch · Rebase the current branch on it · Copy branch name · Delete remote branch |
 | tag | Checkout tag (detached) · Merge into the current branch · Copy tag name |
 
