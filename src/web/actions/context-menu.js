@@ -10,11 +10,11 @@ const commits = n => plural(n, 'commit');
 function syncItems(head, remote) {
   const { name, ahead = 0, behind = 0 } = head, upstream = { name: remote, remote: head.upstreamRemote };
   if (!ahead && !behind) return [];
-  if (!ahead) return [[`Pull ${remote} into ${name} (${commits(behind)} to bring in)…`, () => pull(name, remote)]];
+  if (!ahead) return [[`Sync ${name} with ${remote} (${commits(behind)} to bring in)…`, () => pull(name, remote)]];
   if (!behind) return [[`Push ${name} to ${remote} (${commits(ahead)} to send)…`, () => push(name, upstream)]];
   return [
     [`${name} and ${remote} have diverged: ${commits(ahead)} only here, ${commits(behind)} only there`, null, 'note'],
-    [`Pull ${remote} into ${name} (merge or rebase)…`, () => pull(name, remote)],
+    [`Sync ${name} with ${remote} (merge or rebase)…`, () => pull(name, remote)],
     [`Reset ${name} to ${remote}, dropping its ${commits(ahead)}…`, () => resetToRemote(name, remote, ahead), 'danger'],
     [`Push ${name} over ${remote} (force with lease)…`, () => push(name, upstream, 'force-with-lease')],
   ];
@@ -39,7 +39,7 @@ function menuItems(i, commit, label) {
     const tracked = upstream && state.refs.some(r => r.kind === 'remote' && r.name === upstream.name);
     if (tracked && tracks(head, upstream.name)) items.push(...syncItems(head, upstream.name));
     else {
-      if (tracked && head?.behind) items.push([`Pull ${upstream.name} into ${label.name}…`, () => pull(label.name, upstream.name)]);
+      if (tracked && head?.behind) items.push([`Sync ${label.name} with ${upstream.name}…`, () => pull(label.name, upstream.name)]);
       if (state.repo.remotes.length) items.push([upstream ? `Push ${label.name}…` : `Push ${label.name} to a remote…`, () => push(label.name, upstream)]);
     }
     items.push(['Copy branch name', () => copy(label.name)]);
@@ -49,7 +49,7 @@ function menuItems(i, commit, label) {
     const head = remote.branch && state.refs.find(r => r.kind === 'head' && r.name === remote.branch);
     items.push([`Checkout ${remote.name}`, () => checkout(remote.name)]);
     if (tracks(head, remote.name)) items.push(...syncItems(head, remote.name));
-    else if (head) items.push([`Pull ${remote.name} into ${remote.branch}…`, () => pull(remote.branch, remote.name)]);
+    else if (head) items.push([`Sync ${remote.branch} with ${remote.name}…`, () => pull(remote.branch, remote.name)]);
     items.push(mergeItem(remote.name), rebaseItem(remote.name));
     items.push(['Copy branch name', () => copy(remote.branch ?? remote.name)]);
   }

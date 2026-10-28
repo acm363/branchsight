@@ -42,7 +42,7 @@ impl Repo {
         self.switch(&["--no-guess", "--end-of-options", branch])?;
         let behind = self.git(&["merge-base", "--is-ancestor", "--end-of-options", remote, "HEAD"]).is_err();
         Ok(if behind {
-            format!("switched to {branch}; {remote} has commits it does not have: pull to bring them in")
+            format!("switched to {branch}; {remote} has commits it does not have: sync to bring them in")
         } else {
             format!("switched to {branch}")
         })

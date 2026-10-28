@@ -109,7 +109,7 @@ fn checkout_of_a_remote_branch_only_switches_to_its_local_copy() {
 
     // Then.
     assert_eq!(status, 200, "{body}");
-    assert!(body.contains("pull to bring them in"), "{body}");
+    assert!(body.contains("sync to bring them in"), "{body}");
     assert_eq!(git(&copy, &["branch", "--show-current"]), "feature");
     assert_eq!(git(&copy, &["rev-parse", "HEAD"]), before, "a checkout does not pull");
     assert_ne!(before, newer);

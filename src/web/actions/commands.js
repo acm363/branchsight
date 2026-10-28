@@ -73,7 +73,7 @@ export async function pull(branch, from) {
   dialog.onkeydown = enterOnlyOnButtons;
   if ((await ask(dialog)) !== 'ok') return;
   const mode = dialog.querySelector('[name="mode"]:checked').value;
-  await run('/api/pull', { branch, from, mode }, `pulling ${from} into ${branch}…`);
+  await run('/api/pull', { branch, from, mode }, `syncing ${branch} with ${from}…`);
 }
 
 export async function merge(name, shown = name) {

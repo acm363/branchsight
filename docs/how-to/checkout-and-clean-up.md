@@ -11,7 +11,7 @@ Choose **Checkout `<branch>`**.
 - On a local branch, BranchSight switches to it.
 - On a remote branch such as `origin/feature/sync`, it creates the local `feature/sync` tracking it and switches to
   it. If that local branch already exists, it switches to it as it is, like `git switch`, and tells you when the
-  remote branch has commits it lacks: bring them in with **Pull**.
+  remote branch has commits it lacks: bring them in with **Sync**.
 
 Git refuses when your uncommitted changes would be overwritten; the reason appears at the bottom of the window.
 
@@ -29,16 +29,16 @@ Right-click the local branch or its remote branch. The menu says where they stan
 | They are | The menu offers |
 |---|---|
 | on the same commit | nothing to do |
-| local only behind | **Pull `origin/<branch>` into `<branch>` (n commits to bring in)…** |
+| local only behind | **Sync `<branch>` with `origin/<branch>` (n commits to bring in)…** |
 | local only ahead | **Push `<branch>` to `origin/<branch>` (n commits to send)…** |
-| diverged | the count on each side, then **Pull** (merge or rebase), **Reset `<branch>` to `origin/<branch>`**, which drops its own commits, or **Push `<branch>` over `origin/<branch>`** with force with lease |
+| diverged | the count on each side, then **Sync** (merge or rebase), **Reset `<branch>` to `origin/<branch>`**, which drops its own commits, or **Push `<branch>` over `origin/<branch>`** with force with lease |
 
 The counts are against the last fetch: **⇣ fetch** first to get the latest. A reset keeps uncommitted changes, or
 git refuses; the dropped commits stay reachable through `git reflog` for a while.
 
-### Pull
+### Sync
 
-Pull asks how:
+Sync brings the remote branch's commits into your local branch, as `git pull` does, and asks how:
 
 - **Merge** fast-forwards when the local branch has no commits of its own, and otherwise creates a merge commit, as
   `git pull` does;
