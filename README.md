@@ -27,7 +27,9 @@ editor.
 
 Download the AppImage, `.rpm`, `.deb`, `.msi` or `.dmg` from
 [Releases](https://github.com/acm363/branchsight/releases), or [build it from source](docs/how-to/install.md).
-BranchSight needs `git` on the `PATH`.
+BranchSight needs `git` on the `PATH`. The `branchsight serve` command, which serves the page to a browser, is a
+separate download from the same release: see
+[the `branchsight serve` command](docs/how-to/install.md#the-branchsight-serve-command).
 
 ## Documentation
 
