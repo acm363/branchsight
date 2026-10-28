@@ -10,8 +10,8 @@ Choose **Checkout `<branch>`**.
 
 - On a local branch, BranchSight switches to it.
 - On a remote branch such as `origin/feature/sync`, it creates the local `feature/sync` tracking it and switches to
-  it. If that local branch already exists, it switches to it and brings it up to the remote one when it is only
-  behind; when both have commits of their own, it changes nothing and says so, so that you can merge instead.
+  it. If that local branch already exists, it switches to it as it is, like `git switch`, and tells you when the
+  remote branch has commits it lacks: bring them in with **Pull**.
 
 Git refuses when your uncommitted changes would be overwritten; the reason appears at the bottom of the window.
 
@@ -21,6 +21,20 @@ Choose **Checkout tag `<tag>` (detached)** or **Checkout commit `<hash>` (detach
 commit without being on a branch, which is how git lets you inspect old states. Check out a branch to leave it.
 
 After any checkout the graph keeps your branch selection and scrolls to the new HEAD.
+
+## Pull a remote branch into its local copy
+
+Choose **Pull `origin/<branch>` into `<branch>`…** on the remote branch, or on the local branch that tracks it, then
+pick how:
+
+- **Merge** fast-forwards when the local branch has no commits of its own, and otherwise creates a merge commit, as
+  `git pull` does;
+- **Rebase** replays the local branch's own commits on top of the remote ones;
+- **Fast-forward only** refuses when the local branch has commits of its own.
+
+A local branch you are not on, and that only lags behind, is brought up where it is: you stay on your branch. When it
+has diverged, BranchSight switches to it first. Pull uses the remote branch as last fetched; **⇣ fetch** first to
+get the latest.
 
 ## Merge a branch into yours
 

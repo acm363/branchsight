@@ -3,7 +3,7 @@ import { SHORT_HASH, esc } from '../shared/format.js';
 import * as log from '../history/list.js';
 import * as panel from '../changes/panel.js';
 import { commitAt, state } from '../shared/state.js';
-import { checkout, cherryPick, deleteRemote, drop, merge, push, rebase, reset, revert } from './commands.js';
+import { checkout, cherryPick, deleteRemote, drop, merge, pull, push, rebase, reset, revert } from './commands.js';
 
 const menuLayer = { contains: target => $('ctx').contains(target), close: () => { $('ctx').hidden = true; } };
 
@@ -19,12 +19,16 @@ function menuItems(i, commit, label) {
     if (!label.current) items.push(mergeItem(label.name), rebaseItem(label.name));
     const upstream = label.upstream && { name: label.upstream, remote: label.upstreamRemote };
     const pushed = label.remotes.some(r => !upstream || r.name === upstream.name);
+    const tracked = upstream && state.refs.some(r => r.kind === 'remote' && r.name === upstream.name);
+    if (tracked && !pushed) items.push([`Pull ${upstream.name} into ${label.name}…`, () => pull(label.name, upstream.name)]);
     if (state.repo.remotes.length && !pushed) items.push([upstream ? `Push ${label.name}…` : `Push ${label.name} to a remote…`, () => push(label.name, upstream)]);
     items.push(['Copy branch name', () => copy(label.name)]);
   }
   if (label?.kind === 'remote') {
     const [remote] = label.remotes;
+    const local = remote.branch && state.refs.some(r => r.kind === 'head' && r.name === remote.branch);
     items.push([`Checkout ${remote.name}`, () => checkout(remote.name)]);
+    if (local) items.push([`Pull ${remote.name} into ${remote.branch}…`, () => pull(remote.branch, remote.name)]);
     items.push(mergeItem(remote.name), rebaseItem(remote.name));
     items.push(['Copy branch name', () => copy(remote.branch ?? remote.name)]);
   }

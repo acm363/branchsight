@@ -141,6 +141,18 @@
     <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Push</button></div>
   </form>
 </dialog>
+<dialog id="pull" class="dialog">
+  <form method="dialog">
+    <p>Pull <b id="pull-from"></b> into <b id="pull-branch"></b></p>
+    <p id="pull-note" hidden></p>
+    <fieldset>
+      <label><input type="radio" name="mode" value="merge" checked> Merge: fast-forward when possible, otherwise a merge commit, as git pull does</label>
+      <label><input type="radio" name="mode" value="rebase"> Rebase: replay the branch's own commits on top of the remote ones</label>
+      <label><input type="radio" name="mode" value="fast-forward"> Fast-forward only: refuse if the branch has commits of its own</label>
+    </fieldset>
+    <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Pull</button></div>
+  </form>
+</dialog>
 <dialog id="merge" class="dialog">
   <form method="dialog">
     <p>Merge <b id="merge-source"></b> into <b id="merge-target"></b></p>

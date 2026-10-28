@@ -82,17 +82,26 @@ fn checkout_switches_to_a_local_branch_and_tracks_a_remote_one() {
     assert_eq!(git(&copy, &["rev-parse", "--abbrev-ref", "feature@{upstream}"]), "origin/feature");
 }
 
-#[test]
-fn checkout_of_a_remote_branch_brings_a_stale_local_copy_up_to_it() {
-    // Given.
-    let sb = Sandbox::new();
-    let (origin, copy) = cloned_with_feature(&sb);
+fn behind_and_ahead(sb: &Sandbox, local_too: bool) -> (std::path::PathBuf, String) {
+    let (origin, copy) = cloned_with_feature(sb);
     git(&copy, &["switch", "-q", "feature"]);
+    if local_too {
+        commit(&copy, "local.txt", "local only");
+    }
     git(&copy, &["switch", "-q", "main"]);
     git(&origin, &["switch", "-q", "feature"]);
-    let newer = commit(&origin, "f2", "F2 upstream");
+    let newer = commit(&origin, "remote.txt", "remote only");
     git(&origin, &["switch", "-q", "main"]);
     git(&copy, &["fetch", "-q"]);
+    (copy, newer)
+}
+
+#[test]
+fn checkout_of_a_remote_branch_only_switches_to_its_local_copy() {
+    // Given.
+    let sb = Sandbox::new();
+    let (copy, newer) = behind_and_ahead(&sb, false);
+    let before = git(&copy, &["rev-parse", "feature"]);
     let port = start(vec![sb.0.clone()], None);
 
     // When.
@@ -100,32 +109,71 @@ fn checkout_of_a_remote_branch_brings_a_stale_local_copy_up_to_it() {
 
     // Then.
     assert_eq!(status, 200, "{body}");
-    assert!(body.contains("brought it up to origin/feature"), "{body}");
+    assert!(body.contains("pull to bring them in"), "{body}");
     assert_eq!(git(&copy, &["branch", "--show-current"]), "feature");
-    assert_eq!(git(&copy, &["rev-parse", "HEAD"]), newer);
+    assert_eq!(git(&copy, &["rev-parse", "HEAD"]), before, "a checkout does not pull");
+    assert_ne!(before, newer);
 }
 
 #[test]
-fn checkout_of_a_remote_branch_refuses_when_the_local_copy_has_diverged() {
+fn pull_brings_a_branch_that_is_only_behind_up_without_switching() {
     // Given.
     let sb = Sandbox::new();
-    let (origin, copy) = cloned_with_feature(&sb);
-    git(&copy, &["switch", "-q", "feature"]);
-    commit(&copy, "local.txt", "local only");
-    git(&copy, &["switch", "-q", "main"]);
-    git(&origin, &["switch", "-q", "feature"]);
-    commit(&origin, "remote.txt", "remote only");
-    git(&origin, &["switch", "-q", "main"]);
-    git(&copy, &["fetch", "-q"]);
+    let (copy, newer) = behind_and_ahead(&sb, false);
     let port = start(vec![sb.0.clone()], None);
 
     // When.
-    let (status, body) = post(port, &format!("/api/checkout?{}&ref={}", repo_query(&copy), encode("origin/feature")));
+    let (status, body) = post(port, &format!("/api/pull?{}&branch=feature&from={}&mode=merge", repo_query(&copy), encode("origin/feature")));
 
     // Then.
-    assert_eq!(status, 400);
-    assert!(body.contains("have diverged"), "{body}");
-    assert_eq!(git(&copy, &["branch", "--show-current"]), "main", "nothing moved");
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(git(&copy, &["rev-parse", "feature"]), newer);
+    assert_eq!(git(&copy, &["branch", "--show-current"]), "main", "the current branch stays");
+}
+
+#[test]
+fn pull_of_a_diverged_branch_merges_or_rebases_it() {
+    // Given.
+    let sb = Sandbox::new();
+    let (copy, newer) = behind_and_ahead(&sb, true);
+    let port = start(vec![sb.0.clone()], None);
+    let pull = |mode: &str| post(port, &format!("/api/pull?{}&branch=feature&from={}&mode={mode}", repo_query(&copy), encode("origin/feature")));
+
+    // When.
+    let (forward, forward_body) = pull("fast-forward");
+    let (rebased, body) = pull("rebase");
+
+    // Then.
+    assert_eq!(forward, 400);
+    assert!(forward_body.contains("have diverged"), "{forward_body}");
+    assert_eq!(rebased, 200, "{body}");
+    assert_eq!(git(&copy, &["branch", "--show-current"]), "feature", "a diverged branch is pulled where it is checked out");
+    assert_eq!(git(&copy, &["rev-parse", "HEAD~1"]), newer);
+    assert_eq!(git(&copy, &["log", "-1", "--format=%s"]), "local only");
+}
+
+#[test]
+fn pull_into_the_current_branch_merges_and_refuses_unknown_names() {
+    // Given.
+    let sb = Sandbox::new();
+    let (copy, newer) = behind_and_ahead(&sb, true);
+    git(&copy, &["switch", "-q", "feature"]);
+    let port = start(vec![sb.0.clone()], None);
+    let q = repo_query(&copy);
+
+    // When.
+    let (merged, body) = post(port, &format!("/api/pull?{q}&branch=feature&from={}&mode=merge", encode("origin/feature")));
+    let refused = [
+        post(port, &format!("/api/pull?{q}&branch=nope&from={}&mode=merge", encode("origin/feature"))).0,
+        post(port, &format!("/api/pull?{q}&branch=feature&from=main&mode=merge")).0,
+        post(port, &format!("/api/pull?{q}&branch=feature&from={}&mode=sideways", encode("origin/feature"))).0,
+    ];
+
+    // Then.
+    assert_eq!(merged, 200, "{body}");
+    assert_eq!(git(&copy, &["rev-list", "--parents", "-n", "1", "HEAD"]).split(' ').count(), 3);
+    assert!(git_succeeds(&copy, &["merge-base", "--is-ancestor", &newer, "HEAD"]));
+    assert_eq!(refused, [400; 3]);
 }
 
 #[test]

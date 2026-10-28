@@ -6,6 +6,7 @@ BranchSight is a viewer first. Reading never changes a repository; the actions b
 |---|---|---|
 | fetch | remote-tracking branches; `--prune` removes those deleted on the remote | yes, fetch again |
 | checkout | your working copy and HEAD; git refuses if uncommitted work would be lost | yes, check out the previous branch |
+| pull | your local branch, from the remote branch as last fetched | yes: `git reset --hard ORIG_HEAD` right after, or `--abort` while stopped on a conflict |
 | merge | your current branch and working copy; git refuses if uncommitted work would be overwritten | yes: `git merge --abort` while it is in progress, `git reset --hard ORIG_HEAD` right after it is committed |
 | cherry pick, revert | adds a commit to your branch, or stages it with **Don't commit** | yes: `git reset --hard HEAD~1`, or `--abort` while it is stopped on a conflict |
 | drop, rebase | rewrites the commits of your branch; asks for confirmation first | yes, through `git reflog`; a pushed branch then needs a force push |

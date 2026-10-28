@@ -39,21 +39,13 @@ impl Repo {
     }
 
     fn checkout_existing(&self, branch: &str, remote: &str) -> Result<String, String> {
-        let contains = |a: &str, b: &str| self.git(&["merge-base", "--is-ancestor", "--end-of-options", b, a]).is_ok();
-        let local = format!("refs/heads/{branch}");
-        let (behind, ahead) = (contains(remote, &local), contains(&local, remote));
-        if !behind && !ahead {
-            return Err(format!("{branch} and {remote} have diverged: check out {branch} and merge {remote} into it, or check out the commit itself"));
-        }
         self.switch(&["--no-guess", "--end-of-options", branch])?;
-        if ahead {
-            let extra = if behind { "already at" } else { "which is ahead of" };
-            return Ok(format!("switched to {branch}, {extra} {remote}"));
-        }
-        let args = ["merge", "--quiet", "--ff-only", "--end-of-options", remote];
-        run::run(&self.root, &Call { timeout: ACTION_TIMEOUT, ..Call::new(&args) })
-            .map_err(|e| format!("switched to {branch} but could not bring it up to {remote}: {}", main_reason(e)))?;
-        Ok(format!("switched to {branch} and brought it up to {remote}"))
+        let behind = self.git(&["merge-base", "--is-ancestor", "--end-of-options", remote, "HEAD"]).is_err();
+        Ok(if behind {
+            format!("switched to {branch}; {remote} has commits it does not have: pull to bring them in")
+        } else {
+            format!("switched to {branch}")
+        })
     }
 
     pub fn delete_remote_branch(&self, name: &str) -> Result<String, String> {
@@ -93,7 +85,7 @@ impl Repo {
         Ok(format!("pushed {branch} to {remote}{how}{tracking}"))
     }
 
-    fn switch(&self, args: &[&str]) -> Result<(), String> {
+    pub(super) fn switch(&self, args: &[&str]) -> Result<(), String> {
         let args = [&["switch", "--quiet"], args].concat();
         run::run(&self.root, &Call { timeout: ACTION_TIMEOUT, ..Call::new(&args) }).map(drop)
     }

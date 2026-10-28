@@ -58,6 +58,19 @@ export async function push(branch, upstream) {
 
 const currentBranch = () => state.repo.branch || 'HEAD';
 
+export async function pull(branch, from) {
+  const dialog = $('pull'), elsewhere = branch !== state.repo.branch;
+  $('pull-from').textContent = from;
+  $('pull-branch').textContent = branch;
+  $('pull-note').hidden = !elsewhere;
+  $('pull-note').textContent = `${branch} is not checked out: if it only lags behind it is brought up where it is, otherwise BranchSight switches to it first.`;
+  dialog.querySelector('[name="mode"][value="merge"]').checked = true;
+  dialog.onkeydown = enterOnlyOnButtons;
+  if ((await ask(dialog)) !== 'ok') return;
+  const mode = dialog.querySelector('[name="mode"]:checked').value;
+  await run('/api/pull', { branch, from, mode }, `pulling ${from} into ${branch}…`);
+}
+
 export async function merge(name, shown = name) {
   const dialog = $('merge'), noCommit = $('merge-no-commit');
   const into = currentBranch();

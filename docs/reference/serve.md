@@ -47,6 +47,7 @@ request takes `repo=<path>`, defaulting to `dir`. Errors come back as `400` with
 | `/api/fetch` | POST | `git fetch --all --prune` |
 | `/api/checkout?ref=…` | POST | switch to a branch, a remote branch, a tag or a commit |
 | `/api/merge?ref=…&mode=…&commit=0` | POST | merge a branch, remote branch, tag or commit into the current branch; `mode` is `fast-forward`, `merge-commit` or `squash`; `commit=0` stops before committing; conflicts answer `400` and leave the merge to resolve |
+| `/api/pull?branch=<local>&from=<remote>/<branch>&mode=…` | POST | bring a local branch up to a remote one; `mode` is `merge`, `rebase` or `fast-forward`; a branch that is only behind is updated without switching to it |
 | `/api/cherry-pick?h=<hash>&commit=0` | POST | copy a commit onto the current branch; `commit=0` only stages it |
 | `/api/revert?h=<hash>&commit=0` | POST | add a commit undoing it; `commit=0` only stages the revert |
 | `/api/drop?h=<hash>` | POST | remove a commit of the current branch, rebasing the ones after it |

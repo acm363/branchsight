@@ -29,6 +29,41 @@ impl Repo {
         })
     }
 
+    pub fn pull(&self, branch: &str, from: &str, mode: &str) -> Result<String, String> {
+        if !matches!(mode, "merge" | "rebase" | "fast-forward") {
+            return Err(format!("unknown pull mode {mode}"));
+        }
+        let local = format!("refs/heads/{branch}");
+        if !self.has_ref(&local) {
+            return Err(format!("no local branch named {branch}"));
+        }
+        if !self.has_ref(&format!("refs/remotes/{from}")) {
+            return Err(format!("no remote branch named {from}"));
+        }
+        if self.contains(&local, from) {
+            return Ok(format!("{branch} already contains {from}"));
+        }
+        let switching = self.current()? != branch;
+        if switching && self.contains(from, &local) {
+            self.git(&["fetch", "--quiet", ".", &format!("refs/remotes/{from}:{local}")]).map_err(main_reason)?;
+            return Ok(format!("brought {branch} up to {from}"));
+        }
+        if switching && mode == "fast-forward" {
+            return Err(format!("{branch} and {from} have diverged: pull with merge or rebase instead"));
+        }
+        if switching {
+            self.switch(&["--no-guess", "--end-of-options", branch])?;
+        }
+        let (operation, args, done) = match mode {
+            "merge" => ("merge", vec!["merge", "--quiet", "--no-edit"], format!("merged {from} into {branch}")),
+            "rebase" => ("rebase", vec!["rebase", "--quiet"], format!("rebased {branch} on {from}")),
+            _ => ("merge", vec!["merge", "--quiet", "--ff-only"], format!("brought {branch} up to {from}")),
+        };
+        self.sequence(operation, &[&args[..], &["--end-of-options", from]].concat())
+            .map_err(|e| if e.contains("Not possible to fast-forward") { format!("{branch} and {from} have diverged: pull with merge or rebase instead") } else { e })?;
+        Ok(if switching { format!("switched to {branch}, then {done}") } else { done })
+    }
+
     pub fn cherry_pick(&self, hash: &str, commit: bool) -> Result<String, String> {
         self.check_commit(hash)?;
         let into = self.current()?;
