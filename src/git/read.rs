@@ -15,6 +15,7 @@ struct Change<'a> {
     staged: bool,
     unstaged: bool,
     untracked: bool,
+    conflicted: bool,
 }
 
 impl Repo {
@@ -123,7 +124,7 @@ impl Repo {
                 (digest(&(out, stamps)), counts(&changes))
             })
             .unzip();
-        Ok(json!({ "history": self.history()?, "worktree": worktree, "status": status }))
+        Ok(json!({ "history": self.history()?, "worktree": worktree, "status": status, "operation": self.operation() }))
     }
 
     fn unborn(&self) -> bool {
@@ -169,7 +170,7 @@ fn changes(porcelain: &str) -> Vec<Change<'_>> {
             b'2' => 10,
             b'u' => 11,
             b'?' => {
-                changes.push(Change { path: &entry[2..], staged: false, unstaged: false, untracked: true });
+                changes.push(Change { path: &entry[2..], staged: false, unstaged: false, untracked: true, conflicted: false });
                 continue;
             }
             _ => continue,
@@ -180,14 +181,20 @@ fn changes(porcelain: &str) -> Vec<Change<'_>> {
         let fields: Vec<&str> = entry.splitn(field_count, ' ').collect();
         let (Some(xy), Some(path)) = (fields.get(1).map(|xy| xy.as_bytes()), fields.get(field_count - 1)) else { continue };
         let changed = |i: usize| xy.get(i).is_some_and(|b| *b != b'.');
-        changes.push(Change { path, staged: changed(0), unstaged: changed(1), untracked: false });
+        let conflicted = entry.starts_with('u');
+        changes.push(Change { path, staged: changed(0) && !conflicted, unstaged: changed(1) && !conflicted, untracked: false, conflicted });
     }
     changes
 }
 
 fn counts(changes: &[Change]) -> Value {
     let count = |f: fn(&Change) -> bool| changes.iter().filter(|c| f(c)).count();
-    json!({ "staged": count(|c| c.staged), "unstaged": count(|c| c.unstaged), "untracked": count(|c| c.untracked) })
+    json!({
+        "staged": count(|c| c.staged),
+        "unstaged": count(|c| c.unstaged),
+        "untracked": count(|c| c.untracked),
+        "conflicts": count(|c| c.conflicted),
+    })
 }
 
 fn digest(value: &impl Hash) -> String {

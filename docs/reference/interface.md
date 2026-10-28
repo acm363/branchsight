@@ -50,10 +50,15 @@
 
 | On | Items |
 |---|---|
-| any commit | Compare with selected (when another commit is selected) · Checkout commit (detached) · Cherry pick · Revert · Drop · Merge into the current branch · Rebase the current branch on it · Reset the current branch to it · Copy commit hash |
+| any commit | Compare with selected (when another commit is selected) · Checkout commit (detached) · Cherry pick, when the current branch does not have it · Revert, Drop, when it does · Merge into the current branch · Rebase the current branch on it, both when the branch does not have it yet · Reset the current branch to it · Copy commit hash |
 | local branch | Checkout · where it stands against its remote branch, with Sync (pull it in), Push or, once diverged, Reset to the remote branch · Merge into the current branch · Rebase the current branch on it · Push (normal, force with lease or force, to the remote of your choice), unless the remote branch it tracks is already on the same commit · Copy branch name · Delete remote branch, when its remote is on the same commit |
 | remote branch | Checkout (switches to its local branch, or creates it) · the same sync choices as its local branch, when there is one · Merge into the current branch · Rebase the current branch on it · Copy branch name · Delete remote branch |
 | tag | Checkout tag (detached) · Merge into the current branch · Copy tag name |
+
+## Operation bar
+
+Shown above the graph while a merge, rebase, cherry pick or revert is stopped: what is in progress, how many files
+are still in conflict, **Continue** and **Abort**.
 
 ## Graph
 

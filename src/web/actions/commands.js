@@ -4,7 +4,7 @@ import { $, ask, confirmAction, toast } from '../shared/dom.js';
 import { SHORT_HASH, esc, plural } from '../shared/format.js';
 import * as panel from '../changes/panel.js';
 import * as log from '../history/list.js';
-import { commitAt, state } from '../shared/state.js';
+import { commitAt, isWorktree, state } from '../shared/state.js';
 import { poll, reload } from '../history/sync.js';
 
 const enterOnlyOnButtons = e => e.key === 'Enter' && !e.target.closest('button') && e.preventDefault();
@@ -17,17 +17,30 @@ const tipOf = branch => () => state.refs.find(r => r.kind === 'head' && r.name =
 
 async function run(endpoint, params, busy, focus = headCommit) {
   toast(busy, ACTION_MS);
-  let done = false;
+  let done = false, stopped = false;
   try {
     const { out } = await post(endpoint, params);
     toast(out, 3000);
     done = true;
   } catch (e) {
     toast(e.message.split('\n').slice(0, 3).join('\n'), 9000);
+    stopped = e.message.includes('stopped on conflicts') || e.message.includes('conflict markers');
   }
   await reload().catch(() => {});
-  if (done && focus) await focusOn(focus());
+  if (stopped) focusUncommitted();
+  else if (done && focus) await focusOn(focus());
 }
+
+function focusUncommitted() {
+  const i = state.entries.findIndex(isWorktree);
+  if (i < 0) return;
+  log.setCursor(i, { scroll: 'center' });
+  if (panel.isOpen()) panel.showSoon(state.entries[i], 0);
+}
+
+export const finishOperation = operation => run('/api/continue', {}, `finishing the ${operation}…`);
+
+export const abortOperation = operation => run('/api/abort', {}, `aborting the ${operation}…`);
 
 async function focusOn(hash) {
   if (!hash) return;

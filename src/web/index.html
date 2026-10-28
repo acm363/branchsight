@@ -91,6 +91,12 @@
   <label class="auto" title="Fetch every 2 minutes while this tab is visible"><input type="checkbox" id="auto-fetch"> auto</label>
   <button id="reload" title="Reload (r) · local changes are picked up automatically">⟳</button>
 </header>
+<div id="operation" hidden>
+  <span id="operation-text"></span>
+  <span class="spacer"></span>
+  <button id="operation-continue">Continue</button>
+  <button id="operation-abort" class="danger">Abort</button>
+</div>
 <div id="main">
   <div id="pane">
     <div id="cols" title="Drag a column edge to resize it, double-click to reset">

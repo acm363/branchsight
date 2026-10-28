@@ -24,8 +24,21 @@ const tracks = (head, remote) => head?.upstream === remote && head.upstream === 
 
 const menuLayer = { contains: target => $('ctx').contains(target), close: () => { $('ctx').hidden = true; } };
 
+function historyOfHead() {
+  const byHash = new Map(state.entries.filter(e => e.h).map(e => [e.h, e]));
+  const reached = new Set(), pending = [state.repo.head];
+  while (pending.length) {
+    const hash = pending.pop();
+    if (reached.has(hash) || !byHash.has(hash)) continue;
+    reached.add(hash);
+    pending.push(...byHash.get(hash).p);
+  }
+  const complete = byHash.has(state.repo.head) && state.entries.length < +$('limit').value;
+  return { mine: hash => reached.has(hash), foreign: hash => complete && !reached.has(hash) };
+}
+
 function menuItems(i, commit, label) {
-  const items = [];
+  const items = [], history = historyOfHead();
   const into = state.repo.branch || 'HEAD';
   const mergeItem = (name, shown = name) => [`Merge ${shown} into ${into}…`, () => merge(name, shown)];
   const rebaseItem = (name, shown = name) => [`Rebase ${into} on ${shown}…`, () => rebase(name, shown)];
@@ -33,7 +46,7 @@ function menuItems(i, commit, label) {
   if (base && state.cursor !== i) items.push([`Compare with selected ${base.h.slice(0, SHORT_HASH)}`, () => panel.showCompare(state.cursor, i)], null);
   if (label?.kind === 'head') {
     items.push([`Checkout ${label.name}`, () => checkout(label.name)]);
-    if (!label.current) items.push(mergeItem(label.name), rebaseItem(label.name));
+    if (!label.current && !history.mine(commit.h)) items.push(mergeItem(label.name), rebaseItem(label.name));
     const head = state.refs.find(r => r.kind === 'head' && r.name === label.name);
     const upstream = label.upstream && { name: label.upstream, remote: label.upstreamRemote };
     const tracked = upstream && state.refs.some(r => r.kind === 'remote' && r.name === upstream.name);
@@ -50,21 +63,22 @@ function menuItems(i, commit, label) {
     items.push([`Checkout ${remote.name}`, () => checkout(remote.name)]);
     if (tracks(head, remote.name)) items.push(...syncItems(head, remote.name));
     else if (head) items.push([`Sync ${remote.branch} with ${remote.name}…`, () => pull(remote.branch, remote.name)]);
-    items.push(mergeItem(remote.name), rebaseItem(remote.name));
+    if (!history.mine(commit.h)) items.push(mergeItem(remote.name), rebaseItem(remote.name));
     items.push(['Copy branch name', () => copy(remote.branch ?? remote.name)]);
   }
   label?.remotes.forEach(r => items.push([`Delete remote branch ${r.name}`, () => deleteRemote(r.name), 'danger']));
   if (label?.kind === 'tag') {
     items.push([`Checkout tag ${label.name} (detached)`, () => checkout(label.name)]);
-    items.push(mergeItem(label.name));
+    if (!history.mine(commit.h)) items.push(mergeItem(label.name));
     items.push(['Copy tag name', () => copy(label.name)]);
   }
   if (items.length && items.at(-1) !== null) items.push(null);
   const short = commit.h.slice(0, SHORT_HASH), here = commit.h === state.repo.head;
   items.push([`Checkout commit ${short} (detached)`, () => checkout(commit.h, short)]);
-  if (!here) items.push(['Cherry pick…', () => cherryPick(commit)]);
-  items.push(['Revert…', () => revert(commit)], ['Drop…', () => drop(commit), 'danger'], null);
-  if (!here) items.push(mergeItem(commit.h, `commit ${short}`), rebaseItem(commit.h, `commit ${short}`));
+  if (!history.mine(commit.h)) items.push(['Cherry pick…', () => cherryPick(commit)]);
+  if (!history.foreign(commit.h)) items.push(['Revert…', () => revert(commit)], ['Drop…', () => drop(commit), 'danger']);
+  items.push(null);
+  if (!here && !history.mine(commit.h)) items.push(mergeItem(commit.h, `commit ${short}`), rebaseItem(commit.h, `commit ${short}`));
   items.push([`Reset ${into} to this commit…`, () => reset(commit)], null);
   items.push(['Copy commit hash', () => copy(commit.h)]);
   return items;

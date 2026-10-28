@@ -175,10 +175,10 @@ function openViewer(id) {
   viewer.open(shown.source, shown.files, Math.max(0, shown.files.findIndex(f => f.id === id)));
 }
 
-onLog(worktree => {
+onLog(seen => {
   if (requested !== 'worktree') return;
   if (!isWorktree(state.entries[0])) return close();
-  const drawn = `${worktree}|${state.repo.head}|${state.repo.branch}`;
+  const drawn = `${seen?.worktree}|${state.repo.head}|${state.repo.branch}`;
   if (drawn === drawnWorktree) return;
   drawnWorktree = drawn;
   showWorktree({ keep: true }).then(ok => {

@@ -100,7 +100,7 @@ function renderIfMoved() {
   if (first !== painted.first || last !== painted.last) render();
 }
 
-const worktreeSummary = status => [[status.staged, 'staged'], [status.unstaged, 'modified'], [status.untracked, 'untracked']]
+const worktreeSummary = status => [[status.conflicts, 'in conflict'], [status.staged, 'staged'], [status.unstaged, 'modified'], [status.untracked, 'untracked']]
   .filter(([n]) => n).map(([n, what]) => `${n} ${what}`).join(' · ');
 
 function rowHtml(entry, i) {

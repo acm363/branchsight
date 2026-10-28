@@ -130,14 +130,16 @@ fn the_page_and_every_module_it_imports_are_served() {
         assert!(!reply.body.is_empty() && !reply.content_type.is_empty(), "{asset}");
         if asset.ends_with(".js") {
             let folder = asset.rsplit_once('/').map_or("", |(dir, _)| dir).to_owned();
-            pending.extend(reply.body.match_indices("from '").map(|(i, m)| resolve(&folder, reply.body[i + m.len()..].split('\'').next().unwrap())));
+            for pattern in ["from '", "import '"] {
+                pending.extend(reply.body.match_indices(pattern).map(|(i, m)| resolve(&folder, reply.body[i + m.len()..].split('\'').next().unwrap())));
+            }
         }
     }
 
     // Then.
     assert!(index.content_type.starts_with("text/html"), "{}", index.content_type);
     assert!(served.contains("/app.js") && served.contains("/history/graph.js") && served.contains("/style.css"), "{served:?}");
-    assert_eq!(served.iter().filter(|a| a.ends_with(".js")).count(), 20, "{served:?}");
+    assert_eq!(served.iter().filter(|a| a.ends_with(".js")).count(), 21, "{served:?}");
 }
 
 fn resolve(folder: &str, import: &str) -> String {

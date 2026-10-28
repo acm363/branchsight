@@ -35,7 +35,7 @@ async function fetchLog(params, fresh, signal) {
 }
 
 function withWorktree(loaded, status) {
-  const dirty = status && status.staged + status.unstaged + status.untracked > 0;
+  const dirty = status && status.staged + status.unstaged + status.untracked + status.conflicts > 0;
   const { head } = state.repo;
   if (!dirty || (head && !loaded.commits.some(c => c.h === head))) return { entries: loaded.commits, rows: loaded.rows, lanes: loaded.lanes };
   const entries = [{ kind: 'worktree', h: '', p: head ? [head] : [], status }, ...loaded.commits];
@@ -66,7 +66,7 @@ export async function loadLog({ keepScroll = false, fresh = false } = {}) {
   } finally {
     clearTimeout(pending);
   }
-  logListeners.forEach(listener => listener(seen?.worktree));
+  logListeners.forEach(listener => listener(seen));
 }
 
 export async function reload({ keepScroll = true, fresh = false, now = null } = {}) {
@@ -91,7 +91,7 @@ function refreshWorktree(status) {
   } else {
     log.show(next, { cursorKey: cursorKey(), top: log.anchor() });
   }
-  logListeners.forEach(listener => listener(seen?.worktree));
+  logListeners.forEach(listener => listener(seen));
 }
 
 export async function poll() {

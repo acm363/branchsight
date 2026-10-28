@@ -43,17 +43,19 @@ request takes `repo=<path>`, defaulting to `dir`. Errors come back as `400` with
 | `/api/compare?from=<hash>&to=<hash>` | GET | the changes of `git diff from to` |
 | `/api/filediff?kind=…&path=…` | GET | `patch`, one file's diff with the whole file as context, and `truncated`; `kind` is `commit` (with `h`), `compare` (with `from`, `to`), `staged`, `unstaged` or `untracked`; a renamed file takes both paths |
 | `/api/worktree` | GET | `staged` and `unstaged` changes, `untracked` paths |
-| `/api/state` | GET | `history`, a fingerprint of the refs, HEAD and shallow boundary; `worktree`, one of `git status` and the changed files; `status`, the staged, unstaged and untracked counts |
+| `/api/state` | GET | `history`, a fingerprint of the refs, HEAD and shallow boundary; `worktree`, one of `git status` and the changed files; `status`, the staged, unstaged, untracked and conflicted counts; `operation`, the `merge`, `rebase`, `cherry-pick` or `revert` in progress, or null |
 | `/api/fetch` | POST | `git fetch --all --prune` |
 | `/api/checkout?ref=…` | POST | switch to a branch, a remote branch, a tag or a commit |
 | `/api/merge?ref=…&mode=…&commit=0` | POST | merge a branch, remote branch, tag or commit into the current branch; `mode` is `fast-forward`, `merge-commit` or `squash`; `commit=0` stops before committing; conflicts answer `400` and leave the merge to resolve |
 | `/api/pull?branch=<local>&from=<remote>/<branch>&mode=…` | POST | bring a local branch up to a remote one; `mode` is `merge`, `rebase` or `fast-forward`; a branch that is only behind is updated without switching to it |
 | `/api/reset-to-remote?branch=<local>&from=<remote>/<branch>` | POST | make a local branch match a remote one; keeps uncommitted changes, or refuses |
-| `/api/cherry-pick?h=<hash>&commit=0` | POST | copy a commit onto the current branch; `commit=0` only stages it |
-| `/api/revert?h=<hash>&commit=0` | POST | add a commit undoing it; `commit=0` only stages the revert |
+| `/api/cherry-pick?h=<hash>&commit=0` | POST | copy a commit onto the current branch; `commit=0` only stages it; refused for a commit it already has |
+| `/api/revert?h=<hash>&commit=0` | POST | add a commit undoing it; `commit=0` only stages the revert; refused for a commit outside its history |
 | `/api/drop?h=<hash>` | POST | remove a commit of the current branch, rebasing the ones after it |
 | `/api/rebase?ref=…` | POST | rebase the current branch on a branch, tag or commit |
 | `/api/reset?h=<hash>&mode=…` | POST | reset the current branch; `mode` is `soft`, `mixed` or `hard` |
+| `/api/continue` | POST | stage the resolved files and finish the operation in progress; refused while a file has conflict markers |
+| `/api/abort` | POST | abort the operation in progress |
 | `/api/push?ref=<branch>&remote=…&mode=…` | POST | push a local branch to the branch of the same name; `mode` is `normal`, `force-with-lease` or `force`; the branch then tracks what it was pushed to |
 | `/api/delete-remote?ref=<remote>/<branch>` | POST | `git push <remote> --delete <branch>` |
 

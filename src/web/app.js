@@ -1,5 +1,6 @@
 import { fetchRemotes, startAutoFetch } from './actions/commands.js';
 import { openContextMenu } from './actions/context-menu.js';
+import './actions/operation.js';
 import { getJson, inDesktopApp, setRepo } from './shared/api.js';
 import * as branches from './header/branches.js';
 import { $, closeLayer, copy, topLayer } from './shared/dom.js';

@@ -186,7 +186,8 @@ fn worktree_splits_staged_unstaged_and_untracked_changes() {
     let worktree = json(port, &format!("/api/worktree?{q}"));
 
     // Then.
-    assert_eq!(state["status"], json!({ "staged": 1, "unstaged": 1, "untracked": 1 }));
+    assert_eq!(state["status"], json!({ "staged": 1, "unstaged": 1, "untracked": 1, "conflicts": 0 }));
+    assert_eq!(state["operation"], Value::Null);
     assert_eq!(paths(&worktree["staged"]["files"]), ["staged.txt"]);
     assert!(patch_of(&worktree["staged"], "staged.txt").contains("+one, staged"));
     assert_eq!(paths(&worktree["unstaged"]["files"]), ["edited.txt"]);

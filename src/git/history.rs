@@ -21,7 +21,7 @@ impl Repo {
         if self.contains("HEAD", name) {
             return Ok(format!("{into} already contains {name}"));
         }
-        self.sequence("merge", &[&["merge", "--quiet", "--no-edit"], &how[..], &["--end-of-options", name]].concat())?;
+        self.sequence("merge", &[&["merge", "--quiet", "--no-edit", "--autostash"], &how[..], &["--end-of-options", name]].concat())?;
         Ok(match (mode, commit) {
             ("squash", _) => format!("{name} is squashed into the staged changes of {into}: review and commit"),
             (_, false) => format!("{name} is merged into {into} but not committed: review and commit"),
@@ -55,8 +55,8 @@ impl Repo {
             self.switch(&["--no-guess", "--end-of-options", branch])?;
         }
         let (operation, args, done) = match mode {
-            "merge" => ("merge", vec!["merge", "--quiet", "--no-edit"], format!("merged {from} into {branch}")),
-            "rebase" => ("rebase", vec!["rebase", "--quiet"], format!("rebased {branch} on {from}")),
+            "merge" => ("merge", vec!["merge", "--quiet", "--no-edit", "--autostash"], format!("merged {from} into {branch}")),
+            "rebase" => ("rebase", vec!["rebase", "--quiet", "--autostash"], format!("rebased {branch} on {from}")),
             _ => ("merge", vec!["merge", "--quiet", "--ff-only"], format!("brought {branch} up to {from}")),
         };
         self.sequence(operation, &[&args[..], &["--end-of-options", from]].concat())
@@ -84,6 +84,9 @@ impl Repo {
     pub fn cherry_pick(&self, hash: &str, commit: bool) -> Result<String, String> {
         self.check_commit(hash)?;
         let into = self.current()?;
+        if self.contains("HEAD", hash) {
+            return Err(format!("{into} already contains {}", short(hash)));
+        }
         let mut args = vec!["cherry-pick"];
         args.extend(self.mainline(hash)?);
         args.extend((!commit).then_some("--no-commit"));
@@ -95,6 +98,9 @@ impl Repo {
     pub fn revert(&self, hash: &str, commit: bool) -> Result<String, String> {
         self.check_commit(hash)?;
         let into = self.current()?;
+        if !self.contains("HEAD", hash) {
+            return Err(format!("{} is not in the history of {into}", short(hash)));
+        }
         let mut args = vec!["revert", "--no-edit"];
         args.extend(self.mainline(hash)?);
         args.extend((!commit).then_some("--no-commit"));
@@ -117,7 +123,7 @@ impl Repo {
         if self.git(&["rev-parse", "--verify", "-q", &parent]).is_err() {
             return Err(format!("{short} is the first commit; it cannot be dropped"));
         }
-        self.sequence("rebase", &["rebase", "--quiet", "--rebase-merges", "--onto", &parent, hash])?;
+        self.sequence("rebase", &["rebase", "--quiet", "--autostash", "--rebase-merges", "--onto", &parent, hash])?;
         Ok(format!("dropped {short} from {into}"))
     }
 
@@ -127,8 +133,41 @@ impl Repo {
         if into == onto {
             return Err(format!("{onto} is the branch you are on"));
         }
-        self.sequence("rebase", &["rebase", "--quiet", "--end-of-options", onto])?;
+        if self.contains("HEAD", onto) {
+            return Ok(format!("{into} already contains {}: nothing to rebase", short(onto)));
+        }
+        self.sequence("rebase", &["rebase", "--quiet", "--autostash", "--end-of-options", onto])?;
         Ok(format!("rebased {into} onto {}", short(onto)))
+    }
+
+    pub fn finish(&self) -> Result<String, String> {
+        let operation = self.operation().ok_or("nothing is in progress")?;
+        let mut remaining = Vec::new();
+        for path in self.unmerged()? {
+            let content = std::fs::read(self.root.join(&path)).unwrap_or_default();
+            let marked = content.split(|b| *b == b'\n').any(|line| line.starts_with(b"<<<<<<< ") || line.starts_with(b">>>>>>> "));
+            if marked {
+                remaining.push(path);
+            } else {
+                self.git(&["add", "--", &format!(":(literal){path}")])?;
+            }
+        }
+        if !remaining.is_empty() {
+            return Err(format!("{} still has conflict markers: resolve them first", remaining.join(", ")));
+        }
+        self.sequence(operation, &[operation, "--continue"])?;
+        Ok(format!("the {operation} is finished"))
+    }
+
+    pub fn abort(&self) -> Result<String, String> {
+        let operation = self.operation().ok_or("nothing is in progress")?;
+        run::run(&self.root, &Call { timeout: ACTION_TIMEOUT, ..Call::new(&[operation, "--abort"]) }).map_err(main_reason)?;
+        Ok(format!("the {operation} is aborted"))
+    }
+
+    fn unmerged(&self) -> Result<Vec<String>, String> {
+        let out = self.git(&["diff", "--name-only", "--diff-filter=U", "-z"])?;
+        Ok(out.split('\0').filter(|p| !p.is_empty()).map(str::to_owned).collect())
     }
 
     pub fn reset(&self, hash: &str, mode: &str) -> Result<String, String> {
@@ -144,13 +183,11 @@ impl Repo {
 
     fn sequence(&self, operation: &str, args: &[&str]) -> Result<(), String> {
         let Err(error) = run::run(&self.root, &Call { timeout: ACTION_TIMEOUT, ..Call::new(args) }) else { return Ok(()) };
-        let conflicts = self.git(&["diff", "--name-only", "--diff-filter=U", "-z"])?;
-        let conflicts: Vec<&str> = conflicts.split('\0').filter(|p| !p.is_empty()).collect();
+        let conflicts = self.unmerged()?;
         if conflicts.is_empty() {
             return Err(main_reason(error));
         }
-        let finish = if operation == "merge" { "commit".to_owned() } else { format!("run git {operation} --continue") };
-        Err(format!("{operation} stopped on conflicts in {}: resolve them and {finish}, or run git {operation} --abort", conflicts.join(", ")))
+        Err(format!("{operation} stopped on conflicts in {}: resolve them, then continue or abort", conflicts.join(", ")))
     }
 
     fn current(&self) -> Result<String, String> {

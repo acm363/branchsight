@@ -15,6 +15,10 @@ Cherry pick and Revert offer **Don't commit**, which stages the result for you t
 **Uncommitted changes** and commit yourself. Rebase is also offered on a branch label, and Drop works on any commit
 of your branch except a merge or the first one.
 
+The menu only offers what makes sense for that commit: Cherry pick for a commit your branch does not have yet,
+Revert and Drop for one it has. Uncommitted work does not block a drop or a rebase: git sets it aside and puts it
+back afterwards (`--autostash`).
+
 ## Pick how far a reset goes
 
 - **Soft** keeps every change since that commit, staged, ready to commit again;
@@ -26,9 +30,15 @@ uncommitted work discarded by a hard reset is gone.
 
 ## When git stops on a conflict
 
-Cherry pick, revert, drop and rebase stop on the first conflict. The conflicted files appear in
-**Uncommitted changes** marked `U`. Resolve them in your editor, then run the command the message gives, such as
-`git cherry-pick --continue`, or `--abort` to go back to where you were.
+Merge, cherry pick, revert, drop and rebase stop on the first conflict. A bar above the graph then says which
+operation is in progress and how many files are still in conflict, and the cursor moves to
+**Uncommitted changes**, where those files are marked `U`. Resolve them in your editor, then:
+
+- **Continue** stages the resolved files and finishes the operation; it refuses while a file still has conflict
+  markers;
+- **Abort** puts the branch and the files back where they were before it started.
+
+The bar stays until the operation ends, wherever it was started from, BranchSight or a terminal.
 
 Drop and rebase rewrite commits: if the branch was already pushed, the remote needs a push with
 **Force with lease** afterwards, see [push a branch](checkout-and-clean-up.md#push-a-branch).

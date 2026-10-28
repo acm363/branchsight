@@ -7,12 +7,13 @@ BranchSight is a viewer first. Reading never changes a repository; the actions b
 | fetch | remote-tracking branches; `--prune` removes those deleted on the remote | yes, fetch again |
 | checkout | your working copy and HEAD; git refuses if uncommitted work would be lost | yes, check out the previous branch |
 | reset to the remote branch | your local branch drops its own commits; uncommitted changes are kept, or git refuses | yes, through `git reflog` |
-| pull | your local branch, from the remote branch as last fetched | yes: `git reset --hard ORIG_HEAD` right after, or `--abort` while stopped on a conflict |
-| merge | your current branch and working copy; git refuses if uncommitted work would be overwritten | yes: `git merge --abort` while it is in progress, `git reset --hard ORIG_HEAD` right after it is committed |
-| cherry pick, revert | adds a commit to your branch, or stages it with **Don't commit** | yes: `git reset --hard HEAD~1`, or `--abort` while it is stopped on a conflict |
-| drop, rebase | rewrites the commits of your branch; asks for confirmation first | yes, through `git reflog`; a pushed branch then needs a force push |
+| pull | your local branch, from the remote branch as last fetched | yes: `git reset --hard ORIG_HEAD` right after, or **Abort** while stopped on a conflict |
+| merge | your current branch and working copy; git refuses if uncommitted work would be overwritten | yes: **Abort** while it is in progress, `git reset --hard ORIG_HEAD` right after it is committed |
+| cherry pick, revert | adds a commit to your branch, or stages it with **Don't commit** | yes: `git reset --hard HEAD~1`, or **Abort** while it is stopped on a conflict |
+| drop, rebase | rewrites the commits of your branch; uncommitted work is set aside and put back; asks for confirmation first | yes, through `git reflog`; a pushed branch then needs a force push |
 | reset | moves your branch; **Hard** also discards uncommitted work, after a second confirmation | the commits, through `git reflog`; discarded uncommitted work, no |
 | push | the branch on the remote; normal by default, force with lease or force only when you pick it | a normal push only adds commits; force with lease refuses if someone pushed since your last fetch; force asks once more, since what it overwrites is lost |
+| continue, abort | the operation in progress: **Continue** stages the files without conflict markers and finishes it, **Abort** returns to where it started | an abort, no; a continue, as the operation itself |
 | delete remote branch | the branch on the remote, for everyone | not from BranchSight; asks for confirmation first |
 | (nothing else) | BranchSight never runs any of these on its own: not on a poll, not on a fetch | |
 

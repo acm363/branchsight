@@ -58,8 +58,7 @@ Choose **Merge `<branch>` into `<current>`…** on a branch, a remote branch, a 
 - **Squash** stages all of the branch's changes as one, for you to commit (`--squash`).
 
 Tick **Don't commit** to stop before the merge commit and review the result in **Uncommitted changes** first. When
-the branches conflict, the merge stops: the conflicted files appear in **Uncommitted changes** marked `U`; resolve
-them in your editor and commit, or run `git merge --abort` to go back.
+the branches conflict, the merge stops: see [when git stops on a conflict](change-history.md#when-git-stops-on-a-conflict).
 
 ## Push a branch
 

@@ -489,8 +489,9 @@ fn merge_reports_conflicts_and_leaves_them_to_resolve() {
 
     // Then.
     assert_eq!(status, 400);
-    assert!(body.contains("conflicts in a.txt") && body.contains("git merge --abort"), "{body}");
-    assert_eq!(json(port, &format!("/api/state?{q}"))["status"]["unstaged"], 1);
+    assert!(body.contains("conflicts in a.txt") && body.contains("continue or abort"), "{body}");
+    let state = json(port, &format!("/api/state?{q}"));
+    assert_eq!((state["status"]["conflicts"].as_u64(), state["operation"].as_str()), (Some(1), Some("merge")));
 }
 
 #[test]
