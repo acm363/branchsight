@@ -28,7 +28,7 @@ editor.
 BranchSight needs `git` on the `PATH`. Set the version once, then pick your system:
 
 ```bash
-v=0.5.0
+v=0.5.1
 ```
 
 | System | Desktop app |
