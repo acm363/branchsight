@@ -53,15 +53,16 @@ export function show({ entries, rows, lanes }, { cursorKey = null, top = null } 
   state.cursor = cursorKey === null ? -1 : entries.findIndex(e => entryKey(e) === cursorKey);
   sizeRows();
   const list = $('list');
-  const topAgain = top ? entries.findIndex(e => entryKey(e) === top.key) : -1;
-  if (topAgain >= 0) list.scrollTop = topAgain * ROW + top.offset;
+  const topAgain = top && !top.atTop ? entries.findIndex(e => entryKey(e) === top.key) : -1;
+  if (top?.atTop) list.scrollTop = 0;
+  else if (topAgain >= 0) list.scrollTop = topAgain * ROW + top.offset;
   else if (state.cursor < 0) list.scrollTop = 0;
   render();
 }
 
 export function anchor() {
   const top = $('list').scrollTop, i = Math.floor(top / ROW);
-  return { key: entryKey(state.entries[i]), offset: top - i * ROW };
+  return { key: entryKey(state.entries[i]), offset: top - i * ROW, atTop: top < ROW };
 }
 
 export function setCursor(i, { scroll = 'nearest' } = {}) {
