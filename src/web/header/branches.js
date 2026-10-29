@@ -8,10 +8,11 @@ const MAX_SHOWN = 400, MAX_CHIPS = 5;
 const GROUPS = [
   { name: '@local', label: 'all local branches', kind: 'head' },
   { name: '@remotes', label: 'all remote branches', kind: 'remote' },
+  { name: '@tags', label: 'all tags', kind: 'tag' },
   { name: 'HEAD', label: 'HEAD', kind: 'head' },
 ];
 
-export const DEFAULT_SELECTION = ['@local', '@remotes'];
+export const DEFAULT_SELECTION = ['@local', '@remotes', '@tags'];
 
 const menu = picker({
   anchor: $('picker'),
