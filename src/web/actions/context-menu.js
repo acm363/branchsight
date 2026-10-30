@@ -116,4 +116,27 @@ export function openContextMenu(e) {
   menu.style.top = `${Math.min(e.clientY, window.innerHeight - height - 4)}px`;
 }
 
+export function openColumnMenu(e) {
+  e.preventDefault();
+  const menu = $('ctx');
+  const render = () => {
+    menu.innerHTML = log.columnMenuItems()
+      .map(([label, name, on]) => `<button data-col="${name}" class="check${on ? ' on' : ''}">${esc(label)}</button>`)
+      .join('');
+  };
+  render();
+  menu.onclick = ev => {
+    const button = ev.target.closest('button[data-col]');
+    if (!button) return;
+    log.toggleColumn(button.dataset.col);
+    render();
+  };
+  menu.hidden = false;
+  openLayer(menuLayer);
+  const { width, height } = menu.getBoundingClientRect();
+  menu.style.left = `${Math.min(e.clientX, window.innerWidth - width - 4)}px`;
+  menu.style.top = `${Math.min(e.clientY, window.innerHeight - height - 4)}px`;
+}
+
+$('cols').addEventListener('contextmenu', openColumnMenu);
 $('list').addEventListener('scroll', () => closeLayer(menuLayer), { passive: true });

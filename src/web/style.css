@@ -191,6 +191,9 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 #ctx button.danger, .dialog .danger { color: var(--rm); }
 #ctx .note { max-width: 340px; padding: 5px 14px; color: var(--dim); font-size: calc(var(--fs) - 1px); white-space: normal; }
 #ctx hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+#ctx button.check { position: relative; padding-left: 30px; }
+#ctx button.check::before { content: '✓'; position: absolute; left: 12px; visibility: hidden; }
+#ctx button.check.on::before { visibility: visible; }
 #v-cut { color: var(--rm); }
 .dialog fieldset { display: grid; gap: 8px; margin: 0 0 16px; padding: 0; border: 0; }
 .dialog label { display: flex; gap: 8px; align-items: baseline; cursor: pointer; }
@@ -270,6 +273,9 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 #diff .hk { color: var(--hunk); }
 #diff .mt { color: var(--dim); }
 #error { color: var(--rm); padding: 20px; }
+#pane.hide-author .c-a, #pane.hide-author .row .a { display: none; }
+#pane.hide-date .c-d, #pane.hide-date .row .d { display: none; }
+#pane.hide-hash .c-h, #pane.hide-hash .row .h { display: none; }
 @media (max-width: 760px) { .row .a, #cols .c-a { display: none; } #detail { width: 100%; } }
 header .auto { display: flex; align-items: center; gap: 4px; color: var(--dim); cursor: pointer; }
 button.err { color: var(--rm); border-color: var(--rm); }

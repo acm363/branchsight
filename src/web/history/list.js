@@ -6,6 +6,7 @@ import { isWorktree, state } from '../shared/state.js';
 
 const AUTO_LANES = 24;
 const COLUMN_LIMITS = { graph: [30, 640], author: [40, 400], date: [60, 220], hash: [40, 200] };
+const TOGGLE_COLS = [['Date', 'date'], ['Author', 'author'], ['Commit', 'hash']];
 const ICONS = {
   branch: '<svg viewBox="0 0 16 16"><path d="M5 3.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 9a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm9-6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0ZM3.5 5v6M12.5 8c0 2-2 3-4 3H3.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
   tag: '<svg viewBox="0 0 16 16"><path d="M2 2.5h5.6l6.4 6.4-5.1 5.1L2.5 7.6V2.5Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="5.2" cy="5.7" r="1.1" fill="currentColor"/></svg>',
@@ -46,6 +47,21 @@ function applyColumns() {
     ? pane.style.setProperty(`--w-${k}`, `${columns[k]}px`)
     : pane.style.removeProperty(`--w-${k}`));
   pane.style.setProperty('--w-graph', `${graphWidth()}px`);
+}
+
+const colShow = () => ({ author: true, date: true, hash: true, ...(prefs.get('colShow') || {}) });
+
+export const columnMenuItems = () => TOGGLE_COLS.map(([label, name]) => [label, name, colShow()[name]]);
+
+export function toggleColumn(name) {
+  const show = colShow();
+  prefs.set('colShow', { ...show, [name]: !show[name] });
+  applyColumnVisibility();
+}
+
+function applyColumnVisibility() {
+  const show = colShow();
+  TOGGLE_COLS.forEach(([, name]) => $('pane').classList.toggle(`hide-${name}`, !show[name]));
 }
 
 export function show({ entries, rows, lanes }, { cursorKey = null, top = null } = {}) {
@@ -188,6 +204,8 @@ function draw(first, last, width) {
     else dot(x, mid, ROW * (merge ? 0.15 : 0.18), merge ? background : node, node);
   }
 }
+
+applyColumnVisibility();
 
 $('list').addEventListener('scroll', () => requestAnimationFrame(renderIfMoved), { passive: true });
 window.addEventListener('resize', () => requestAnimationFrame(render));
