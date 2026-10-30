@@ -64,7 +64,7 @@ fn route(config: &Config, post: bool, path: &str, q: &Query) -> Result<Reply, St
             "default": config.default_repo.as_ref().map(|p| p.to_string_lossy()),
             "roots": config.roots.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>(),
         })),
-        "/api/projects" => Reply::json(projects::list(&config.roots)),
+        "/api/projects" => Reply::json(projects::list(&config.roots, &q.all("root"))),
         "/api/repo" => Reply::json(repo()?.info()?),
         "/api/refs" => Reply::json(repo()?.refs()?),
         "/api/commits" => Reply::json(repo()?.log(&q.all("ref"), limit(q))?),

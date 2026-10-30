@@ -6,15 +6,16 @@ use std::time::UNIX_EPOCH;
 
 use serde_json::{Value, json};
 
-use crate::config::canonical;
+use crate::config::{canonical, expand_home};
 
 const SCAN_DEPTH: usize = 3;
 const SKIP_DIRS: [&str; 4] = ["node_modules", "target", "dist", "vendor"];
 
-pub fn list(roots: &[PathBuf]) -> Value {
+pub fn list(roots: &[PathBuf], extra: &[String]) -> Value {
     let mut found = Vec::new();
-    for root in roots {
-        scan(root, SCAN_DEPTH, &mut found);
+    let extra = extra.iter().map(|path| canonical(expand_home(path)));
+    for root in roots.iter().cloned().chain(extra) {
+        scan(&root, SCAN_DEPTH, &mut found);
     }
     let mut seen = HashSet::new();
     found.retain(|dir| seen.insert(dir.clone()));

@@ -38,3 +38,4 @@ async function call(method, path, signal) {
 
 export const getJson = (path, params, signal) => call('GET', url(path, params), signal).then(JSON.parse);
 export const post = (path, params) => call('POST', url(path, params)).then(JSON.parse);
+export const pickFolder = () => tauri?.invoke('pick_folder') ?? Promise.resolve(null);

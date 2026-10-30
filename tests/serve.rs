@@ -27,6 +27,25 @@ fn projects_lists_repositories_under_the_roots_and_skips_vendored_ones() {
     assert_eq!(names, ["alpha", "beta"]);
 }
 
+#[test]
+fn projects_include_repositories_under_extra_request_roots() {
+    // Given.
+    let sb = Sandbox::new();
+    init(&sb.path("home/in-home"));
+    init(&sb.path("elsewhere/outside"));
+    let port = start(vec![sb.path("home")], None);
+    let root = |rel: &str| branchsight::url::encode(&sb.path(rel).to_string_lossy());
+
+    // When.
+    let path = format!("/api/projects?root={}&root={}&root={}", root("elsewhere"), root("does/not/exist"), root("home"));
+    let projects = json(port, &path);
+
+    // Then.
+    let mut names: Vec<&str> = projects.as_array().unwrap().iter().map(|p| p["name"].as_str().unwrap()).collect();
+    names.sort();
+    assert_eq!(names, ["in-home", "outside"], "{projects}");
+}
+
 #[cfg(unix)]
 #[test]
 fn projects_are_found_through_symlinked_folders() {

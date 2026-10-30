@@ -6,7 +6,8 @@ use std::sync::Arc;
 use branchsight::api;
 use branchsight::config::Config;
 use branchsight::git::Repo;
-use tauri::State;
+use tauri::{AppHandle, State};
+use tauri_plugin_dialog::DialogExt;
 
 #[tauri::command]
 async fn api(config: State<'_, Arc<Config>>, method: String, path: String) -> Result<(u16, String), String> {
@@ -21,6 +22,11 @@ async fn api(config: State<'_, Arc<Config>>, method: String, path: String) -> Re
     .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn pick_folder(app: AppHandle) -> Option<String> {
+    app.dialog().file().blocking_pick_folder().map(|folder| folder.to_string())
+}
+
 fn main() {
     #[cfg(target_os = "linux")]
     glib::set_prgname(Some("BranchSight"));
@@ -28,8 +34,9 @@ fn main() {
     let config = Config { default_repo, ..Config::home() };
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(Arc::new(config))
-        .invoke_handler(tauri::generate_handler![api])
+        .invoke_handler(tauri::generate_handler![api, pick_folder])
         .run(tauri::generate_context!())
         .expect("branchsight: the desktop app failed to start");
 }

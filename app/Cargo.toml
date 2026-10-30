@@ -17,6 +17,7 @@ tauri-build = { version = "2.7.4", features = [] }
 [dependencies]
 branchsight = { path = ".." }
 tauri = { version = "2.12.5", features = [] }
+tauri-plugin-dialog = "2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 glib = "0.18"

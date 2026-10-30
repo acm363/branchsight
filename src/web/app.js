@@ -106,7 +106,7 @@ function restoreView(store) {
 async function init() {
   settings.restore();
   const context = await getJson('/api/context');
-  state.roots = context.roots;
+  projects.useRoots(context.roots);
   $('about').textContent = `BranchSight ${context.version} · MIT · github.com/acm363/branchsight`;
   const path = await resolveRepo(context.default);
   if (!path) return projects.showStart();

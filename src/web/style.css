@@ -91,6 +91,18 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 .pick mark { background: none; color: var(--remote); font-weight: 700; }
 .pick.group .name { font-family: var(--sans); font-style: italic; }
 #pnote { margin: 0 8px 6px; color: var(--rm); white-space: pre-wrap; }
+.pick.scan .name, .pick.open .name { font-family: var(--sans); }
+.pick.scan .name b, .pick.open .name b { font-family: var(--mono); font-weight: 600; }
+#proots:empty { display: none; }
+#proots { flex: none; border-top: 1px solid var(--line); padding: 6px 10px 8px; font-size: calc(var(--fs) - 2px); }
+#proots .rhead { color: var(--dim); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+#proots .root { display: flex; align-items: center; gap: 6px; padding: 1px 0; }
+#proots .rp { overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); color: var(--dim); }
+#proots .rx { flex: none; width: 16px; height: 16px; line-height: 14px; text-align: center; padding: 0; border: 0; background: none; color: var(--dim); cursor: pointer; border-radius: 3px; }
+#proots button.rx:hover { background: var(--hover); color: var(--rm); }
+#proots .rbtn { margin-top: 6px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg2); color: var(--fg); cursor: pointer; }
+#proots .rbtn:hover { border-color: var(--remote); }
+#proots .rhint { margin-top: 6px; color: var(--dim); font-style: italic; }
 .chip { font: calc(var(--fs) - 2px)/calc(var(--row) - 5px) var(--mono); padding: 0 5px; border-radius: 3px; border: 1px solid currentColor; white-space: nowrap; flex: none; }
 .k-head { color: var(--head); } .k-remote { color: var(--remote); } .k-tag { color: var(--tag); }
 .chip.is-head { background: var(--head); color: var(--bg); border-color: var(--head); }
