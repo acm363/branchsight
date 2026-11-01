@@ -23,6 +23,10 @@ pub fn parse() -> Args {
             println!("{USAGE}");
             exit(0);
         }
+        Some("-V" | "--version") => {
+            println!("branchsight {}", env!("CARGO_PKG_VERSION"));
+            exit(0);
+        }
         Some(other) => fail(&format!("unknown command {other}")),
         None => fail("a command is required"),
     }
