@@ -1,8 +1,9 @@
 import { getJson } from '../shared/api.js';
 import { buildDiff, folds } from './diffview.js';
-import { $, closeLayer, copy, drag, openLayer } from '../shared/dom.js';
-import { SHORT_HASH, clamp, esc, fileLabel, plural } from '../shared/format.js';
+import { $, closeLayer, drag, openLayer } from '../shared/dom.js';
+import { clamp, esc, fileLabel, plural } from '../shared/format.js';
 import { prefs } from '../shared/prefs.js';
+import { formatRef, showRefMenu } from './copyref.js';
 
 const SPLIT_LIMITS = [0.15, 0.85];
 const GUTTER_EM = 4.2;
@@ -251,15 +252,6 @@ function setSplit(fraction) {
   placeDivider();
 }
 
-const refLayer = { contains: target => $('ctx').contains(target), close: () => { $('ctx').hidden = true; } };
-
-function refSuffix() {
-  const s = viewer.source;
-  if (s.kind === 'commit') return ` @${s.h.slice(0, SHORT_HASH)}`;
-  if (s.kind === 'compare') return ` @${s.to.slice(0, SHORT_HASH)}`;
-  return '';
-}
-
 function cellLine(cell, row) {
   if (row.classList.contains('u')) {
     const ln = row.querySelectorAll('.ln');
@@ -304,16 +296,6 @@ function codeForRange(startRow, endRow, side) {
   return rows.slice(i, (j < 0 ? i : j) + 1).map(row => lineText(row, side)).filter(text => text != null).join('\n');
 }
 
-function formatRef(path, a, b) {
-  const at = p => (p.col ? `${p.line}:${p.col}` : `${p.line}`);
-  if (b && b.col === 1 && b.line > a.line) b = { line: b.line - 1 };
-  let loc;
-  if (!b || (b.line === a.line && b.col === a.col)) loc = at(a);
-  else if (b.line === a.line) loc = `${a.line}:${a.col}-${b.col}`;
-  else loc = `${at(a)}-${at(b)}`;
-  return `${path}:${loc}${refSuffix()}`;
-}
-
 function referenceAt(target) {
   const body = $('v-body'), path = viewer.files[viewer.index].path, sel = getSelection();
   let a = null, b = null, code = '';
@@ -330,29 +312,11 @@ function referenceAt(target) {
     a = { line: +line };
     code = cell.textContent;
   }
-  return { text: formatRef(path, a, b), code: code.replace(/\s+$/, '') };
+  return { text: formatRef(path, a, b, viewer.source), code: code.replace(/\s+$/, '') };
 }
 
 function openRefMenu(e) {
-  if (!viewer) return;
-  const ref = referenceAt(e.target);
-  if (!ref) return;
-  e.preventDefault();
-  const menu = $('ctx');
-  const items = [['Copy reference', () => copy(ref.text)]];
-  if (ref.code) items.push(['Copy reference + code', () => copy(`${ref.text}\n${ref.code}`)]);
-  menu.innerHTML = items.map(([label], i) => `<button data-i="${i}">${esc(label)}</button>`).join('');
-  menu.onclick = ev => {
-    const button = ev.target.closest('button[data-i]');
-    if (!button) return;
-    closeLayer(refLayer);
-    items[+button.dataset.i][1]();
-  };
-  menu.hidden = false;
-  openLayer(refLayer);
-  const { width, height } = menu.getBoundingClientRect();
-  menu.style.left = `${Math.min(e.clientX, window.innerWidth - width - 4)}px`;
-  menu.style.top = `${Math.min(e.clientY, window.innerHeight - height - 4)}px`;
+  if (viewer) showRefMenu(e, referenceAt(e.target));
 }
 
 $('v-close').addEventListener('click', () => closeLayer(layer));

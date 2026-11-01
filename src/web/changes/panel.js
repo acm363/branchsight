@@ -8,6 +8,7 @@ import * as edit from '../actions/edit.js';
 import { commitAt, isWorktree, state } from '../shared/state.js';
 import { onLog } from '../history/sync.js';
 import * as viewer from './viewer.js';
+import { formatRef, showRefMenu } from './copyref.js';
 
 const MAX_LINES = 40000;
 
@@ -265,6 +266,77 @@ onLog(seen => {
     if (!ok) drawnWorktree = null;
   });
 });
+
+function lineMap(fbody) {
+  const map = new Map();
+  let oldLine = 0, newLine = 0;
+  for (const el of fbody.children) {
+    const cls = el.className;
+    if (cls === 'hk') {
+      const m = /@@ -(\d+)(?:,\d+)? \+(\d+)/.exec(el.textContent);
+      if (m) [oldLine, newLine] = [+m[1], +m[2]];
+    } else if (cls === 'ad') map.set(el, { line: newLine++, kind: 'add', side: 'new' });
+    else if (cls === 'rm') map.set(el, { line: oldLine++, kind: 'del', side: 'old' });
+    else if (cls !== 'mt') { map.set(el, { line: newLine, kind: 'ctx', side: 'new' }); oldLine++; newLine++; }
+  }
+  return map;
+}
+
+function lineSpan(node, fbody) {
+  let el = node.nodeType === 3 ? node.parentElement : node;
+  while (el && el.parentElement !== fbody) el = el.parentElement;
+  return el && el.parentElement === fbody ? el : null;
+}
+
+function pointAt(map, span, node, offset) {
+  const info = map.get(span);
+  if (!info) return null;
+  const range = document.createRange();
+  range.setStart(span, 0);
+  range.setEnd(node, offset);
+  return { line: info.line, col: Math.max(0, range.toString().length - 1) + 1, side: info.side };
+}
+
+function codeForRange(map, fbody, startSpan, endSpan, side) {
+  const spans = [...fbody.children];
+  const i = spans.indexOf(startSpan);
+  let j = spans.indexOf(endSpan);
+  if (i < 0) return '';
+  if (j < i) j = i;
+  return spans.slice(i, j + 1).map(span => {
+    const info = map.get(span);
+    if (!info || (side === 'new' && info.kind === 'del') || (side === 'old' && info.kind === 'add')) return null;
+    return span.textContent.slice(1);
+  }).filter(text => text != null).join('\n');
+}
+
+function diffReference(e) {
+  const fbody = e.target.closest?.('.fbody');
+  if (!fbody || !shown) return null;
+  const key = fbody.closest('.fsec')?.dataset.key ?? '';
+  const path = key.slice(key.indexOf(':') + 1);
+  if (!path) return null;
+  const map = lineMap(fbody), sel = getSelection();
+  let a = null, b = null, code = '';
+  if (sel.rangeCount && !sel.isCollapsed && fbody.contains(sel.anchorNode) && fbody.contains(sel.focusNode)) {
+    const r = sel.getRangeAt(0);
+    const startSpan = lineSpan(r.startContainer, fbody), endSpan = lineSpan(r.endContainer, fbody);
+    if (startSpan) {
+      a = pointAt(map, startSpan, r.startContainer, r.startOffset);
+      b = endSpan ? pointAt(map, endSpan, r.endContainer, r.endOffset) : null;
+      if (a) code = codeForRange(map, fbody, startSpan, endSpan ?? startSpan, a.side);
+    }
+  }
+  if (!a) {
+    const span = lineSpan(e.target, fbody), info = span && map.get(span);
+    if (!info) return null;
+    a = { line: info.line };
+    code = span.textContent.slice(1);
+  }
+  return { text: formatRef(path, a, b, shown.source), code: code.replace(/\s+$/, '') };
+}
+
+$('diff').addEventListener('contextmenu', e => showRefMenu(e, diffReference(e)));
 
 $('close').addEventListener('click', close);
 

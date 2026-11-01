@@ -16,6 +16,7 @@ const FILES: &[(&str, &str)] = web_files![
     "actions/edit.js",
     "actions/operation.js",
     "app.js",
+    "changes/copyref.js",
     "changes/diffview.js",
     "changes/panel.js",
     "changes/patch.js",
