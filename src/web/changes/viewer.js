@@ -1,7 +1,7 @@
 import { getJson } from '../shared/api.js';
 import { buildDiff, folds } from './diffview.js';
-import { $, closeLayer, drag, openLayer } from '../shared/dom.js';
-import { clamp, esc, fileLabel, plural } from '../shared/format.js';
+import { $, closeLayer, copy, drag, openLayer } from '../shared/dom.js';
+import { SHORT_HASH, clamp, esc, fileLabel, plural } from '../shared/format.js';
 import { prefs } from '../shared/prefs.js';
 
 const SPLIT_LIMITS = [0.15, 0.85];
@@ -251,6 +251,110 @@ function setSplit(fraction) {
   placeDivider();
 }
 
+const refLayer = { contains: target => $('ctx').contains(target), close: () => { $('ctx').hidden = true; } };
+
+function refSuffix() {
+  const s = viewer.source;
+  if (s.kind === 'commit') return ` @${s.h.slice(0, SHORT_HASH)}`;
+  if (s.kind === 'compare') return ` @${s.to.slice(0, SHORT_HASH)}`;
+  return '';
+}
+
+function cellLine(cell, row) {
+  if (row.classList.contains('u')) {
+    const ln = row.querySelectorAll('.ln');
+    return (cell.classList.contains('del') ? ln[0] : ln[1])?.textContent.trim();
+  }
+  return cell.previousElementSibling?.textContent.trim();
+}
+
+function cellSide(cell, row) {
+  if (row.classList.contains('u')) return cell.classList.contains('del') ? 'old' : 'new';
+  return row.querySelectorAll('.code')[0] === cell ? 'old' : 'new';
+}
+
+function pointAt(node, offset) {
+  const cell = (node.nodeType === 3 ? node.parentElement : node)?.closest?.('.code:not(.none)');
+  if (!cell) return null;
+  const row = cell.closest('.v-row'), line = cellLine(cell, row);
+  if (!line) return null;
+  const range = document.createRange();
+  range.setStart(cell, 0);
+  range.setEnd(node, offset);
+  const col = range.toString().length - (row.classList.contains('u') ? 1 : 0);
+  return { line: +line, col: Math.max(0, col) + 1, row, side: cellSide(cell, row) };
+}
+
+function lineText(row, side) {
+  if (row.classList.contains('gap') || row.classList.contains('unfold')) return null;
+  if (row.classList.contains('u')) {
+    const code = row.querySelector('.code');
+    const kind = code.classList.contains('del') ? 'del' : code.classList.contains('add') ? 'add' : 'ctx';
+    if ((side === 'new' && kind === 'del') || (side === 'old' && kind === 'add')) return null;
+    return code.textContent.slice(1);
+  }
+  const cell = row.querySelectorAll('.code')[side === 'old' ? 0 : 1];
+  return cell?.previousElementSibling?.textContent.trim() ? cell.textContent : null;
+}
+
+function codeForRange(startRow, endRow, side) {
+  const rows = [...$('v-body').querySelectorAll('.v-row')];
+  const i = rows.indexOf(startRow), j = rows.indexOf(endRow);
+  if (i < 0) return '';
+  return rows.slice(i, (j < 0 ? i : j) + 1).map(row => lineText(row, side)).filter(text => text != null).join('\n');
+}
+
+function formatRef(path, a, b) {
+  const at = p => (p.col ? `${p.line}:${p.col}` : `${p.line}`);
+  if (b && b.col === 1 && b.line > a.line) b = { line: b.line - 1 };
+  let loc;
+  if (!b || (b.line === a.line && b.col === a.col)) loc = at(a);
+  else if (b.line === a.line) loc = `${a.line}:${a.col}-${b.col}`;
+  else loc = `${at(a)}-${at(b)}`;
+  return `${path}:${loc}${refSuffix()}`;
+}
+
+function referenceAt(target) {
+  const body = $('v-body'), path = viewer.files[viewer.index].path, sel = getSelection();
+  let a = null, b = null, code = '';
+  if (sel.rangeCount && !sel.isCollapsed && body.contains(sel.anchorNode) && body.contains(sel.focusNode)) {
+    const r = sel.getRangeAt(0);
+    a = pointAt(r.startContainer, r.startOffset);
+    b = pointAt(r.endContainer, r.endOffset);
+    if (a) code = codeForRange(a.row, (b || a).row, a.side);
+  }
+  if (!a) {
+    const cell = target.closest?.('.v-row')?.querySelector('.code:not(.none)');
+    const row = cell?.closest('.v-row'), line = cell && cellLine(cell, row);
+    if (!line) return null;
+    a = { line: +line };
+    code = cell.textContent;
+  }
+  return { text: formatRef(path, a, b), code: code.replace(/\s+$/, '') };
+}
+
+function openRefMenu(e) {
+  if (!viewer) return;
+  const ref = referenceAt(e.target);
+  if (!ref) return;
+  e.preventDefault();
+  const menu = $('ctx');
+  const items = [['Copy reference', () => copy(ref.text)]];
+  if (ref.code) items.push(['Copy reference + code', () => copy(`${ref.text}\n${ref.code}`)]);
+  menu.innerHTML = items.map(([label], i) => `<button data-i="${i}">${esc(label)}</button>`).join('');
+  menu.onclick = ev => {
+    const button = ev.target.closest('button[data-i]');
+    if (!button) return;
+    closeLayer(refLayer);
+    items[+button.dataset.i][1]();
+  };
+  menu.hidden = false;
+  openLayer(refLayer);
+  const { width, height } = menu.getBoundingClientRect();
+  menu.style.left = `${Math.min(e.clientX, window.innerWidth - width - 4)}px`;
+  menu.style.top = `${Math.min(e.clientY, window.innerHeight - height - 4)}px`;
+}
+
 $('v-close').addEventListener('click', () => closeLayer(layer));
 $('v-prev-file').addEventListener('click', () => moveFile(-1));
 $('v-next-file').addEventListener('click', () => moveFile(1));
@@ -271,6 +375,8 @@ $('v-find').addEventListener('keydown', e => {
 });
 $('v-find-prev').addEventListener('click', () => stepFind(-1));
 $('v-find-next').addEventListener('click', () => stepFind(1));
+
+$('v-body').addEventListener('contextmenu', openRefMenu);
 
 $('v-body').addEventListener('click', e => {
   const fold = e.target.closest('.unfold');
