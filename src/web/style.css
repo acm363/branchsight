@@ -184,7 +184,7 @@ body.start #picker, body.start #count, body.start #limit, body.start #fetch, bod
 .v-row.unfold:hover { color: var(--fg); text-decoration: underline; }
 .v-empty { padding: 48px; text-align: center; color: var(--dim); }
 .fsec > .fh .open-v { flex: none; width: 22px; padding: 0; line-height: 18px; }
-#ctx { position: fixed; z-index: 30; min-width: 220px; padding: 4px 0; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 8px 28px rgba(0,0,0,.25); }
+#ctx { position: fixed; z-index: 50; min-width: 220px; padding: 4px 0; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 8px 28px rgba(0,0,0,.25); }
 #ctx[hidden] { display: none; }
 #ctx button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: none; padding: 5px 14px; white-space: nowrap; }
 #ctx button:hover { background: var(--hover); }

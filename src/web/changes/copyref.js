@@ -1,7 +1,5 @@
-import { $, closeLayer, copy, openLayer } from '../shared/dom.js';
+import { $, copy } from '../shared/dom.js';
 import { SHORT_HASH, esc } from '../shared/format.js';
-
-const refLayer = { contains: target => $('ctx').contains(target), close: () => { $('ctx').hidden = true; } };
 
 export function refSuffix(source) {
   if (source.kind === 'commit') return ` @${source.h.slice(0, SHORT_HASH)}`;
@@ -26,14 +24,22 @@ export function showRefMenu(e, ref) {
   const items = [['Copy reference', () => copy(ref.text)]];
   if (ref.code) items.push(['Copy reference + code', () => copy(`${ref.text}\n${ref.code}`)]);
   menu.innerHTML = items.map(([label], i) => `<button data-i="${i}">${esc(label)}</button>`).join('');
+  const onDown = ev => { if (!menu.contains(ev.target)) close(); };
+  const onKey = ev => { if (ev.key === 'Escape') { ev.stopPropagation(); close(); } };
+  function close() {
+    menu.hidden = true;
+    document.removeEventListener('mousedown', onDown, true);
+    document.removeEventListener('keydown', onKey, true);
+  }
   menu.onclick = ev => {
     const button = ev.target.closest('button[data-i]');
     if (!button) return;
-    closeLayer(refLayer);
+    close();
     items[+button.dataset.i][1]();
   };
   menu.hidden = false;
-  openLayer(refLayer);
+  document.addEventListener('mousedown', onDown, true);
+  document.addEventListener('keydown', onKey, true);
   const { width, height } = menu.getBoundingClientRect();
   menu.style.left = `${Math.min(e.clientX, window.innerWidth - width - 4)}px`;
   menu.style.top = `${Math.min(e.clientY, window.innerHeight - height - 4)}px`;
