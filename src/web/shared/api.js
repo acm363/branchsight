@@ -1,3 +1,5 @@
+import { getLocale } from './i18n.js';
+
 const tauri = window.__TAURI__?.core;
 let repoPath = null;
 
@@ -10,6 +12,7 @@ export function setRepo(path) {
 function url(path, params = {}) {
   const query = new URLSearchParams(params);
   if (repoPath) query.set('repo', repoPath);
+  query.set('lang', getLocale());
   return `${path}?${query}`;
 }
 

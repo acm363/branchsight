@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::git::Repo;
+use crate::git::{Lang, Repo};
 
 pub struct Config {
     pub roots: Vec<PathBuf>,
@@ -13,13 +13,15 @@ impl Config {
     }
 }
 
-pub fn open_repo(config: &Config, requested: &str) -> Result<Repo, String> {
+pub fn open_repo(config: &Config, requested: &str, lang: Lang) -> Result<Repo, String> {
     let dir = if requested.is_empty() {
         config.default_repo.clone().ok_or("no repository selected")?
     } else {
         expand_home(requested)
     };
-    Repo::open(&dir)
+    let mut repo = Repo::open(&dir)?;
+    repo.lang = lang;
+    Ok(repo)
 }
 
 pub fn canonical(path: PathBuf) -> PathBuf {

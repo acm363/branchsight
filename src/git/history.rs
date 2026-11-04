@@ -19,13 +19,13 @@ impl Repo {
             return Err(format!("{name} is the branch you are on"));
         }
         if self.contains("HEAD", name) {
-            return Ok(format!("{into} already contains {name}"));
+            return Ok(self.tr(format!("{into} already contains {name}"), format!("{into} contient déjà {name}")));
         }
         self.sequence("merge", &[&["merge", "--quiet", "--no-edit", "--autostash"], &how[..], &["--end-of-options", name]].concat())?;
         Ok(match (mode, commit) {
-            ("squash", _) => format!("{name} is squashed into the staged changes of {into}: review and commit"),
-            (_, false) => format!("{name} is merged into {into} but not committed: review and commit"),
-            _ => format!("merged {name} into {into}"),
+            ("squash", _) => self.tr(format!("{name} is squashed into the staged changes of {into}: review and commit"), format!("{name} est squashé dans les changements indexés de {into} : vérifie et committe")),
+            (_, false) => self.tr(format!("{name} is merged into {into} but not committed: review and commit"), format!("{name} est fusionné dans {into} mais pas committé : vérifie et committe")),
+            _ => self.tr(format!("merged {name} into {into}"), format!("{name} fusionné dans {into}")),
         })
     }
 
@@ -41,12 +41,12 @@ impl Repo {
             return Err(format!("no remote branch named {from}"));
         }
         if self.contains(&local, from) {
-            return Ok(format!("{branch} already contains {from}"));
+            return Ok(self.tr(format!("{branch} already contains {from}"), format!("{branch} contient déjà {from}")));
         }
         let switching = self.current()? != branch;
         if switching && self.contains(from, &local) {
             self.git(&["fetch", "--quiet", ".", &format!("refs/remotes/{from}:{local}")]).map_err(main_reason)?;
-            return Ok(format!("brought {branch} up to {from}"));
+            return Ok(self.tr(format!("brought {branch} up to {from}"), format!("{branch} mise à niveau sur {from}")));
         }
         if switching && mode == "fast-forward" {
             return Err(format!("{branch} and {from} have diverged: pull with merge or rebase instead"));
@@ -55,13 +55,13 @@ impl Repo {
             self.switch(&["--no-guess", "--end-of-options", branch])?;
         }
         let (operation, args, done) = match mode {
-            "merge" => ("merge", vec!["merge", "--quiet", "--no-edit", "--autostash"], format!("merged {from} into {branch}")),
-            "rebase" => ("rebase", vec!["rebase", "--quiet", "--autostash"], format!("rebased {branch} on {from}")),
-            _ => ("merge", vec!["merge", "--quiet", "--ff-only"], format!("brought {branch} up to {from}")),
+            "merge" => ("merge", vec!["merge", "--quiet", "--no-edit", "--autostash"], self.tr(format!("merged {from} into {branch}"), format!("{from} fusionné dans {branch}"))),
+            "rebase" => ("rebase", vec!["rebase", "--quiet", "--autostash"], self.tr(format!("rebased {branch} on {from}"), format!("{branch} rebasée sur {from}"))),
+            _ => ("merge", vec!["merge", "--quiet", "--ff-only"], self.tr(format!("brought {branch} up to {from}"), format!("{branch} mise à niveau sur {from}"))),
         };
         self.sequence(operation, &[&args[..], &["--end-of-options", from]].concat())
             .map_err(|e| if e.contains("Not possible to fast-forward") { format!("{branch} and {from} have diverged: pull with merge or rebase instead") } else { e })?;
-        Ok(if switching { format!("switched to {branch}, then {done}") } else { done })
+        Ok(if switching { self.tr(format!("switched to {branch}, then {done}"), format!("basculé sur {branch}, puis {done}")) } else { done })
     }
 
     pub fn reset_to_remote(&self, branch: &str, remote: &str) -> Result<String, String> {
@@ -78,7 +78,7 @@ impl Repo {
         } else {
             self.git(&["branch", "--force", "--end-of-options", branch, &format!("refs/remotes/{remote}")]).map_err(main_reason)?;
         }
-        Ok(format!("{branch} now matches {remote}"))
+        Ok(self.tr(format!("{branch} now matches {remote}"), format!("{branch} correspond maintenant à {remote}")))
     }
 
     pub fn cherry_pick(&self, hash: &str, commit: bool) -> Result<String, String> {
@@ -92,7 +92,7 @@ impl Repo {
         args.extend((!commit).then_some("--no-commit"));
         self.sequence("cherry-pick", &[&args[..], &["--end-of-options", hash]].concat())?;
         let short = short(hash);
-        Ok(if commit { format!("picked {short} onto {into}") } else { format!("the changes of {short} are staged: review and commit") })
+        Ok(if commit { self.tr(format!("picked {short} onto {into}"), format!("{short} cherry-piqué sur {into}")) } else { self.tr(format!("the changes of {short} are staged: review and commit"), format!("les changements de {short} sont indexés : vérifie et committe")) })
     }
 
     pub fn revert(&self, hash: &str, commit: bool) -> Result<String, String> {
@@ -106,7 +106,7 @@ impl Repo {
         args.extend((!commit).then_some("--no-commit"));
         self.sequence("revert", &[&args[..], &["--end-of-options", hash]].concat())?;
         let short = short(hash);
-        Ok(if commit { format!("reverted {short} on {into}") } else { format!("the revert of {short} is staged: review and commit") })
+        Ok(if commit { self.tr(format!("reverted {short} on {into}"), format!("{short} reverté sur {into}")) } else { self.tr(format!("the revert of {short} is staged: review and commit"), format!("le revert de {short} est indexé : vérifie et committe")) })
     }
 
     pub fn drop_commit(&self, hash: &str) -> Result<String, String> {
@@ -124,7 +124,7 @@ impl Repo {
             return Err(format!("{short} is the first commit; it cannot be dropped"));
         }
         self.sequence("rebase", &["rebase", "--quiet", "--autostash", "--rebase-merges", "--onto", &parent, hash])?;
-        Ok(format!("dropped {short} from {into}"))
+        Ok(self.tr(format!("dropped {short} from {into}"), format!("{short} abandonné de {into}")))
     }
 
     pub fn rebase(&self, onto: &str) -> Result<String, String> {
@@ -134,10 +134,12 @@ impl Repo {
             return Err(format!("{onto} is the branch you are on"));
         }
         if self.contains("HEAD", onto) {
-            return Ok(format!("{into} already contains {}: nothing to rebase", short(onto)));
+            let o = short(onto);
+            return Ok(self.tr(format!("{into} already contains {o}: nothing to rebase"), format!("{into} contient déjà {o} : rien à rebaser")));
         }
         self.sequence("rebase", &["rebase", "--quiet", "--autostash", "--end-of-options", onto])?;
-        Ok(format!("rebased {into} onto {}", short(onto)))
+        let o = short(onto);
+        Ok(self.tr(format!("rebased {into} onto {o}"), format!("{into} rebasée sur {o}")))
     }
 
     pub fn finish(&self) -> Result<String, String> {
@@ -156,13 +158,13 @@ impl Repo {
             return Err(format!("{} still has conflict markers: resolve them first", remaining.join(", ")));
         }
         self.sequence(operation, &[operation, "--continue"])?;
-        Ok(format!("the {operation} is finished"))
+        Ok(self.tr(format!("the {operation} is finished"), format!("{operation} terminé")))
     }
 
     pub fn abort(&self) -> Result<String, String> {
         let operation = self.operation().ok_or("nothing is in progress")?;
         run::run(&self.root, &Call { timeout: ACTION_TIMEOUT, ..Call::new(&[operation, "--abort"]) }).map_err(main_reason)?;
-        Ok(format!("the {operation} is aborted"))
+        Ok(self.tr(format!("the {operation} is aborted"), format!("{operation} abandonné")))
     }
 
     fn unmerged(&self) -> Result<Vec<String>, String> {
@@ -178,7 +180,8 @@ impl Repo {
         let into = self.current()?;
         let flag = format!("--{mode}");
         run::run(&self.root, &Call { timeout: ACTION_TIMEOUT, ..Call::new(&["reset", "--quiet", &flag, hash, "--"]) }).map_err(main_reason)?;
-        Ok(format!("reset {into} to {} ({mode})", short(hash)))
+        let h = short(hash);
+        Ok(self.tr(format!("reset {into} to {h} ({mode})"), format!("{into} réinitialisée sur {h} ({mode})")))
     }
 
     fn sequence(&self, operation: &str, args: &[&str]) -> Result<(), String> {

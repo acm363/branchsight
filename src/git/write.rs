@@ -19,45 +19,46 @@ impl Repo {
     pub fn checkout(&self, name: &str) -> Result<String, String> {
         if self.has_ref(&format!("refs/heads/{name}")) {
             self.switch(&["--no-guess", "--end-of-options", name])?;
-            return Ok(format!("switched to {name}"));
+            return Ok(self.tr(format!("switched to {name}"), format!("basculé sur {name}")));
         }
         let tag = format!("refs/tags/{name}");
         if self.has_ref(&tag) {
             self.switch(&["--detach", "--end-of-options", &tag])?;
-            return Ok(format!("detached HEAD at tag {name}"));
+            return Ok(self.tr(format!("detached HEAD at tag {name}"), format!("HEAD détachée sur le tag {name}")));
         }
         if self.check_commit(name).is_ok() {
             self.switch(&["--detach", "--end-of-options", name])?;
-            return Ok(format!("detached HEAD at {}", name.get(..10).unwrap_or(name)));
+            let at = name.get(..10).unwrap_or(name);
+            return Ok(self.tr(format!("detached HEAD at {at}"), format!("HEAD détachée sur {at}")));
         }
         let (_, branch) = self.split_remote_branch(name)?;
         if self.has_ref(&format!("refs/heads/{branch}")) {
             return self.checkout_existing(branch, name);
         }
         self.switch(&["--create", branch, "--track", "--end-of-options", name])?;
-        Ok(format!("created {branch} tracking {name} and switched to it"))
+        Ok(self.tr(format!("created {branch} tracking {name} and switched to it"), format!("{branch} créée en suivi de {name} et basculé dessus")))
     }
 
     fn checkout_existing(&self, branch: &str, remote: &str) -> Result<String, String> {
         self.switch(&["--no-guess", "--end-of-options", branch])?;
         let behind = self.git(&["merge-base", "--is-ancestor", "--end-of-options", remote, "HEAD"]).is_err();
         Ok(if behind {
-            format!("switched to {branch}; {remote} has commits it does not have: sync to bring them in")
+            self.tr(format!("switched to {branch}; {remote} has commits it does not have: sync to bring them in"), format!("basculé sur {branch} ; {remote} a des commits qu'elle n'a pas : synchronise pour les récupérer"))
         } else {
-            format!("switched to {branch}")
+            self.tr(format!("switched to {branch}"), format!("basculé sur {branch}"))
         })
     }
 
     pub fn delete_remote_branch(&self, name: &str) -> Result<String, String> {
         let (remote, branch) = self.split_remote_branch(name)?;
         self.network(&["push", "--quiet", "--delete", "--end-of-options", &remote, &format!("refs/heads/{branch}")], &[]).map_err(main_reason)?;
-        Ok(format!("deleted {branch} on {remote}"))
+        Ok(self.tr(format!("deleted {branch} on {remote}"), format!("{branch} supprimée sur {remote}")))
     }
 
     pub fn delete_local_branch(&self, name: &str, force: bool) -> Result<String, String> {
         let flag = if force { "-D" } else { "-d" };
         self.git(&["branch", flag, "--end-of-options", name]).map_err(main_reason)?;
-        Ok(format!("deleted {name}"))
+        Ok(self.tr(format!("deleted {name}"), format!("{name} supprimée")))
     }
 
     pub fn push(&self, branch: &str, remote: &str, mode: &str) -> Result<String, String> {
@@ -87,19 +88,23 @@ impl Repo {
             e => main_reason(e),
         })?;
         let how = if mode == "normal" { String::new() } else { format!(" ({mode})") };
-        let tracking = if tracks_it { String::new() } else { format!("; it now tracks {remote}/{branch}") };
-        Ok(format!("pushed {branch} to {remote}{how}{tracking}"))
+        let tracking = if tracks_it {
+            String::new()
+        } else {
+            self.tr(format!("; it now tracks {remote}/{branch}"), format!("; elle suit maintenant {remote}/{branch}"))
+        };
+        Ok(self.tr(format!("pushed {branch} to {remote}{how}{tracking}"), format!("{branch} poussée vers {remote}{how}{tracking}")))
     }
 
     pub fn stage(&self, paths: &[String], all: bool) -> Result<String, String> {
         if all {
             self.git(&["add", "--all"]).map_err(main_reason)?;
-            return Ok("staged every change".into());
+            return Ok(self.tr("staged every change".into(), "tous les changements indexés".into()));
         }
         let specs = literal_specs(paths)?;
         let refs: Vec<&str> = specs.iter().map(String::as_str).collect();
         self.git(&[&["add", "--"], &refs[..]].concat()).map_err(main_reason)?;
-        Ok(listed("staged", paths))
+        Ok(self.listed("staged", "indexé", "indexés", paths))
     }
 
     pub fn unstage(&self, paths: &[String], all: bool) -> Result<String, String> {
@@ -107,7 +112,7 @@ impl Repo {
         let refs: Vec<&str> = target.iter().map(String::as_str).collect();
         let head = if self.unborn() { &["rm", "--cached", "--quiet", "-r", "--"][..] } else { &["reset", "--quiet", "--"][..] };
         self.git(&[head, &refs[..]].concat()).map_err(main_reason)?;
-        Ok(if all { "unstaged everything".into() } else { listed("unstaged", paths) })
+        Ok(if all { self.tr("unstaged everything".into(), "tout désindexé".into()) } else { self.listed("unstaged", "désindexé", "désindexés", paths) })
     }
 
     pub fn discard(&self, paths: &[String], all: bool) -> Result<String, String> {
@@ -126,7 +131,7 @@ impl Repo {
         }
         let refs: Vec<&str> = specs.iter().map(String::as_str).collect();
         self.git(&[&["clean", "--quiet", "-fd", "--"][..], &refs[..]].concat()).map_err(main_reason)?;
-        Ok(if all { "discarded every change".into() } else { listed("discarded", paths) })
+        Ok(if all { self.tr("discarded every change".into(), "tous les changements rejetés".into()) } else { self.listed("discarded", "rejeté", "rejetés", paths) })
     }
 
     pub fn commit(&self, message: &str, amend: bool) -> Result<String, String> {
@@ -151,7 +156,7 @@ impl Repo {
         }
         run::run(&self.root, &Call { timeout: ACTION_TIMEOUT, ..Call::new(&args) }).map_err(main_reason)?;
         let short = self.git(&["rev-parse", "--short", "HEAD"]).map(|s| s.trim().to_owned()).unwrap_or_default();
-        Ok(if amend { format!("amended {short}") } else { format!("committed {short}") })
+        Ok(if amend { self.tr(format!("amended {short}"), format!("{short} amendé")) } else { self.tr(format!("committed {short}"), format!("{short} committé")) })
     }
 
     pub fn create_tag(&self, name: &str, hash: &str, message: &str) -> Result<String, String> {
@@ -167,7 +172,7 @@ impl Repo {
         }
         args.extend(["--end-of-options", name, hash]);
         self.git(&args).map_err(main_reason)?;
-        Ok(format!("created tag {name}"))
+        Ok(self.tr(format!("created tag {name}"), format!("tag {name} créé")))
     }
 
     pub fn delete_tag(&self, name: &str) -> Result<String, String> {
@@ -175,7 +180,7 @@ impl Repo {
             return Err(format!("no tag named {name}"));
         }
         self.git(&["tag", "--delete", "--end-of-options", name]).map_err(main_reason)?;
-        Ok(format!("deleted tag {name}"))
+        Ok(self.tr(format!("deleted tag {name}"), format!("tag {name} supprimé")))
     }
 
     pub fn push_tag(&self, name: &str, remote: &str, delete: bool) -> Result<String, String> {
@@ -192,7 +197,7 @@ impl Repo {
         }
         args.extend(["--end-of-options", remote, refspec.as_str()]);
         self.network(&args, &[]).map_err(main_reason)?;
-        Ok(if delete { format!("deleted tag {name} on {remote}") } else { format!("pushed tag {name} to {remote}") })
+        Ok(if delete { self.tr(format!("deleted tag {name} on {remote}"), format!("tag {name} supprimé sur {remote}")) } else { self.tr(format!("pushed tag {name} to {remote}"), format!("tag {name} poussé vers {remote}")) })
     }
 
     pub fn create_branch(&self, name: &str, hash: &str) -> Result<String, String> {
@@ -203,7 +208,7 @@ impl Repo {
         }
         self.git(&["branch", "--end-of-options", name, hash]).map_err(main_reason)?;
         let short = self.git(&["rev-parse", "--short", "--end-of-options", hash]).map(|s| s.trim().to_owned()).unwrap_or_else(|_| hash.to_owned());
-        Ok(format!("created branch {name} at {short}"))
+        Ok(self.tr(format!("created branch {name} at {short}"), format!("branche {name} créée sur {short}")))
     }
 
     fn valid_ref_name(&self, kind: &str, name: &str) -> Result<(), String> {
@@ -241,6 +246,13 @@ impl Repo {
         let from_env = env::var_os("GIT_SSH_COMMAND").is_some() || env::var_os("GIT_SSH").is_some();
         !from_env && self.git(&["config", "--get", "core.sshCommand"]).is_err()
     }
+
+    fn listed(&self, en_verb: &str, fr_past: &str, fr_past_pl: &str, paths: &[String]) -> String {
+        match paths {
+            [one] => self.tr(format!("{en_verb} {one}"), format!("{one} {fr_past}")),
+            many => self.tr(format!("{en_verb} {} files", many.len()), format!("{} fichiers {fr_past_pl}", many.len())),
+        }
+    }
 }
 
 fn literal_specs(paths: &[String]) -> Result<Vec<String>, String> {
@@ -248,13 +260,6 @@ fn literal_specs(paths: &[String]) -> Result<Vec<String>, String> {
         return Err("a file path is required".into());
     }
     Ok(paths.iter().map(|p| format!(":(literal){p}")).collect())
-}
-
-fn listed(verb: &str, paths: &[String]) -> String {
-    match paths {
-        [one] => format!("{verb} {one}"),
-        many => format!("{verb} {} files", many.len()),
-    }
 }
 
 pub(super) fn main_reason(error: String) -> String {

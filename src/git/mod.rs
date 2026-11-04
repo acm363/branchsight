@@ -12,8 +12,16 @@ pub use diff::FileDiff;
 const OPERATIONS: [(&str, &str); 5] =
     [("merge", "MERGE_HEAD"), ("rebase", "rebase-merge"), ("rebase", "rebase-apply"), ("cherry-pick", "CHERRY_PICK_HEAD"), ("revert", "REVERT_HEAD")];
 
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub enum Lang {
+    #[default]
+    En,
+    Fr,
+}
+
 pub struct Repo {
     pub root: PathBuf,
+    pub lang: Lang,
     shallow: PathBuf,
     operations: Vec<(&'static str, PathBuf)>,
 }
@@ -33,7 +41,14 @@ impl Repo {
             return Err(format!("not a working tree: {}", dir.display()));
         };
         let operations = OPERATIONS.iter().zip(operations).map(|((name, _), path)| (*name, dir.join(path))).collect();
-        Ok(Repo { root: PathBuf::from(root), shallow: dir.join(shallow), operations })
+        Ok(Repo { root: PathBuf::from(root), lang: Lang::default(), shallow: dir.join(shallow), operations })
+    }
+
+    fn tr(&self, en: String, fr: String) -> String {
+        match self.lang {
+            Lang::Fr => fr,
+            Lang::En => en,
+        }
     }
 
     fn operation(&self) -> Option<&'static str> {

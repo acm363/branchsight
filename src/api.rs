@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 
 use crate::assets;
 use crate::config::{self, Config};
-use crate::git::{FileDiff, Repo};
+use crate::git::{FileDiff, Lang, Repo};
 use crate::projects;
 use crate::url::Query;
 
@@ -55,7 +55,8 @@ pub fn respond(config: &Config, post: bool, url: &str) -> Reply {
 }
 
 fn route(config: &Config, post: bool, path: &str, q: &Query) -> Result<Reply, String> {
-    let repo = || config::open_repo(config, q.get("repo"));
+    let lang = if q.get("lang") == "fr" { Lang::Fr } else { Lang::En };
+    let repo = || config::open_repo(config, q.get("repo"), lang);
     let action = || if post { repo() } else { Err("POST required".to_owned()) };
     Ok(match path {
         "/api/ping" => Reply::ok(TEXT, PING.into()),
