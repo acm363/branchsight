@@ -96,6 +96,9 @@ try {
     return result.value;
   };
 
+  await send('Page.enable');
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: `try { localStorage.setItem('branchsight:lang', '"en"'); } catch {}` });
+
   for (const scene of SCENES) {
     await send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: scene.height || HEIGHT, deviceScaleFactor: 2, mobile: false });
     await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: scene.theme || 'dark' }] });
