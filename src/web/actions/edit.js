@@ -1,6 +1,7 @@
 import { getJson, post } from '../shared/api.js';
 import { $, ask, confirmAction, toast } from '../shared/dom.js';
 import { SHORT_HASH, esc, fileLabel, plural, statusClass } from '../shared/format.js';
+import { t } from '../shared/i18n.js';
 import { state } from '../shared/state.js';
 import { reload } from '../history/sync.js';
 
@@ -28,14 +29,13 @@ async function act(endpoint, params, busy) {
   return ok;
 }
 
-export const stage = paths => act('/api/stage', pathParams(paths), `staging ${fileWord(paths)}…`);
+export const stage = paths => act('/api/stage', pathParams(paths), t('busy.staging', { what: fileWord(paths) }));
 
-export const unstage = paths => act('/api/unstage', pathParams(paths), `unstaging ${fileWord(paths)}…`);
+export const unstage = paths => act('/api/unstage', pathParams(paths), t('busy.unstaging', { what: fileWord(paths) }));
 
 export async function discard(paths, { all = false } = {}) {
-  const what = all ? 'every uncommitted change' : fileWord(paths);
-  const text = `Discard ${what}? Tracked files return to the last commit and new files are deleted; BranchSight cannot undo it.`;
-  if (await confirmAction(text, 'Discard')) await act('/api/discard', all ? { all: '1' } : pathParams(paths), `discarding ${what}…`);
+  const what = all ? t('edit.everyChange') : fileWord(paths);
+  if (await confirmAction(t('edit.discardConfirm', { what }), t('btn.discard'))) await act('/api/discard', all ? { all: '1' } : pathParams(paths), t('busy.discarding', { what }));
 }
 
 export async function commit() {
@@ -48,7 +48,7 @@ export async function commit() {
   const renderFiles = () => {
     $('commit-files').innerHTML = staged.length
       ? staged.map(f => `<div class="cfile"><span class="st ${statusClass(f)}">${f.status}</span><span class="p">${esc(fileLabel(f))}</span></div>`).join('')
-      : '<div class="cfile none">nothing staged</div>';
+      : `<div class="cfile none">${esc(t('edit.nothingStaged'))}</div>`;
     $('commit-count').textContent = plural(staged.length, 'staged file');
   };
   const warn = () => {
@@ -74,9 +74,9 @@ export async function commit() {
   };
   if ((await ask(dialog)) !== 'ok') return;
   const text = message.value.trim();
-  if (!text) return void toast('a commit message is required', 3000);
+  if (!text) return void toast(t('edit.messageRequired'), 3000);
   const amending = amend.checked;
-  await act('/api/commit-staged', amending ? { message: text, amend: '1' } : { message: text }, amending ? 'amending the last commit…' : 'committing…');
+  await act('/api/commit-staged', amending ? { message: text, amend: '1' } : { message: text }, amending ? t('busy.amending') : t('busy.committing'));
 }
 
 export async function createTag(commit) {
@@ -91,24 +91,24 @@ export async function createTag(commit) {
   if ((await ask(dialog)) !== 'ok') return;
   const tag = name.value.trim();
   if (!tag) return;
-  const made = await act('/api/tag', { name: tag, h: commit.h, message: message.value.trim() }, `creating tag ${tag}…`);
-  if (made && push.checked && remotes().length) await act('/api/push-tag', { name: tag, remote: select.value }, `pushing tag ${tag} to ${select.value}…`);
+  const made = await act('/api/tag', { name: tag, h: commit.h, message: message.value.trim() }, t('busy.creatingTag', { name: tag }));
+  if (made && push.checked && remotes().length) await act('/api/push-tag', { name: tag, remote: select.value }, t('busy.pushingTag', { name: tag, remote: select.value }));
 }
 
 export async function pushTag(name) {
-  if (!remotes().length) return void toast('no remote to push to', 3000);
+  if (!remotes().length) return void toast(t('edit.noRemote'), 3000);
   const dialog = $('pushtag'), select = $('pushtag-remote');
   $('pushtag-name').textContent = name;
   select.innerHTML = remotes().map(r => `<option>${esc(r)}</option>`).join('');
   select.value = remotes().includes('origin') ? 'origin' : remotes()[0];
   dialog.onkeydown = submitOnEnter(dialog);
   if ((await ask(dialog)) !== 'ok') return;
-  await act('/api/push-tag', { name, remote: select.value }, `pushing tag ${name} to ${select.value}…`);
+  await act('/api/push-tag', { name, remote: select.value }, t('busy.pushingTag', { name, remote: select.value }));
 }
 
 export async function deleteTag(name) {
-  if (await confirmAction(`Delete tag ${name}? It is removed locally; a copy already pushed to a remote stays there.`, 'Delete')) {
-    await act('/api/delete-tag', { name }, `deleting tag ${name}…`);
+  if (await confirmAction(t('edit.deleteTagConfirm', { name }), t('btn.delete'))) {
+    await act('/api/delete-tag', { name }, t('busy.deletingTag', { name }));
   }
 }
 
@@ -119,5 +119,5 @@ export async function createBranch(commit) {
   dialog.onkeydown = submitOnEnter(dialog);
   if ((await ask(dialog)) !== 'ok') return;
   const branch = name.value.trim();
-  if (branch) await act('/api/branch', { name: branch, h: commit.h }, `creating branch ${branch}…`);
+  if (branch) await act('/api/branch', { name: branch, h: commit.h }, t('busy.creatingBranch', { name: branch }));
 }

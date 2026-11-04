@@ -12,7 +12,7 @@ export const fileLabel = file => (file.from ? `${file.from} → ${file.path}` : 
 
 export const statusClass = file => `st-${file.status === '?' ? 'new' : file.status}`;
 
-export const plural = (n, word) => `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`;
+export { plural } from './i18n.js';
 
 export function fmtDate(t) {
   const d = new Date(t * 1000), p = n => String(n).padStart(2, '0');

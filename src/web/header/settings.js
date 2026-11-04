@@ -1,5 +1,6 @@
 import { $, closeLayer, openLayer } from '../shared/dom.js';
 import { clamp } from '../shared/format.js';
+import { applyStatic, getLocale, setLocale } from '../shared/i18n.js';
 import * as log from '../history/list.js';
 import { prefs } from '../shared/prefs.js';
 import * as projects from './projects.js';
@@ -11,8 +12,19 @@ const FONT_SIZES = { min: 10, max: 20, default: 13 };
 const fontSize = () => prefs.get('fontSize') ?? FONT_SIZES.default;
 
 export function restore() {
+  applyStatic();
+  markLang();
   setTheme(prefs.get('theme'));
   setFontSize(fontSize());
+}
+
+const markLang = () => $('lang-seg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.lang === getLocale()));
+
+function setLang(lang) {
+  setLocale(lang);
+  markLang();
+  applyStatic();
+  log.render();
 }
 
 function setTheme(theme) {
@@ -68,6 +80,8 @@ $('mainmenu').addEventListener('click', e => {
   commands[e.target.closest('[data-cmd]')?.dataset.cmd]?.();
   const theme = e.target.closest('#theme-seg [data-theme]')?.dataset.theme;
   if (theme) setTheme(theme);
+  const lang = e.target.closest('#lang-seg [data-lang]')?.dataset.lang;
+  if (lang) setLang(lang);
 });
 
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', log.render);

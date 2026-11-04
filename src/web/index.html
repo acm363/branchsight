@@ -15,41 +15,45 @@
     <div class="mb">
       <button class="mb-btn" title="Menu" aria-label="Menu"><svg viewBox="0 0 16 16" width="16" height="16"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       <div class="mb-menu" hidden>
-        <div class="sub"><div class="sub-label">File<span>›</span></div>
+        <div class="sub"><div class="sub-label"><span data-i18n="menu.file">File</span><span>›</span></div>
           <div class="sub-menu">
-            <button data-cmd="open">Open project…<kbd>p</kbd></button>
-            <button data-cmd="close">Close project</button>
+            <button data-cmd="open"><span data-i18n="menu.open">Open project…</span><kbd>p</kbd></button>
+            <button data-cmd="close" data-i18n="menu.close">Close project</button>
           </div>
         </div>
-        <div class="sub"><div class="sub-label">View<span>›</span></div>
+        <div class="sub"><div class="sub-label"><span data-i18n="menu.view">View</span><span>›</span></div>
           <div class="sub-menu">
-            <div class="mrow">Text size
+            <div class="mrow"><span data-i18n="menu.textSize">Text size</span>
               <span class="spacer"></span>
-              <button data-cmd="smaller" title="Smaller text">−</button><span id="fs-val"></span><button data-cmd="bigger" title="Larger text">+</button>
-              <button data-cmd="reset-size" title="Default size">reset</button>
+              <button data-cmd="smaller" data-i18n-title="title.smaller" title="Smaller text">−</button><span id="fs-val"></span><button data-cmd="bigger" data-i18n-title="title.bigger" title="Larger text">+</button>
+              <button data-cmd="reset-size" data-i18n-title="title.resetSize" title="Default size" data-i18n="menu.resetSize">reset</button>
             </div>
-            <div class="mrow">Theme
+            <div class="mrow"><span data-i18n="menu.theme">Theme</span>
               <span class="spacer"></span>
-              <span class="seg" id="theme-seg"><button data-theme="system">System</button><button data-theme="light">Light</button><button data-theme="dark">Dark</button></span>
+              <span class="seg" id="theme-seg"><button data-theme="system" data-i18n="theme.system">System</button><button data-theme="light" data-i18n="theme.light">Light</button><button data-theme="dark" data-i18n="theme.dark">Dark</button></span>
+            </div>
+            <div class="mrow"><span data-i18n="menu.language">Language</span>
+              <span class="spacer"></span>
+              <span class="seg" id="lang-seg"><button data-lang="en">English</button><button data-lang="fr">Français</button></span>
             </div>
           </div>
         </div>
-        <div class="sub"><div class="sub-label">Help<span>›</span></div>
+        <div class="sub"><div class="sub-label"><span data-i18n="menu.help">Help</span><span>›</span></div>
           <div class="sub-menu help">
             <div class="keys">
-              <kbd>p</kbd><span>open a project</span>
-              <kbd>b</kbd><span>pick branches</span>
-              <kbd>↑ ↓</kbd><span>move between commits</span>
-              <kbd>enter</kbd><span>files and diff of the commit</span>
-              <kbd>c</kbd><span>copy the commit hash</span>
-              <kbd>f</kbd><span>fetch all remotes</span>
-              <kbd>r</kbd><span>reload</span>
-              <kbd>esc</kbd><span>close a menu or the diff</span>
-              <kbd>right-click</kbd><span>checkout a branch, tag or commit; copy; delete a remote branch</span>
-              <kbd>double-click</kbd><span>close the diff</span>
-              <kbd>ctrl+click</kbd><span>compare with the selected commit</span>
-              <kbd>n p</kbd><span>diff view: next, previous change (also F7, shift+F7)</span>
-              <kbd>] [</kbd><span>diff view: next, previous file</span>
+              <kbd>p</kbd><span data-i18n="help.open">open a project</span>
+              <kbd>b</kbd><span data-i18n="help.pick">pick branches</span>
+              <kbd>↑ ↓</kbd><span data-i18n="help.move">move between commits</span>
+              <kbd>enter</kbd><span data-i18n="help.enter">files and diff of the commit</span>
+              <kbd>c</kbd><span data-i18n="help.copyHash">copy the commit hash</span>
+              <kbd>f</kbd><span data-i18n="help.fetch">fetch all remotes</span>
+              <kbd>r</kbd><span data-i18n="help.reload">reload</span>
+              <kbd>esc</kbd><span data-i18n="help.esc">close a menu or the diff</span>
+              <kbd>right-click</kbd><span data-i18n="help.rightClick">checkout a branch, tag or commit; copy; delete a remote branch</span>
+              <kbd>double-click</kbd><span data-i18n="help.dblClick">close the diff</span>
+              <kbd>ctrl+click</kbd><span data-i18n="help.ctrlClick">compare with the selected commit</span>
+              <kbd>n p</kbd><span data-i18n="help.np">diff view: next, previous change (also F7, shift+F7)</span>
+              <kbd>] [</kbd><span data-i18n="help.brackets">diff view: next, previous file</span>
             </div>
             <div class="about" id="about"></div>
           </div>
@@ -58,180 +62,180 @@
     </div>
   </nav>
   <div id="projects">
-    <button id="proj-chip" title="Switch project (p)"><span class="avatar" id="avatar"></span><span id="repo"></span><span class="caret">▾</span></button>
+    <button id="proj-chip" data-i18n-title="title.switchProject" title="Switch project (p)"><span class="avatar" id="avatar"></span><span id="repo"></span><span class="caret">▾</span></button>
     <div id="pmenu" hidden>
-      <div id="start-title"><img src="/favicon.svg" alt=""><span>Open a project</span></div>
-      <input id="pfilter" placeholder="Filter projects, or type a path…" autocomplete="off" spellcheck="false">
+      <div id="start-title"><img src="/favicon.svg" alt=""><span data-i18n="start.title">Open a project</span></div>
+      <input id="pfilter" data-i18n-ph="ph.projects" placeholder="Filter projects, or type a path…" autocomplete="off" spellcheck="false">
       <div id="pnote" hidden></div>
       <div id="plist" class="reflist"></div>
       <div id="proots"></div>
     </div>
   </div>
   <div id="picker">
-    <button id="pick-btn" title="Branches (b)"><span id="chips"></span><span>▾</span></button>
+    <button id="pick-btn" data-i18n-title="title.branches" title="Branches (b)"><span id="chips"></span><span>▾</span></button>
     <div id="menu" hidden>
-      <input id="filter" placeholder="Filter refs…" autocomplete="off" spellcheck="false">
+      <input id="filter" data-i18n-ph="ph.refs" placeholder="Filter refs…" autocomplete="off" spellcheck="false">
       <div class="opts">
-        <label><input type="checkbox" id="opt-remote"> remotes</label>
-        <label><input type="checkbox" id="opt-tag"> tags</label>
+        <label><input type="checkbox" id="opt-remote"> <span data-i18n="picker.remotes">remotes</span></label>
+        <label><input type="checkbox" id="opt-tag"> <span data-i18n="picker.tags">tags</span></label>
         <span class="spacer"></span>
-        <button data-act="current">current</button>
-        <button data-act="all">all</button>
-        <button data-act="none">clear</button>
+        <button data-act="current" data-i18n="picker.current">current</button>
+        <button data-act="all" data-i18n="picker.all">all</button>
+        <button data-act="none" data-i18n="picker.clear">clear</button>
       </div>
       <div id="reflist"></div>
     </div>
   </div>
   <span id="count"></span>
   <span class="spacer"></span>
-  <select id="limit" title="Max commits">
+  <select id="limit" data-i18n-title="title.limit" title="Max commits">
     <option value="10">10</option><option value="20">20</option><option value="100">100</option><option value="500">500</option>
-    <option value="1000">1k</option><option value="5000">5k</option><option value="20000">20k</option><option value="200000">all</option>
+    <option value="1000">1k</option><option value="5000">5k</option><option value="20000">20k</option><option value="200000" data-i18n="limit.all">all</option>
   </select>
-  <button id="fetch" title="Fetch all remotes (f)">⇣ fetch</button>
-  <label class="auto" title="Fetch every 2 minutes while this tab is visible"><input type="checkbox" id="auto-fetch"> auto</label>
-  <button id="reload" title="Reload (r) · local changes are picked up automatically">⟳</button>
+  <button id="fetch" data-i18n-title="title.fetch" title="Fetch all remotes (f)" data-i18n="btn.fetch">⇣ fetch</button>
+  <label class="auto" data-i18n-title="title.auto" title="Fetch every 2 minutes while this tab is visible"><input type="checkbox" id="auto-fetch"> <span data-i18n="auto">auto</span></label>
+  <button id="reload" data-i18n-title="title.reload" title="Reload (r) · local changes are picked up automatically">⟳</button>
 </header>
 <div id="operation" hidden>
   <span id="operation-text"></span>
   <span class="spacer"></span>
-  <button id="operation-continue">Continue</button>
-  <button id="operation-abort" class="danger">Abort</button>
+  <button id="operation-continue" data-i18n="op.continue">Continue</button>
+  <button id="operation-abort" class="danger" data-i18n="op.abort">Abort</button>
 </div>
 <div id="main">
   <div id="pane">
-    <div id="cols" title="Drag a column edge to resize it, double-click to reset; right-click to show or hide columns">
-      <span class="c-g">Graph</span><i class="grip grip-g" data-col="graph" data-dir="1"></i>
-      <span class="c-s">Description</span>
-      <span class="c-a"><i class="grip" data-col="author" data-dir="-1"></i>Author</span>
-      <span class="c-d"><i class="grip" data-col="date" data-dir="-1"></i>Date</span>
-      <span class="c-h"><i class="grip" data-col="hash" data-dir="-1"></i>Commit</span>
+    <div id="cols" data-i18n-title="title.cols" title="Drag a column edge to resize it, double-click to reset; right-click to show or hide columns">
+      <span class="c-g" data-i18n="col.graph">Graph</span><i class="grip grip-g" data-col="graph" data-dir="1"></i>
+      <span class="c-s" data-i18n="col.description">Description</span>
+      <span class="c-a"><i class="grip" data-col="author" data-dir="-1"></i><span data-i18n="col.author">Author</span></span>
+      <span class="c-d"><i class="grip" data-col="date" data-dir="-1"></i><span data-i18n="col.date">Date</span></span>
+      <span class="c-h"><i class="grip" data-col="hash" data-dir="-1"></i><span data-i18n="col.commit">Commit</span></span>
     </div>
     <div id="list" tabindex="0"><div id="spacer"><canvas id="graph"></canvas><div id="rows"></div></div></div>
   </div>
   <div id="split" hidden></div>
   <aside id="detail" hidden>
-    <div id="detail-head"><span id="detail-title"></span><button id="close" title="Close (esc)">✕</button></div>
-    <div id="detail-tools"><button id="commit-btn" title="Commit the staged changes" hidden>Commit…</button><button id="fold-all" title="Fold or unfold every file">Collapse all</button><button id="open-viewer" title="Each file side by side, with next and previous change">Open diff view</button><span id="files-count"></span></div>
+    <div id="detail-head"><span id="detail-title"></span><button id="close" data-i18n-title="title.close" title="Close (esc)">✕</button></div>
+    <div id="detail-tools"><button id="commit-btn" data-i18n-title="title.commitStaged" title="Commit the staged changes" hidden data-i18n="btn.commit">Commit…</button><button id="fold-all" data-i18n-title="title.foldAll" title="Fold or unfold every file" data-i18n="btn.collapseAll">Collapse all</button><button id="open-viewer" data-i18n-title="title.openViewer" title="Each file side by side, with next and previous change" data-i18n="btn.openDiffView">Open diff view</button><span id="files-count"></span></div>
     <div id="files"></div>
-    <div id="files-split" title="Drag to resize the file list"></div>
+    <div id="files-split" data-i18n-title="title.filesSplit" title="Drag to resize the file list"></div>
     <pre id="diff"></pre>
   </aside>
 </div>
 <div id="viewer" hidden>
   <div id="v-bar">
-    <button id="v-prev-file" title="Previous file ([)">◀</button>
-    <select id="v-file" title="File"></select>
-    <button id="v-next-file" title="Next file (])">▶</button>
+    <button id="v-prev-file" data-i18n-title="title.prevFile" title="Previous file ([)">◀</button>
+    <select id="v-file" data-i18n-title="title.file" title="File"></select>
+    <button id="v-next-file" data-i18n-title="title.nextFile" title="Next file (])">▶</button>
     <span class="v-sep"></span>
-    <button id="v-prev" title="Previous change (p or shift+F7)">↑ Previous change</button>
-    <button id="v-next" title="Next change (n or F7)">↓ Next change</button>
+    <button id="v-prev" data-i18n-title="title.prevChange" title="Previous change (p or shift+F7)" data-i18n="btn.prevChange">↑ Previous change</button>
+    <button id="v-next" data-i18n-title="title.nextChange" title="Next change (n or F7)" data-i18n="btn.nextChange">↓ Next change</button>
     <span id="v-pos"></span>
-    <span id="v-cut" hidden>this file's diff is cut at 4 MB</span>
+    <span id="v-cut" hidden data-i18n="v.cut">this file's diff is cut at 4 MB</span>
     <span class="v-sep"></span>
-    <input id="v-find" type="search" placeholder="Find in file" autocomplete="off" spellcheck="false">
-    <button id="v-find-prev" title="Previous match (Shift+Enter)" disabled>↑</button>
-    <button id="v-find-next" title="Next match (Enter)" disabled>↓</button>
+    <input id="v-find" type="search" data-i18n-ph="ph.findInFile" placeholder="Find in file" autocomplete="off" spellcheck="false">
+    <button id="v-find-prev" data-i18n-title="title.prevMatch" title="Previous match (Shift+Enter)" disabled>↑</button>
+    <button id="v-find-next" data-i18n-title="title.nextMatch" title="Next match (Enter)" disabled>↓</button>
     <span id="v-find-count"></span>
     <span class="spacer"></span>
-    <span class="seg" id="v-mode"><button data-mode="split">Side by side</button><button data-mode="unified">Unified</button></span>
-    <button id="v-close" title="Close (esc)">✕ Close</button>
+    <span class="seg" id="v-mode"><button data-mode="split" data-i18n="v.sideBySide">Side by side</button><button data-mode="unified" data-i18n="v.unified">Unified</button></span>
+    <button id="v-close" data-i18n-title="title.close" title="Close (esc)" data-i18n="btn.close">✕ Close</button>
   </div>
-  <div id="v-sides"><div class="v-side from"><span class="v-tag">FROM</span><span id="v-from"></span></div><div class="v-side to"><span class="v-tag">TO</span><span id="v-to"></span></div></div>
+  <div id="v-sides"><div class="v-side from"><span class="v-tag" data-i18n="v.from">FROM</span><span id="v-from"></span></div><div class="v-side to"><span class="v-tag" data-i18n="v.to">TO</span><span id="v-to"></span></div></div>
   <div id="v-body"></div>
-  <div id="v-divider" title="Drag to resize the two sides, double-click to reset"></div>
+  <div id="v-divider" data-i18n-title="title.divider" title="Drag to resize the two sides, double-click to reset"></div>
 </div>
 <div id="ctx" hidden></div>
 <dialog id="push" class="dialog">
   <form method="dialog">
-    <p>Push <b id="push-branch"></b> to <select id="push-remote"></select></p>
+    <p><span data-i18n="push.lead">Push</span> <b id="push-branch"></b> <span data-i18n="push.mid">to</span> <select id="push-remote"></select></p>
     <p id="push-note" hidden></p>
     <fieldset>
-      <label><input type="radio" name="mode" value="normal" checked> Normal: only if the remote has nothing you would lose</label>
-      <label><input type="radio" name="mode" value="force-with-lease"> Force with lease: overwrite, unless someone pushed since your last fetch</label>
-      <label class="danger"><input type="radio" name="mode" value="force"> Force: overwrite whatever the remote has</label>
+      <label><input type="radio" name="mode" value="normal" checked> <span data-i18n="push.normal">Normal: only if the remote has nothing you would lose</span></label>
+      <label><input type="radio" name="mode" value="force-with-lease"> <span data-i18n="push.forceLease">Force with lease: overwrite, unless someone pushed since your last fetch</span></label>
+      <label class="danger"><input type="radio" name="mode" value="force"> <span data-i18n="push.force">Force: overwrite whatever the remote has</span></label>
     </fieldset>
-    <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Push</button></div>
+    <div class="actions"><button value="cancel" data-i18n="btn.cancel">Cancel</button><button value="ok" autofocus data-i18n="btn.push">Push</button></div>
   </form>
 </dialog>
 <dialog id="pull" class="dialog">
   <form method="dialog">
-    <p>Sync <b id="pull-branch"></b> with <b id="pull-from"></b></p>
+    <p><span data-i18n="pull.lead">Sync</span> <b id="pull-branch"></b> <span data-i18n="pull.mid">with</span> <b id="pull-from"></b></p>
     <p id="pull-note" hidden></p>
     <fieldset>
-      <label><input type="radio" name="mode" value="merge" checked> Merge: fast-forward when possible, otherwise a merge commit, as git pull does</label>
-      <label><input type="radio" name="mode" value="rebase"> Rebase: replay the branch's own commits on top of the remote ones</label>
-      <label><input type="radio" name="mode" value="fast-forward"> Fast-forward only: refuse if the branch has commits of its own</label>
+      <label><input type="radio" name="mode" value="merge" checked> <span data-i18n="pull.merge">Merge: fast-forward when possible, otherwise a merge commit, as git pull does</span></label>
+      <label><input type="radio" name="mode" value="rebase"> <span data-i18n="pull.rebase">Rebase: replay the branch's own commits on top of the remote ones</span></label>
+      <label><input type="radio" name="mode" value="fast-forward"> <span data-i18n="pull.ff">Fast-forward only: refuse if the branch has commits of its own</span></label>
     </fieldset>
-    <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Sync</button></div>
+    <div class="actions"><button value="cancel" data-i18n="btn.cancel">Cancel</button><button value="ok" autofocus data-i18n="btn.sync">Sync</button></div>
   </form>
 </dialog>
 <dialog id="merge" class="dialog">
   <form method="dialog">
-    <p>Merge <b id="merge-source"></b> into <b id="merge-target"></b></p>
+    <p><span data-i18n="merge.lead">Merge</span> <b id="merge-source"></b> <span data-i18n="merge.mid">into</span> <b id="merge-target"></b></p>
     <fieldset>
-      <label><input type="radio" name="mode" value="fast-forward" checked> Fast-forward when possible, otherwise create a merge commit</label>
-      <label><input type="radio" name="mode" value="merge-commit"> Always create a merge commit</label>
-      <label><input type="radio" name="mode" value="squash"> Squash: stage all its changes as one, without committing</label>
+      <label><input type="radio" name="mode" value="fast-forward" checked> <span data-i18n="merge.ff">Fast-forward when possible, otherwise create a merge commit</span></label>
+      <label><input type="radio" name="mode" value="merge-commit"> <span data-i18n="merge.commit">Always create a merge commit</span></label>
+      <label><input type="radio" name="mode" value="squash"> <span data-i18n="merge.squash">Squash: stage all its changes as one, without committing</span></label>
     </fieldset>
-    <label class="option"><input type="checkbox" id="merge-no-commit"> Don't commit: stop so I can review the result first</label>
-    <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Merge</button></div>
+    <label class="option"><input type="checkbox" id="merge-no-commit"> <span data-i18n="merge.noCommit">Don't commit: stop so I can review the result first</span></label>
+    <div class="actions"><button value="cancel" data-i18n="btn.cancel">Cancel</button><button value="ok" autofocus data-i18n="btn.merge">Merge</button></div>
   </form>
 </dialog>
 <dialog id="apply" class="dialog">
   <form method="dialog">
     <p id="apply-text"></p>
-    <label class="option"><input type="checkbox" id="apply-no-commit"> Don't commit: stage the changes so I can review them first</label>
-    <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus id="apply-ok"></button></div>
+    <label class="option"><input type="checkbox" id="apply-no-commit"> <span data-i18n="apply.noCommit">Don't commit: stage the changes so I can review them first</span></label>
+    <div class="actions"><button value="cancel" data-i18n="btn.cancel">Cancel</button><button value="ok" autofocus id="apply-ok"></button></div>
   </form>
 </dialog>
 <dialog id="reset" class="dialog">
   <form method="dialog">
-    <p>Reset <b id="reset-branch"></b> to <b id="reset-commit"></b></p>
+    <p><span data-i18n="reset.lead">Reset</span> <b id="reset-branch"></b> <span data-i18n="reset.mid">to</span> <b id="reset-commit"></b></p>
     <fieldset>
-      <label><input type="radio" name="mode" value="soft"> Soft: keep every change since, staged</label>
-      <label><input type="radio" name="mode" value="mixed" checked> Mixed: keep every change since, not staged</label>
-      <label class="danger"><input type="radio" name="mode" value="hard"> Hard: discard every change since, committed or not</label>
+      <label><input type="radio" name="mode" value="soft"> <span data-i18n="reset.soft">Soft: keep every change since, staged</span></label>
+      <label><input type="radio" name="mode" value="mixed" checked> <span data-i18n="reset.mixed">Mixed: keep every change since, not staged</span></label>
+      <label class="danger"><input type="radio" name="mode" value="hard"> <span data-i18n="reset.hard">Hard: discard every change since, committed or not</span></label>
     </fieldset>
-    <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Reset</button></div>
+    <div class="actions"><button value="cancel" data-i18n="btn.cancel">Cancel</button><button value="ok" autofocus data-i18n="btn.reset">Reset</button></div>
   </form>
 </dialog>
 <dialog id="confirm" class="dialog">
   <form method="dialog">
     <p id="confirm-text"></p>
-    <div class="actions"><button value="cancel" autofocus>Cancel</button><button value="ok" class="danger"></button></div>
+    <div class="actions"><button value="cancel" autofocus data-i18n="btn.cancel">Cancel</button><button value="ok" class="danger"></button></div>
   </form>
 </dialog>
 <dialog id="commit" class="dialog">
   <form method="dialog">
-    <p>Commit <span id="commit-count"></span></p>
+    <p><span data-i18n="commit.lead">Commit</span> <span id="commit-count"></span></p>
     <div id="commit-files"></div>
-    <textarea id="commit-message" rows="4" placeholder="Commit message (Ctrl+Enter to commit)" autocomplete="off" spellcheck="false" autofocus></textarea>
-    <label class="option"><input type="checkbox" id="commit-amend"> Amend the last commit instead of adding a new one</label>
-    <p id="commit-amend-note" class="warn" hidden>This commit is already on its remote; amending it will need a force push.</p>
-    <div class="actions"><button value="cancel">Cancel</button><button value="ok">Commit</button></div>
+    <textarea id="commit-message" rows="4" data-i18n-ph="ph.commitMessage" placeholder="Commit message (Ctrl+Enter to commit)" autocomplete="off" spellcheck="false" autofocus></textarea>
+    <label class="option"><input type="checkbox" id="commit-amend"> <span data-i18n="commit.amend">Amend the last commit instead of adding a new one</span></label>
+    <p id="commit-amend-note" class="warn" hidden data-i18n="commit.amendNote">This commit is already on its remote; amending it will need a force push.</p>
+    <div class="actions"><button value="cancel" data-i18n="btn.cancel">Cancel</button><button value="ok" data-i18n="btn.commitDo">Commit</button></div>
   </form>
 </dialog>
 <dialog id="tag" class="dialog">
   <form method="dialog">
-    <p>Tag <b id="tag-commit"></b></p>
-    <input id="tag-name" placeholder="Tag name (e.g. v1.2.0)" autocomplete="off" spellcheck="false" autofocus>
-    <input id="tag-message" placeholder="Message (optional — empty makes a lightweight tag)" autocomplete="off" spellcheck="false">
-    <div class="option" id="tag-push-row"><label><input type="checkbox" id="tag-push"> Push it to</label> <select id="tag-remote"></select> after creating</div>
-    <div class="actions"><button value="cancel">Cancel</button><button value="ok">Create tag</button></div>
+    <p><span data-i18n="tag.lead">Tag</span> <b id="tag-commit"></b></p>
+    <input id="tag-name" data-i18n-ph="ph.tagName" placeholder="Tag name (e.g. v1.2.0)" autocomplete="off" spellcheck="false" autofocus>
+    <input id="tag-message" data-i18n-ph="ph.tagMessage" placeholder="Message (optional — empty makes a lightweight tag)" autocomplete="off" spellcheck="false">
+    <div class="option" id="tag-push-row"><label><input type="checkbox" id="tag-push"> <span data-i18n="tag.pushRow">Push it to</span></label> <select id="tag-remote"></select> <span data-i18n="tag.after">after creating</span></div>
+    <div class="actions"><button value="cancel" data-i18n="btn.cancel">Cancel</button><button value="ok" data-i18n="btn.createTag">Create tag</button></div>
   </form>
 </dialog>
 <dialog id="pushtag" class="dialog">
   <form method="dialog">
-    <p>Push tag <b id="pushtag-name"></b> to <select id="pushtag-remote"></select></p>
-    <div class="actions"><button value="cancel">Cancel</button><button value="ok" autofocus>Push</button></div>
+    <p><span data-i18n="pushtag.lead">Push tag</span> <b id="pushtag-name"></b> <span data-i18n="pushtag.mid">to</span> <select id="pushtag-remote"></select></p>
+    <div class="actions"><button value="cancel" data-i18n="btn.cancel">Cancel</button><button value="ok" autofocus data-i18n="btn.push">Push</button></div>
   </form>
 </dialog>
 <dialog id="branch" class="dialog">
   <form method="dialog">
-    <p>Branch from <b id="branch-commit"></b></p>
-    <input id="branch-name" placeholder="Branch name" autocomplete="off" spellcheck="false" autofocus>
-    <div class="actions"><button value="cancel">Cancel</button><button value="ok">Create branch</button></div>
+    <p><span data-i18n="branch.lead">Branch from</span> <b id="branch-commit"></b></p>
+    <input id="branch-name" data-i18n-ph="ph.branchName" placeholder="Branch name" autocomplete="off" spellcheck="false" autofocus>
+    <div class="actions"><button value="cancel" data-i18n="btn.cancel">Cancel</button><button value="ok" data-i18n="btn.createBranch">Create branch</button></div>
   </form>
 </dialog>
 <div id="toast"></div>

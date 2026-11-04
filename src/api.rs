@@ -87,6 +87,7 @@ fn route(config: &Config, post: bool, path: &str, q: &Query) -> Result<Reply, St
         "/api/rebase" => done(action()?.rebase(q.get("ref"))?),
         "/api/reset" => done(action()?.reset(q.get("h"), q.get("mode"))?),
         "/api/delete-remote" => done(action()?.delete_remote_branch(q.get("ref"))?),
+        "/api/delete-local" => done(action()?.delete_local_branch(q.get("ref"), q.get("force") == "1")?),
         "/api/stage" => done(action()?.stage(&q.all("path"), q.get("all") == "1")?),
         "/api/unstage" => done(action()?.unstage(&q.all("path"), q.get("all") == "1")?),
         "/api/discard" => done(action()?.discard(&q.all("path"), q.get("all") == "1")?),

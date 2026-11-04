@@ -1,3 +1,5 @@
+import { t } from './i18n.js';
+
 export const $ = id => document.getElementById(id);
 
 const layers = [];
@@ -63,7 +65,7 @@ export async function copy(text) {
     document.execCommand('copy');
     area.remove();
   }
-  toast(`copied ${text}`);
+  toast(t('toast.copied', { text }));
 }
 
 export function ask(dialog) {

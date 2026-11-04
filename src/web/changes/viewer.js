@@ -2,6 +2,7 @@ import { getJson } from '../shared/api.js';
 import { buildDiff, folds } from './diffview.js';
 import { $, closeLayer, drag, openLayer } from '../shared/dom.js';
 import { clamp, esc, fileLabel, plural } from '../shared/format.js';
+import { t } from '../shared/i18n.js';
 import { prefs } from '../shared/prefs.js';
 import { formatRef, showRefMenu } from './copyref.js';
 
@@ -83,7 +84,7 @@ async function load(atEnd = false) {
   $('v-next-file').disabled = v.index === v.files.length - 1;
   $('v-pos').textContent = '';
   $('v-cut').hidden = true;
-  $('v-body').innerHTML = '<div class="v-empty">loading…</div>';
+  $('v-body').innerHTML = `<div class="v-empty">${esc(t('viewer.loading'))}</div>`;
   v.data = null;
   v.failed = false;
   v.open = new Set();
@@ -116,7 +117,7 @@ function render() {
   $('viewer').classList.toggle('unified', v.mode === 'unified');
   $('v-mode').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.mode === v.mode));
   if (d.binary) {
-    $('v-body').innerHTML = '<div class="v-empty">Binary file: no text to compare.</div>';
+    $('v-body').innerHTML = `<div class="v-empty">${esc(t('viewer.binary'))}</div>`;
     return;
   }
   const starts = new Map(d.changes.map((c, k) => [v.mode === 'split' ? c.split : c.unified, k]));
@@ -137,7 +138,7 @@ function render() {
     next = to;
   }
   rows.push(...v.rows.slice(next));
-  $('v-body').innerHTML = rows.join('') || '<div class="v-empty">No change in this file.</div>';
+  $('v-body').innerHTML = rows.join('') || `<div class="v-empty">${esc(t('viewer.noChange'))}</div>`;
   $('v-body').scrollTop = 0;
   geometry = null;
   placeDivider();
@@ -158,7 +159,7 @@ function step(direction) {
 
 function showChange() {
   const v = viewer, total = v.data.changes.length, body = $('v-body');
-  $('v-pos').textContent = total ? `change ${v.change + 1} of ${total}` : 'no change';
+  $('v-pos').textContent = total ? t('viewer.changePos', { n: v.change + 1, total }) : t('viewer.noChangePos');
   body.querySelectorAll('.cur').forEach(el => el.classList.remove('cur'));
   let row = body.querySelector(`[data-change="${v.change}"]`);
   if (!row) return;

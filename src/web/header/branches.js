@@ -1,16 +1,18 @@
 import { $ } from '../shared/dom.js';
 import { esc, fmtDate, fuzzy, highlight } from '../shared/format.js';
+import { onLocaleChange, t } from '../shared/i18n.js';
 import { picker } from '../shared/picker.js';
 import { state } from '../shared/state.js';
 import { loadLog, onRefs } from '../history/sync.js';
 
 const MAX_SHOWN = 400, MAX_CHIPS = 5;
 const GROUPS = [
-  { name: '@local', label: 'all local branches', kind: 'head' },
-  { name: '@remotes', label: 'all remote branches', kind: 'remote' },
-  { name: '@tags', label: 'all tags', kind: 'tag' },
+  { name: '@local', labelKey: 'group.local', kind: 'head' },
+  { name: '@remotes', labelKey: 'group.remotes', kind: 'remote' },
+  { name: '@tags', labelKey: 'group.tags', kind: 'tag' },
   { name: 'HEAD', label: 'HEAD', kind: 'head' },
 ];
+const groupLabel = g => (g.labelKey ? t(g.labelKey) : g.label);
 
 export const DEFAULT_SELECTION = ['@local', '@remotes', '@tags'];
 
@@ -28,7 +30,7 @@ const menu = picker({
       + `<span class="when">${ref.date ? fmtDate(ref.date).slice(0, 10) : ''}</span></div>`;
   },
   choose: ({ ref }) => toggle(ref.name),
-  empty: () => 'no match',
+  empty: () => t('picker.noMatch'),
 });
 
 function matching(query) {
@@ -36,7 +38,7 @@ function matching(query) {
   const selected = new Set(state.selected);
   const listed = ref => ref.group || selected.has(ref.name) || ref.kind === 'head' || (ref.kind === 'remote' && remotes) || (ref.kind === 'tag' && tags);
   const byDefault = (a, b) => (b.ref.group || 0) - (a.ref.group || 0) || selected.has(b.ref.name) - selected.has(a.ref.name) || a.order - b.order;
-  return [...GROUPS.map(g => ({ ...g, group: true })), ...state.refs]
+  return [...GROUPS.map(g => ({ ...g, group: true, label: groupLabel(g) })), ...state.refs]
     .filter(listed)
     .map((ref, order) => ({ ref, order, match: fuzzy(query, ref.label || ref.name) }))
     .filter(x => x.match)
@@ -69,7 +71,11 @@ export function saveSelection() {
 }
 
 function refreshChips() {
-  const find = name => GROUPS.find(g => g.name === name) || state.refs.find(r => r.name === name) || { kind: 'head' };
+  const find = name => {
+    const g = GROUPS.find(x => x.name === name);
+    if (g) return { kind: g.kind, label: groupLabel(g) };
+    return state.refs.find(r => r.name === name) || { kind: 'head' };
+  };
   const chip = name => `<span class="chip k-${find(name).kind}">${esc(find(name).label || name)}</span>`;
   const more = state.selected.length > MAX_CHIPS ? `<span class="chip">+${state.selected.length - MAX_CHIPS}</span>` : '';
   $('chips').innerHTML = state.selected.length ? state.selected.slice(0, MAX_CHIPS).map(chip).join('') + more : '<span class="chip">HEAD</span>';
@@ -96,3 +102,5 @@ $('menu').addEventListener('click', e => {
   menu.render();
   $('filter').focus();
 }));
+
+onLocaleChange(refreshChips);

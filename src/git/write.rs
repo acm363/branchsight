@@ -54,6 +54,12 @@ impl Repo {
         Ok(format!("deleted {branch} on {remote}"))
     }
 
+    pub fn delete_local_branch(&self, name: &str, force: bool) -> Result<String, String> {
+        let flag = if force { "-D" } else { "-d" };
+        self.git(&["branch", flag, "--end-of-options", name]).map_err(main_reason)?;
+        Ok(format!("deleted {name}"))
+    }
+
     pub fn push(&self, branch: &str, remote: &str, mode: &str) -> Result<String, String> {
         let flag = match mode {
             "normal" => None,

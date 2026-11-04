@@ -1,6 +1,7 @@
 import { getJson, inDesktopApp, pickFolder } from '../shared/api.js';
 import { $ } from '../shared/dom.js';
 import { color, esc, fuzzy, highlight, pathKey, samePath, shortPath } from '../shared/format.js';
+import { t } from '../shared/i18n.js';
 import { picker } from '../shared/picker.js';
 import { prefs } from '../shared/prefs.js';
 import { state } from '../shared/state.js';
@@ -29,17 +30,17 @@ const menu = picker({
   row: ({ project, match, action }, i, current) => {
     const cur = current ? ' cur' : '';
     if (action === 'scan') {
-      return `<div class="pick scan${cur}" data-i="${i}"><span class="name">Scan <b>${esc(project.path)}</b> for repositories</span></div>`;
+      return `<div class="pick scan${cur}" data-i="${i}"><span class="name">${t('proj.scan', { path: `<b>${esc(project.path)}</b>` })}</span></div>`;
     }
     if (action === 'open') {
-      return `<div class="pick open${cur}" data-i="${i}"><span class="name">Open <b>${esc(project.path)}</b></span></div>`;
+      return `<div class="pick open${cur}" data-i="${i}"><span class="name">${t('proj.open', { path: `<b>${esc(project.path)}</b>` })}</span></div>`;
     }
     const short = shortPath(project.path, state.roots);
     return `<div class="pick${samePath(project.path, state.repo.path) ? ' on' : ''}${cur}" data-i="${i}">`
       + `<span class="name">${highlight(project.name, match.marks)}</span><span class="when">${short === project.name ? '' : esc(short)}</span></div>`;
   },
   choose: ({ project, action }) => (action === 'scan' ? scanFolder(project.path) : switchTo(project.path)),
-  empty: () => (known ? 'no git repository under the roots' : 'looking for repositories…'),
+  empty: () => (known ? t('proj.noneUnderRoots') : t('proj.looking')),
 });
 
 const fetchProjects = () => getJson('/api/projects', customRoots().map(root => ['root', root]));
@@ -92,7 +93,7 @@ async function scanFolder(path) {
   note('');
   await refresh();
   if (known && !known.some(p => pathKey(p.path).startsWith(`${pathKey(path)}/`) || samePath(p.path, path))) {
-    note(`no git repository under ${path}`);
+    note(t('proj.noneUnder', { path }));
   }
 }
 
@@ -112,9 +113,9 @@ function saveRoots(roots) {
 
 function renderRoots() {
   const custom = customRoots();
-  const line = (path, removable) => `<div class="root">${removable ? `<button class="rx" data-root="${esc(path)}" title="Remove">×</button>` : '<span class="rx"></span>'}<span class="rp">${esc(path)}</span></div>`;
-  const add = inDesktopApp ? '<button id="add-folder" class="rbtn">Add folder…</button>' : '<div class="rhint">Type a path above to scan a folder</div>';
-  $('proots').innerHTML = '<div class="rhead">Folders to scan</div>'
+  const line = (path, removable) => `<div class="root">${removable ? `<button class="rx" data-root="${esc(path)}" title="${esc(t('proj.remove'))}">×</button>` : '<span class="rx"></span>'}<span class="rp">${esc(path)}</span></div>`;
+  const add = inDesktopApp ? `<button id="add-folder" class="rbtn">${esc(t('proj.addFolder'))}</button>` : `<div class="rhint">${esc(t('proj.typePath'))}</div>`;
+  $('proots').innerHTML = `<div class="rhead">${esc(t('proj.foldersToScan'))}</div>`
     + configRoots.map(root => line(root, false)).join('')
     + custom.map(root => line(root, true)).join('')
     + add;
@@ -125,7 +126,7 @@ export function setCurrent(repo) {
   prefs.set('recent', [repo.path, ...(prefs.get('recent') || []).filter(p => !samePath(p, repo.path))].slice(0, MAX_RECENT));
   document.title = `${repo.name} · BranchSight`;
   $('repo').textContent = repo.name;
-  $('proj-chip').title = `${repo.path} — switch project (p)`;
+  $('proj-chip').title = t('proj.chipTitle', { path: repo.path });
   $('avatar').textContent = (repo.name[0] || '?').toUpperCase();
   $('avatar').style.background = color([...repo.name].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 0));
 }
@@ -143,7 +144,7 @@ function note(text) {
 export function showStart(problem = '') {
   document.body.classList.add('start');
   document.title = 'BranchSight';
-  $('repo').textContent = 'no project';
+  $('repo').textContent = t('proj.noProject');
   note(problem);
   return open();
 }

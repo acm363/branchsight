@@ -1,5 +1,6 @@
 import { $, drag } from '../shared/dom.js';
-import { SHORT_HASH, clamp, color, esc, fmtDate } from '../shared/format.js';
+import { SHORT_HASH, clamp, color, esc, fmtDate, plural } from '../shared/format.js';
+import { t } from '../shared/i18n.js';
 import { refLabels } from './labels.js';
 import { prefs } from '../shared/prefs.js';
 import { isWorktree, state } from '../shared/state.js';
@@ -117,8 +118,8 @@ function renderIfMoved() {
   if (first !== painted.first || last !== painted.last) render();
 }
 
-const worktreeSummary = status => [[status.conflicts, 'in conflict'], [status.staged, 'staged'], [status.unstaged, 'modified'], [status.untracked, 'untracked']]
-  .filter(([n]) => n).map(([n, what]) => `${n} ${what}`).join(' · ');
+const WT_PARTS = [['conflicts', 'wt.conflict'], ['staged', 'wt.staged'], ['unstaged', 'wt.modified'], ['untracked', 'wt.untracked']];
+const worktreeSummary = status => WT_PARTS.filter(([key]) => status[key]).map(([key, noun]) => plural(status[key], noun)).join(' · ');
 
 function rowHtml(entry, i) {
   const cls = [
@@ -129,12 +130,12 @@ function rowHtml(entry, i) {
   ].filter(Boolean).map(c => ` ${c}`).join('');
   const open = `<div class="row${cls}" data-i="${i}" style="top:${i * ROW}px">`;
   if (isWorktree(entry)) {
-    return `${open}<span class="s"><span class="t">Uncommitted changes</span><span class="wtc">${esc(worktreeSummary(entry.status))}</span></span>`
+    return `${open}<span class="s"><span class="t">${esc(t('wt.uncommitted'))}</span><span class="wtc">${esc(worktreeSummary(entry.status))}</span></span>`
       + '<span class="a"></span><span class="d"></span><span class="h"></span></div>';
   }
   return `${open}<span class="s">${labelsHtml(entry, color(state.rows[i].color))}<span class="t">${esc(entry.s)}</span></span>`
     + `<span class="a">${esc(entry.a)}</span><span class="d">${fmtDate(entry.t)}</span>`
-    + `<span class="h" title="Copy ${entry.h}">${entry.h.slice(0, SHORT_HASH)}</span></div>`;
+    + `<span class="h" title="${esc(t('panel.copyHash', { hash: entry.h }))}">${entry.h.slice(0, SHORT_HASH)}</span></div>`;
 }
 
 function labelsHtml(commit, laneColor) {

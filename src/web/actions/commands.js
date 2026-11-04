@@ -2,6 +2,7 @@ import { post } from '../shared/api.js';
 import { setSelection } from '../header/branches.js';
 import { $, ask, confirmAction, toast } from '../shared/dom.js';
 import { SHORT_HASH, esc, plural } from '../shared/format.js';
+import { t } from '../shared/i18n.js';
 import * as panel from '../changes/panel.js';
 import * as log from '../history/list.js';
 import { commitAt, isWorktree, state } from '../shared/state.js';
@@ -51,12 +52,26 @@ async function focusOn(hash) {
 }
 
 export async function checkout(name, label = name) {
-  await run('/api/checkout', { ref: name }, `checking out ${label}…`);
+  await run('/api/checkout', { ref: name }, t('busy.checkout', { name: label }));
 }
 
 export async function deleteRemote(name) {
-  const ok = await confirmAction(`Delete ${name} on the remote? Everyone who uses it loses the branch; BranchSight cannot undo it.`, 'Delete');
-  if (ok) await run('/api/delete-remote', { ref: name }, `deleting ${name}…`, null);
+  if (await confirmAction(t('cmd.deleteRemoteConfirm', { name }), t('btn.delete'))) await run('/api/delete-remote', { ref: name }, t('busy.deleting', { name }), null);
+}
+
+export async function deleteLocal(name) {
+  if (!(await confirmAction(t('cmd.deleteLocalConfirm', { name }), t('btn.delete')))) return;
+  try {
+    const { out } = await post('/api/delete-local', { ref: name });
+    toast(out, 3000);
+    await reload().catch(() => {});
+  } catch (e) {
+    if (!/not fully merged/i.test(e.message)) {
+      toast(e.message.split('\n').slice(0, 3).join('\n'), 9000);
+      return;
+    }
+    if (await confirmAction(t('cmd.deleteLocalUnmerged', { name }), t('btn.deleteAnyway'))) await run('/api/delete-local', { ref: name, force: '1' }, t('busy.deleting', { name }), null);
+  }
 }
 
 export async function push(branch, upstream, initialMode = 'normal') {
@@ -68,7 +83,7 @@ export async function push(branch, upstream, initialMode = 'normal') {
   const note = () => {
     const target = `${select.value}/${branch}`;
     $('push-note').hidden = !upstream || upstream.name === target;
-    $('push-note').textContent = `${branch} tracks ${upstream?.name} today; after this push it tracks ${target}.`;
+    $('push-note').textContent = t('cmd.pushNote', { branch, current: upstream?.name, target });
   };
   note();
   select.onchange = note;
@@ -76,16 +91,15 @@ export async function push(branch, upstream, initialMode = 'normal') {
   dialog.querySelector(`[name="mode"][value="${initialMode}"]`).checked = true;
   if ((await ask(dialog)) !== 'ok') return;
   const remote = select.value, mode = dialog.querySelector('[name="mode"]:checked').value;
-  const lost = `Commits on ${remote}/${branch} that you do not have are lost for everyone who uses it.`;
-  if (mode === 'force' && !(await confirmAction(`Force-push ${branch} to ${remote}? ${lost}`, 'Force push'))) return;
-  await run('/api/push', { ref: branch, remote, mode }, `pushing ${branch} to ${remote}…`, null);
+  const lost = t('cmd.pushForceLost', { remote, branch });
+  if (mode === 'force' && !(await confirmAction(t('cmd.forcePushConfirm', { branch, remote, lost }), t('btn.forcePush')))) return;
+  await run('/api/push', { ref: branch, remote, mode }, t('busy.pushing', { branch, remote }), null);
 }
 
 const currentBranch = () => state.repo.branch || 'HEAD';
 
 export async function resetToRemote(branch, remote, own) {
-  const text = `Reset ${branch} to ${remote}? It drops the ${plural(own, 'commit')} that ${remote} does not have; git reflog can still bring them back. Uncommitted changes are kept, or git refuses.`;
-  if (await confirmAction(text, 'Reset')) await run('/api/reset-to-remote', { branch, from: remote }, `resetting ${branch} to ${remote}…`, tipOf(branch));
+  if (await confirmAction(t('cmd.resetToRemoteConfirm', { branch, remote, commits: plural(own, 'commit') }), t('btn.reset'))) await run('/api/reset-to-remote', { branch, from: remote }, t('busy.resettingToRemote', { branch, remote }), tipOf(branch));
 }
 
 export async function pull(branch, from) {
@@ -93,12 +107,12 @@ export async function pull(branch, from) {
   $('pull-from').textContent = from;
   $('pull-branch').textContent = branch;
   $('pull-note').hidden = !elsewhere;
-  $('pull-note').textContent = `${branch} is not checked out: if it only lags behind it is brought up where it is, otherwise BranchSight switches to it first.`;
+  $('pull-note').textContent = t('cmd.pullNote', { branch });
   dialog.querySelector('[name="mode"][value="merge"]').checked = true;
   dialog.onkeydown = enterOnlyOnButtons;
   if ((await ask(dialog)) !== 'ok') return;
   const mode = dialog.querySelector('[name="mode"]:checked').value;
-  await run('/api/pull', { branch, from, mode }, `syncing ${branch} with ${from}…`, tipOf(branch));
+  await run('/api/pull', { branch, from, mode }, t('busy.syncing', { branch, from }), tipOf(branch));
 }
 
 export async function merge(name, shown = name) {
@@ -115,30 +129,28 @@ export async function merge(name, shown = name) {
   await run('/api/merge', { ref: name, mode: mode(), commit: noCommit.checked ? '0' : '1' }, `merging ${shown} into ${into}…`);
 }
 
-async function apply(endpoint, verb, commit) {
-  const dialog = $('apply'), noCommit = $('apply-no-commit'), short = commit.h.slice(0, SHORT_HASH);
-  $('apply-text').textContent = `${verb} ${short} "${commit.s}" on ${currentBranch()}`;
+async function apply(endpoint, verbKey, commit) {
+  const dialog = $('apply'), noCommit = $('apply-no-commit'), short = commit.h.slice(0, SHORT_HASH), verb = t(`verb.${verbKey}`);
+  $('apply-text').textContent = t('cmd.applyText', { verb, short, subject: commit.s, branch: currentBranch() });
   $('apply-ok').textContent = verb;
   noCommit.checked = false;
   dialog.onkeydown = enterOnlyOnButtons;
   if ((await ask(dialog)) !== 'ok') return;
-  await run(endpoint, { h: commit.h, commit: noCommit.checked ? '0' : '1' }, `${verb.toLowerCase()} ${short}…`);
+  await run(endpoint, { h: commit.h, commit: noCommit.checked ? '0' : '1' }, t('busy.applying', { verb, short }));
 }
 
-export const cherryPick = commit => apply('/api/cherry-pick', 'Cherry pick', commit);
+export const cherryPick = commit => apply('/api/cherry-pick', 'cherryPick', commit);
 
-export const revert = commit => apply('/api/revert', 'Revert', commit);
+export const revert = commit => apply('/api/revert', 'revert', commit);
 
 export async function drop(commit) {
   const short = commit.h.slice(0, SHORT_HASH), into = currentBranch();
-  const text = `Drop ${short} "${commit.s}" from ${into}? Its changes leave the branch and every commit after it is rewritten; if they were pushed, the branch will need a force push.`;
-  if (await confirmAction(text, 'Drop')) await run('/api/drop', { h: commit.h }, `dropping ${short}…`);
+  if (await confirmAction(t('cmd.dropConfirm', { short, subject: commit.s, branch: into }), t('btn.drop'))) await run('/api/drop', { h: commit.h }, t('busy.dropping', { short }));
 }
 
 export async function rebase(name, shown = name) {
   const into = currentBranch();
-  const text = `Rebase ${into} on ${shown}? Its own commits are replayed on top of ${shown} and get new hashes; if they were pushed, the branch will need a force push.`;
-  if (await confirmAction(text, 'Rebase')) await run('/api/rebase', { ref: name }, `rebasing ${into} on ${shown}…`);
+  if (await confirmAction(t('cmd.rebaseConfirm', { into, shown }), t('btn.rebase'))) await run('/api/rebase', { ref: name }, t('busy.rebasing', { into, shown }));
 }
 
 export async function reset(commit) {
@@ -149,9 +161,9 @@ export async function reset(commit) {
   dialog.onkeydown = enterOnlyOnButtons;
   if ((await ask(dialog)) !== 'ok') return;
   const mode = dialog.querySelector('[name="mode"]:checked').value;
-  const lost = `Every commit after ${short} and every uncommitted change are discarded; git cannot bring back uncommitted work.`;
-  if (mode === 'hard' && !(await confirmAction(`Hard reset ${into} to ${short}? ${lost}`, 'Discard and reset'))) return;
-  await run('/api/reset', { h: commit.h, mode }, `resetting ${into} to ${short}…`);
+  const lost = t('cmd.resetHardLost', { short });
+  if (mode === 'hard' && !(await confirmAction(t('cmd.resetHardConfirm', { into, short, lost }), t('btn.discardReset')))) return;
+  await run('/api/reset', { h: commit.h, mode }, t('busy.resetting', { into, short }));
 }
 
 export async function fetchRemotes({ unattended = false } = {}) {
@@ -159,20 +171,20 @@ export async function fetchRemotes({ unattended = false } = {}) {
   fetching = true;
   const button = $('fetch');
   button.disabled = true;
-  button.textContent = '⇣ fetching…';
+  button.textContent = t('cmd.fetching');
   try {
     await post('/api/fetch', unattended ? { auto: '1' } : {});
-    button.title = `Fetch all remotes (f) · last ${new Date().toLocaleTimeString()}`;
+    button.title = t('cmd.fetchLast', { time: new Date().toLocaleTimeString() });
     button.classList.remove('err');
   } catch (e) {
-    button.title = `Fetch failed: ${e.message}`;
+    button.title = t('cmd.fetchFailed', { msg: e.message });
     button.classList.add('err');
-    toast(`fetch failed: ${e.message.split('\n')[0]}`, 5000);
+    toast(t('cmd.fetchFailedToast', { msg: e.message.split('\n')[0] }), 5000);
   } finally {
     lastFetch = Date.now();
     fetching = false;
     button.disabled = false;
-    button.textContent = '⇣ fetch';
+    button.textContent = t('btn.fetch');
     poll();
   }
 }

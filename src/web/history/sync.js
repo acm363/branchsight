@@ -1,6 +1,7 @@
 import { getJson } from '../shared/api.js';
 import { $ } from '../shared/dom.js';
 import { esc, plural } from '../shared/format.js';
+import { onLocaleChange, t } from '../shared/i18n.js';
 import { layout } from './graph.js';
 import { indexRefs } from './labels.js';
 import * as log from './list.js';
@@ -47,7 +48,7 @@ export async function loadLog({ keepScroll = false, fresh = false } = {}) {
   request?.abort();
   const mine = request = new AbortController();
   const params = new URLSearchParams([...state.selected.map(name => ['ref', name]), ['limit', $('limit').value]]);
-  const pending = setTimeout(() => { if (!keepScroll) $('count').textContent = 'loading…'; }, 120);
+  const pending = setTimeout(() => { if (!keepScroll) $('count').textContent = t('sync.loading'); }, 120);
   try {
     const loaded = await fetchLog(params, fresh, mine.signal);
     if (mine !== request) return;
@@ -55,13 +56,13 @@ export async function loadLog({ keepScroll = false, fresh = false } = {}) {
     failed = false;
     log.show(withWorktree(loaded, seen?.status), { cursorKey: cursorKey(), top: keepScroll ? log.anchor() : null });
     const limit = +$('limit').value, count = loaded.commits.length;
-    $('count').textContent = `${plural(count, 'commit')}${count >= limit ? ' (limit)' : ''}`;
+    $('count').textContent = `${plural(count, 'commit')}${count >= limit ? ` ${t('sync.limit')}` : ''}`;
   } catch (e) {
     if (e.name === 'AbortError' || mine !== request) return;
     failed = true;
     log.show({ entries: [], rows: [], lanes: 1 });
     $('count').textContent = '';
-    $('rows').innerHTML = `<div id="error">${esc(e.message)} — retrying…</div>`;
+    $('rows').innerHTML = `<div id="error">${esc(e.message)} — ${esc(t('sync.retryingSuffix'))}</div>`;
     return;
   } finally {
     clearTimeout(pending);
@@ -114,3 +115,9 @@ export function startPolling() {
   setInterval(poll, POLL_MS);
   document.addEventListener('visibilitychange', poll);
 }
+
+onLocaleChange(() => {
+  if (!shown || failed) return;
+  const limit = +$('limit').value, count = shown.commits.length;
+  $('count').textContent = `${plural(count, 'commit')}${count >= limit ? ` ${t('sync.limit')}` : ''}`;
+});

@@ -1,5 +1,6 @@
 import { $, copy } from '../shared/dom.js';
 import { SHORT_HASH, esc } from '../shared/format.js';
+import { t } from '../shared/i18n.js';
 
 export function refSuffix(source) {
   if (source.kind === 'commit') return ` @${source.h.slice(0, SHORT_HASH)}`;
@@ -21,8 +22,8 @@ export function showRefMenu(e, ref) {
   if (!ref) return;
   e.preventDefault();
   const menu = $('ctx');
-  const items = [['Copy reference', () => copy(ref.text)]];
-  if (ref.code) items.push(['Copy reference + code', () => copy(`${ref.text}\n${ref.code}`)]);
+  const items = [[t('copyref.ref'), () => copy(ref.text)]];
+  if (ref.code) items.push([t('copyref.refCode'), () => copy(`${ref.text}\n${ref.code}`)]);
   menu.innerHTML = items.map(([label], i) => `<button data-i="${i}">${esc(label)}</button>`).join('');
   const onDown = ev => { if (!menu.contains(ev.target)) close(); };
   const onKey = ev => { if (ev.key === 'Escape') { ev.stopPropagation(); close(); } };

@@ -1,6 +1,7 @@
 import { getJson } from '../shared/api.js';
 import { $, copy, drag, toast } from '../shared/dom.js';
 import { SHORT_HASH, esc, fileLabel, plural, statusClass } from '../shared/format.js';
+import { t } from '../shared/i18n.js';
 import { refName } from '../history/labels.js';
 import * as log from '../history/list.js';
 import { lineHtml, patchHtml } from './patch.js';
@@ -38,7 +39,7 @@ function clearCompare() {
   log.render();
 }
 
-const hashSpan = (hash, length = 10) => `<span class="h" data-h="${hash}" title="Copy ${hash}">${hash.slice(0, length)}</span>`;
+const hashSpan = (hash, length = 10) => `<span class="h" data-h="${hash}" title="${esc(t('panel.copyHash', { hash }))}">${hash.slice(0, length)}</span>`;
 
 function sideLabel(hash) {
   const commit = state.entries.find(e => e.h === hash);
@@ -49,7 +50,7 @@ function sideLabel(hash) {
 function showCommit(commit) {
   clearCompare();
   const parent = commit.p[0];
-  const sides = [parent ? `parent · ${sideLabel(parent)}` : 'nothing (first commit)', sideLabel(commit.h)];
+  const sides = [parent ? t('panel.parent', { label: sideLabel(parent) }) : t('panel.firstCommit'), sideLabel(commit.h)];
   const source = { kind: 'commit', key: commit.h, h: commit.h };
   return open(source, `${hashSpan(commit.h)}${esc(commit.s)}`, commit.s, async budget => {
     const changes = await getJson('/api/commit', { h: commit.h });
@@ -59,12 +60,12 @@ function showCommit(commit) {
 
 export function showCompare(i, j) {
   const a = commitAt(i), b = commitAt(j);
-  if (!a || !b) return toast('compare two commits, not the uncommitted changes', 3000);
+  if (!a || !b) return toast(t('panel.compareTwo'), 3000);
   const [newer, older] = i < j ? [a, b] : [b, a];
   state.compareHash = b.h;
   log.render();
   const source = { kind: 'compare', key: `${older.h}..${newer.h}`, from: older.h, to: newer.h };
-  const title = `<span class="cmp-label">Compare</span>${hashSpan(older.h, SHORT_HASH)}<span class="arrow">→</span>${hashSpan(newer.h, SHORT_HASH)}`;
+  const title = `<span class="cmp-label">${esc(t('panel.compare'))}</span>${hashSpan(older.h, SHORT_HASH)}<span class="arrow">→</span>${hashSpan(newer.h, SHORT_HASH)}`;
   return open(source, title, `${older.s} → ${newer.s}`, async budget => {
     const changes = await getJson('/api/compare', { from: older.h, to: newer.h });
     return [group('', changes, 'compare', [sideLabel(older.h), sideLabel(newer.h)], budget)];
@@ -76,22 +77,22 @@ export function showWorktree({ keep = false } = {}) {
   clearCompare();
   const head = `HEAD${state.repo.branch ? ` · ${state.repo.branch}` : ''}`;
   const source = { kind: 'worktree', key: 'worktree' };
-  return open(source, '<span class="wt-title">Uncommitted changes</span>', 'Uncommitted changes', async budget => {
+  return open(source, `<span class="wt-title">${esc(t('wt.uncommitted'))}</span>`, t('wt.uncommitted'), async budget => {
     const worktree = await getJson('/api/worktree');
     const untracked = worktree.untracked.map((path, i) => ({
-      status: '?', path, add: null, del: null, kind: 'untracked', id: `untracked-${i}`, body: '', sides: ['nothing (new file)', 'Working tree'],
+      status: '?', path, add: null, del: null, kind: 'untracked', id: `untracked-${i}`, body: '', sides: [t('panel.newFile'), t('panel.workingTree')],
     }));
     return [
-      group('Staged', worktree.staged, 'staged', [head, 'Staged (index)'], budget),
-      group('Not staged', worktree.unstaged, 'unstaged', ['Staged (index)', 'Working tree'], budget),
-      { title: 'Untracked', kind: 'untracked', files: untracked, note: '' },
+      group(t('panel.staged'), worktree.staged, 'staged', [head, t('panel.stagedIndex')], budget),
+      group(t('panel.notStaged'), worktree.unstaged, 'unstaged', [t('panel.stagedIndex'), t('panel.workingTree')], budget),
+      { title: t('panel.untracked'), kind: 'untracked', files: untracked, note: '' },
     ].filter(g => g.files.length);
   }, keep);
 }
 
 function group(title, { files, truncated }, kind, sides, budget) {
   let hidden = 0;
-  const conflictSides = ['our side (HEAD)', sides[1]];
+  const conflictSides = [t('panel.ourSide'), sides[1]];
   const listed = files.map(({ patch, ...file }, i) => {
     const rendered = patchHtml(patch, budget.lines);
     budget.lines -= rendered.shown;
@@ -99,23 +100,22 @@ function group(title, { files, truncated }, kind, sides, budget) {
     const fileSides = kind === 'unstaged' && file.status === 'U' ? conflictSides : sides;
     return { ...file, kind, sides: fileSides, id: `${kind}-${i}`, body: rendered.html };
   });
-  const notes = [hidden && `${plural(hidden, 'more line')} not shown here`, truncated && 'the diff is cut at 4 MB'].filter(Boolean);
-  return { title, kind, files: listed, note: notes.length ? `${notes.join(', ')}: open a file in the diff view to see all of it` : '' };
+  const notes = [hidden && t('panel.moreNotShown', { lines: plural(hidden, 'more line') }), truncated && t('panel.diffCut')].filter(Boolean);
+  return { title, kind, files: listed, note: notes.length ? t('panel.notesSuffix', { notes: notes.join(', ') }) : '' };
 }
 
 const STAGE = { staged: 'unstage', unstaged: 'stage', untracked: 'stage' };
-const cap = verb => verb[0].toUpperCase() + verb.slice(1);
 
 function fileActions(f) {
   const verb = STAGE[f.kind];
-  return `<button class="fact" data-act="${verb}" title="${cap(verb)} this file">${cap(verb)}</button>`
-    + '<button class="fact danger" data-act="discard" title="Discard this file">Discard</button>';
+  return `<button class="fact" data-act="${verb}" title="${esc(t(`panel.${verb}File`))}">${esc(t(`verb.${verb}`))}</button>`
+    + `<button class="fact danger" data-act="discard" title="${esc(t('panel.discardFile'))}">${esc(t('verb.discard'))}</button>`;
 }
 
 function groupActions(g) {
   const verb = STAGE[g.kind];
-  return `<button class="gact" data-act="${verb}-group" data-kind="${g.kind}">${cap(verb)} all</button>`
-    + `<button class="gact danger" data-act="discard-group" data-kind="${g.kind}">Discard all</button>`;
+  return `<button class="gact" data-act="${verb}-group" data-kind="${g.kind}">${esc(t(`panel.${verb}All`))}</button>`
+    + `<button class="gact danger" data-act="discard-group" data-kind="${g.kind}">${esc(t('panel.discardAll'))}</button>`;
 }
 
 function fileAction(act, key) {
@@ -161,9 +161,9 @@ async function open(source, titleHtml, title, load, keep = false) {
 const fileKey = f => `${f.kind}:${f.path}`;
 
 function counts(f) {
-  if (f.kind === 'untracked') return '<span class="n">new</span>';
-  if (f.status === 'U') return '<span class="n">conflict</span>';
-  if (f.add === null) return '<span class="n">binary</span>';
+  if (f.kind === 'untracked') return `<span class="n">${esc(t('panel.new'))}</span>`;
+  if (f.status === 'U') return `<span class="n">${esc(t('panel.conflict'))}</span>`;
+  if (f.add === null) return `<span class="n">${esc(t('panel.binary'))}</span>`;
   return `<span class="n"><b>+${f.add}</b> <i>−${f.del}</i></span>`;
 }
 
@@ -229,15 +229,15 @@ function fill(groups, folds) {
     const closed = untracked(f) || folds?.closed.has(fileKey(f));
     return `<div class="fsec${closed ? ' closed' : ''}${untracked(f) ? ' untracked' : ''}" id="${f.id}" data-key="${esc(fileKey(f))}">`
       + `<div class="fh"><span class="st ${statusClass(f)}">${f.status}</span><span class="p">${label(f)}</span>${counts(f)}`
-      + `${editable ? fileActions(f) : ''}<button class="open-v" title="Open in the diff view">⤢</button>`
-      + `${untracked(f) ? '' : '<button class="fold" title="Fold or unfold this file">▾</button>'}</div><div class="fbody">${f.body}</div></div>`;
+      + `${editable ? fileActions(f) : ''}<button class="open-v" title="${esc(t('panel.openInViewer'))}">⤢</button>`
+      + `${untracked(f) ? '' : `<button class="fold" title="${esc(t('panel.foldFile'))}">▾</button>`}</div><div class="fbody">${f.body}</div></div>`;
   };
   const header = groups[0]?.header?.replace(/\n$/, '').split('\n').map(line => lineHtml(line)).join('') ?? '';
   $('commit-btn').hidden = !editable;
   $('diff').innerHTML = header + groups.map(g => (titled ? `<div class="grp">${esc(g.title)} · ${g.files.length}${editable && g.kind ? groupActions(g) : ''}</div>` : '')
     + g.files.map(section).join('') + (g.note ? lineHtml(g.note, 'mt') : '')).join('');
   $('files').innerHTML = groups.map(g => (titled ? `<div class="file-grp">${esc(g.title)}</div>` : '') + treeOf(g.files)).join('')
-    || '<div class="file"><span class="p">no file changes</span></div>';
+    || `<div class="file"><span class="p">${esc(t('panel.noFileChanges'))}</span></div>`;
   $('diff').scrollTop = folds?.diff ?? 0;
   $('files').scrollTop = folds?.files ?? 0;
   $('files-count').textContent = plural(shown.files.length, 'file');
@@ -247,7 +247,7 @@ function fill(groups, folds) {
 
 function updateFoldAll() {
   const sections = [...$('diff').querySelectorAll('.fsec:not(.untracked)')];
-  $('fold-all').textContent = sections.some(s => !s.classList.contains('closed')) ? 'Collapse all' : 'Expand all';
+  $('fold-all').textContent = sections.some(s => !s.classList.contains('closed')) ? t('btn.collapseAll') : t('btn.expandAll');
   $('fold-all').disabled = !sections.length;
 }
 
