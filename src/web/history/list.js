@@ -17,6 +17,11 @@ const LABEL_CLASS = { head: 'local', detached: 'local', remote: 'remote-only', t
 let ROW = 21, LANE = 17;
 let columns = prefs.get('cols') || {};
 let painted = { first: -1, last: -1 };
+let search = { mark: esc, rowMatch: () => false };
+let shownCb = () => {};
+
+export const setSearch = s => { search = s; };
+export const onShown = cb => { shownCb = cb; };
 
 export const rowHeight = () => ROW;
 
@@ -75,6 +80,7 @@ export function show({ entries, rows, lanes }, { cursorKey = null, top = null } 
   else if (topAgain >= 0) list.scrollTop = topAgain * ROW + top.offset;
   else if (state.cursor < 0) list.scrollTop = 0;
   render();
+  shownCb();
 }
 
 export function anchor() {
@@ -127,23 +133,24 @@ function rowHtml(entry, i) {
     entry.h && entry.h === state.compareHash && 'cmp',
     entry.p.length > 1 && 'merge',
     isWorktree(entry) && 'wt',
+    !isWorktree(entry) && search.rowMatch(i) && 'hit',
   ].filter(Boolean).map(c => ` ${c}`).join('');
   const open = `<div class="row${cls}" data-i="${i}" style="top:${i * ROW}px">`;
   if (isWorktree(entry)) {
     return `${open}<span class="s"><span class="t">${esc(t('wt.uncommitted'))}</span><span class="wtc">${esc(worktreeSummary(entry.status))}</span></span>`
       + '<span class="a"></span><span class="d"></span><span class="h"></span></div>';
   }
-  return `${open}<span class="s">${labelsHtml(entry, color(state.rows[i].color))}<span class="t">${esc(entry.s)}</span></span>`
-    + `<span class="a">${esc(entry.a)}</span><span class="d">${fmtDate(entry.t)}</span>`
-    + `<span class="h" title="${esc(t('panel.copyHash', { hash: entry.h }))}">${entry.h.slice(0, SHORT_HASH)}</span></div>`;
+  return `${open}<span class="s">${labelsHtml(entry, color(state.rows[i].color))}<span class="t">${search.mark(entry.s)}</span></span>`
+    + `<span class="a">${search.mark(entry.a)}</span><span class="d">${search.mark(fmtDate(entry.t))}</span>`
+    + `<span class="h" title="${esc(t('panel.copyHash', { hash: entry.h }))}">${search.mark(entry.h.slice(0, SHORT_HASH))}</span></div>`;
 }
 
 function labelsHtml(commit, laneColor) {
   return labelsOf(commit).map(label => {
     const cls = `${LABEL_CLASS[label.kind]}${label.current ? ' current' : ''}`;
-    const remotes = label.kind === 'head' ? label.remotes.map(r => `<span class="remote">${esc(r.remote)}</span>`).join('') : '';
+    const remotes = label.kind === 'head' ? label.remotes.map(r => `<span class="remote">${search.mark(r.remote)}</span>`).join('') : '';
     return `<span class="ref ${cls}" style="--c:${laneColor}" data-kind="${label.kind}" data-name="${esc(label.name)}">`
-      + `${ICONS[label.kind === 'tag' ? 'tag' : 'branch']}<span class="name">${esc(label.name)}</span>${remotes}</span>`;
+      + `${ICONS[label.kind === 'tag' ? 'tag' : 'branch']}<span class="name">${search.mark(label.name)}</span>${remotes}</span>`;
   }).join('');
 }
 

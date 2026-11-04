@@ -29,6 +29,8 @@ const FILES: &[(&str, &str)] = web_files![
     "history/graph.js",
     "history/labels.js",
     "history/list.js",
+    "history/match.js",
+    "history/search.js",
     "history/sync.js",
     "shared/api.js",
     "shared/dom.js",

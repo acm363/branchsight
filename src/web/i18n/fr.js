@@ -33,6 +33,7 @@ export const fr = {
     'help.enter': 'fichiers et diff du commit',
     'help.copyHash': 'copier le hash du commit',
     'help.fetch': 'récupérer tous les distants',
+    'help.search': 'rechercher dans le graphe',
     'help.reload': 'recharger',
     'help.esc': 'fermer un menu ou le diff',
     'help.rightClick': 'basculer sur une branche, un tag ou un commit ; copier ; supprimer une branche distante',
@@ -58,6 +59,10 @@ export const fr = {
     'auto': 'auto',
     'title.auto': 'Récupérer toutes les 2 minutes tant que cet onglet est visible',
     'title.reload': 'Recharger (r) · les changements locaux sont pris en compte automatiquement',
+    'title.search': 'Rechercher (Ctrl+F)',
+    'ph.search': 'Rechercher',
+    'title.searchCase': 'Respecter la casse',
+    'title.searchRegex': 'Expression régulière',
 
     'op.continue': 'Continuer',
     'op.abort': 'Abandonner',

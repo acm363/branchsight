@@ -33,6 +33,7 @@ export const en = {
     'help.enter': 'files and diff of the commit',
     'help.copyHash': 'copy the commit hash',
     'help.fetch': 'fetch all remotes',
+    'help.search': 'search the graph',
     'help.reload': 'reload',
     'help.esc': 'close a menu or the diff',
     'help.rightClick': 'checkout a branch, tag or commit; copy; delete a remote branch',
@@ -58,6 +59,10 @@ export const en = {
     'auto': 'auto',
     'title.auto': 'Fetch every 2 minutes while this tab is visible',
     'title.reload': 'Reload (r) · local changes are picked up automatically',
+    'title.search': 'Search (Ctrl+F)',
+    'ph.search': 'Search',
+    'title.searchCase': 'Match case',
+    'title.searchRegex': 'Regular expression',
 
     'op.continue': 'Continue',
     'op.abort': 'Abort',

@@ -47,6 +47,7 @@
               <kbd>enter</kbd><span data-i18n="help.enter">files and diff of the commit</span>
               <kbd>c</kbd><span data-i18n="help.copyHash">copy the commit hash</span>
               <kbd>f</kbd><span data-i18n="help.fetch">fetch all remotes</span>
+              <kbd>ctrl+f</kbd><span data-i18n="help.search">search the graph</span>
               <kbd>r</kbd><span data-i18n="help.reload">reload</span>
               <kbd>esc</kbd><span data-i18n="help.esc">close a menu or the diff</span>
               <kbd>right-click</kbd><span data-i18n="help.rightClick">checkout a branch, tag or commit; copy; delete a remote branch</span>
@@ -92,6 +93,7 @@
     <option value="10">10</option><option value="20">20</option><option value="100">100</option><option value="500">500</option>
     <option value="1000">1k</option><option value="5000">5k</option><option value="20000">20k</option><option value="200000" data-i18n="limit.all">all</option>
   </select>
+  <button id="search-btn" data-i18n-title="title.search" title="Search (Ctrl+F)"><svg viewBox="0 0 16 16" width="14" height="14"><circle cx="7" cy="7" r="4.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.2 10.2 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
   <button id="fetch" data-i18n-title="title.fetch" title="Fetch all remotes (f)" data-i18n="btn.fetch">⇣ fetch</button>
   <label class="auto" data-i18n-title="title.auto" title="Fetch every 2 minutes while this tab is visible"><input type="checkbox" id="auto-fetch"> <span data-i18n="auto">auto</span></label>
   <button id="reload" data-i18n-title="title.reload" title="Reload (r) · local changes are picked up automatically">⟳</button>
@@ -112,6 +114,14 @@
       <span class="c-h"><i class="grip" data-col="hash" data-dir="-1"></i><span data-i18n="col.commit">Commit</span></span>
     </div>
     <div id="list" tabindex="0"><div id="spacer"><canvas id="graph"></canvas><div id="rows"></div></div></div>
+    <div id="search" hidden>
+      <input id="s-find" type="search" data-i18n-ph="ph.search" placeholder="Search" autocomplete="off" spellcheck="false">
+      <span class="seg" id="s-mode"><button id="s-case" data-i18n-title="title.searchCase" title="Match case">Aa</button><button id="s-regex" data-i18n-title="title.searchRegex" title="Regular expression">.*</button></span>
+      <button id="s-prev" data-i18n-title="title.prevMatch" title="Previous match (Shift+Enter)" disabled>↑</button>
+      <button id="s-next" data-i18n-title="title.nextMatch" title="Next match (Enter)" disabled>↓</button>
+      <span id="s-count"></span>
+      <button id="s-close" data-i18n-title="title.close" title="Close (esc)">✕</button>
+    </div>
   </div>
   <div id="split" hidden></div>
   <aside id="detail" hidden>

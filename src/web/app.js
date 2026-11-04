@@ -10,6 +10,7 @@ import * as panel from './changes/panel.js';
 import { prefs, repoPrefs } from './shared/prefs.js';
 import * as projects from './header/projects.js';
 import * as settings from './header/settings.js';
+import * as search from './history/search.js';
 import { commitAt, state } from './shared/state.js';
 import * as sync from './history/sync.js';
 
@@ -41,7 +42,13 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     e.preventDefault();
     if (layer) closeLayer(layer);
+    else if (search.isOpen()) search.close();
     else panel.close();
+    return;
+  }
+  if (!layer && (e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+    e.preventDefault();
+    search.openSearch();
     return;
   }
   if (typing(e.target) || pressingFocusedButton(e) || e.ctrlKey || e.metaKey || e.altKey) return;
