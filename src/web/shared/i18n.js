@@ -8,11 +8,16 @@ export const LOCALES = ['en', 'fr'];
 function detect() {
   const saved = prefs.get('lang');
   if (LOCALES.includes(saved)) return saved;
-  return (navigator.language || '').toLowerCase().startsWith('fr') ? 'fr' : 'en';
+  const lang = typeof navigator !== 'undefined' ? navigator.language : '';
+  return (lang || '').toLowerCase().startsWith('fr') ? 'fr' : 'en';
 }
 
 let locale = detect();
-document.documentElement.lang = locale;
+setHtmlLang();
+
+function setHtmlLang() {
+  if (typeof document !== 'undefined') document.documentElement.lang = locale;
+}
 
 const listeners = new Set();
 export const onLocaleChange = cb => { listeners.add(cb); };
@@ -23,7 +28,7 @@ export function setLocale(next) {
   if (!LOCALES.includes(next) || next === locale) return;
   locale = next;
   prefs.set('lang', locale);
-  document.documentElement.lang = locale;
+  setHtmlLang();
   listeners.forEach(cb => cb());
 }
 
