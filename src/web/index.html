@@ -77,8 +77,8 @@
     <div id="menu" hidden>
       <input id="filter" data-i18n-ph="ph.refs" placeholder="Filter refs…" autocomplete="off" spellcheck="false">
       <div class="opts">
-        <label><input type="checkbox" id="opt-remote"> <span data-i18n="picker.remotes">remotes</span></label>
-        <label><input type="checkbox" id="opt-tag"> <span data-i18n="picker.tags">tags</span></label>
+        <label data-i18n-title="picker.listRemotesTitle" title="Show individual remote branches in this menu (does not change the graph)"><input type="checkbox" id="opt-remote"> <span data-i18n="picker.remotes">list remotes</span></label>
+        <label data-i18n-title="picker.listTagsTitle" title="Show individual tags in this menu (does not change the graph)"><input type="checkbox" id="opt-tag"> <span data-i18n="picker.tags">list tags</span></label>
         <span class="spacer"></span>
         <button data-act="current" data-i18n="picker.current">current</button>
         <button data-act="all" data-i18n="picker.all">all</button>
@@ -87,6 +87,8 @@
       <div id="reflist"></div>
     </div>
   </div>
+  <span class="spacer"></span>
+  <span id="headref" hidden></span>
   <span id="count"></span>
   <span class="spacer"></span>
   <select id="limit" data-i18n-title="title.limit" title="Max commits">

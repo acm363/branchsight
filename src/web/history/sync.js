@@ -56,7 +56,7 @@ export async function loadLog({ keepScroll = false, fresh = false } = {}) {
     failed = false;
     log.show(withWorktree(loaded, seen?.status), { cursorKey: cursorKey(), top: keepScroll ? log.anchor() : null });
     const limit = +$('limit').value, count = loaded.commits.length;
-    $('count').textContent = `${plural(count, 'commit')}${count >= limit ? ` ${t('sync.limit')}` : ''}`;
+    $('count').textContent = `${t('count.total', { n: plural(count, 'commit') })}${count >= limit ? ` ${t('sync.limit')}` : ''}`;
   } catch (e) {
     if (e.name === 'AbortError' || mine !== request) return;
     failed = true;
@@ -119,5 +119,5 @@ export function startPolling() {
 onLocaleChange(() => {
   if (!shown || failed) return;
   const limit = +$('limit').value, count = shown.commits.length;
-  $('count').textContent = `${plural(count, 'commit')}${count >= limit ? ` ${t('sync.limit')}` : ''}`;
+  $('count').textContent = `${t('count.total', { n: plural(count, 'commit') })}${count >= limit ? ` ${t('sync.limit')}` : ''}`;
 });

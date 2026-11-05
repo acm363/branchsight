@@ -16,6 +16,23 @@ const groupLabel = g => (g.labelKey ? t(g.labelKey) : g.label);
 
 export const DEFAULT_SELECTION = ['@local', '@remotes', '@tags'];
 
+const HEAD_ICON = {
+  branch: '<svg viewBox="0 0 16 16"><path d="M5 3.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 9a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm9-6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0ZM3.5 5v6M12.5 8c0 2-2 3-4 3H3.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
+  commit: '<svg viewBox="0 0 16 16"><path d="M8 1v3.6M8 11.4V15" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="2.7" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
+};
+
+function renderHead() {
+  const el = $('headref'), { branch, head } = state.repo;
+  if (!head) return void (el.hidden = true);
+  const detached = !branch, short = head.slice(0, 7);
+  el.hidden = false;
+  el.classList.toggle('detached', detached);
+  const cap = detached ? t('head.detachedCap') : t('head.branchCap');
+  const pill = `<span class="hpill">${detached ? HEAD_ICON.commit : HEAD_ICON.branch}<span class="hn">${esc(detached ? short : branch)}</span></span>`;
+  el.innerHTML = `<span class="hcap">${esc(cap)}</span>${pill}`;
+  el.title = detached ? t('head.detached', { hash: short }) : t('head.onBranch', { branch });
+}
+
 const menu = picker({
   anchor: $('picker'),
   panel: $('menu'),
@@ -86,6 +103,7 @@ onRefs(() => {
   const known = new Set([...state.refs.map(r => r.name), ...GROUPS.map(g => g.name)]);
   state.selected = state.selected.filter(name => known.has(name));
   refreshChips();
+  renderHead();
 });
 
 $('pick-btn').addEventListener('click', () => (menu.isOpen ? menu.close() : open()));
@@ -103,4 +121,7 @@ $('menu').addEventListener('click', e => {
   $('filter').focus();
 }));
 
-onLocaleChange(refreshChips);
+onLocaleChange(() => {
+  refreshChips();
+  renderHead();
+});
