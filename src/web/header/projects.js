@@ -161,6 +161,7 @@ $('proots').addEventListener('click', async e => {
   const remove = e.target.closest('.rx[data-root]');
   if (remove) {
     removeRoot(remove.dataset.root);
+    note('');
     return refresh();
   }
   if (e.target.closest('#add-folder')) {
@@ -174,5 +175,8 @@ $('proots').addEventListener('change', e => {
   const prev = scanDepth(), next = clampDepth(+e.target.value);
   prefs.set('depth', next);
   renderRoots();
-  if (next !== prev) refresh();
+  if (next !== prev) {
+    note('');
+    refresh();
+  }
 });
