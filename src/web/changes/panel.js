@@ -243,12 +243,53 @@ function fill(groups, folds) {
   $('files-count').textContent = plural(shown.files.length, 'file');
   $('open-viewer').disabled = !shown.files.length;
   updateFoldAll();
+  activeFile = null;
+  markCurrentFile();
 }
 
 function updateFoldAll() {
   const sections = [...$('diff').querySelectorAll('.fsec:not(.untracked)')];
   $('fold-all').textContent = sections.some(s => !s.classList.contains('closed')) ? t('btn.collapseAll') : t('btn.expandAll');
   $('fold-all').disabled = !sections.length;
+}
+
+const SPY_EDGE = 8;
+let activeFile = null;
+let spyPending = false;
+
+function spyScroll() {
+  if (spyPending) return;
+  spyPending = true;
+  requestAnimationFrame(() => { spyPending = false; markCurrentFile(); });
+}
+
+function markCurrentFile() {
+  if (!shown) return;
+  const diff = $('diff'), secs = diff.querySelectorAll('.fsec');
+  if (!secs.length) return;
+  let current;
+  if (diff.scrollTop + diff.clientHeight >= diff.scrollHeight - 1) {
+    current = secs[secs.length - 1];
+  } else {
+    const edge = diff.getBoundingClientRect().top + SPY_EDGE;
+    for (const sec of secs) {
+      if (sec.getBoundingClientRect().top <= edge) current = sec;
+      else break;
+    }
+    current ??= secs[0];
+  }
+  const id = current.id;
+  if (id === activeFile) return;
+  activeFile = id;
+  const files = $('files');
+  files.querySelector('.file.current')?.classList.remove('current');
+  const entry = files.querySelector(`.file[data-id="${CSS.escape(id)}"]`);
+  if (!entry) return;
+  entry.classList.add('current');
+  if (!entry.offsetParent) return;
+  const r = entry.getBoundingClientRect(), box = files.getBoundingClientRect();
+  if (r.top < box.top) files.scrollTop += r.top - box.top;
+  else if (r.bottom > box.bottom) files.scrollTop += r.bottom - box.bottom;
 }
 
 function openViewer(id) {
@@ -337,6 +378,8 @@ function diffReference(e) {
 }
 
 $('diff').addEventListener('contextmenu', e => showRefMenu(e, diffReference(e)));
+
+$('diff').addEventListener('scroll', spyScroll);
 
 $('close').addEventListener('click', close);
 

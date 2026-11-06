@@ -269,6 +269,7 @@ mark.hit { background: color-mix(in srgb, var(--tag) 42%, transparent); color: i
 .tname { overflow: hidden; text-overflow: ellipsis; }
 .fkids.hidden { display: none; }
 .file:hover { background: var(--hover); }
+.file.current { background: var(--sel); box-shadow: inset 3px 0 0 var(--remote); }
 .file .st { width: 12px; font-weight: 700; flex: none; }
 .st-A, .st-new { color: var(--add); } .st-D, .st-U { color: var(--rm); } .st-R, .st-C, .st-T { color: var(--hunk); } .st-M { color: var(--remote); }
 .file .p { overflow: hidden; text-overflow: ellipsis; flex: 1; }
