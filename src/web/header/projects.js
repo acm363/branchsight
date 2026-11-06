@@ -118,12 +118,13 @@ function renderRoots() {
   const custom = customRoots();
   const line = (path, removable) => `<div class="root">${removable ? `<button class="rx" data-root="${esc(path)}" title="${esc(t('proj.remove'))}">×</button>` : '<span class="rx"></span>'}<span class="rp">${esc(path)}</span></div>`;
   const add = inDesktopApp ? `<button id="add-folder" class="rbtn">${esc(t('proj.addFolder'))}</button>` : `<div class="rhint">${esc(t('proj.typePath'))}</div>`;
-  $('proots').innerHTML = `<div class="rhead">${esc(t('proj.foldersToScan'))}`
-    + `<span class="rdepth"><label for="scan-depth">${esc(t('proj.scanDepth'))}</label>`
-    + `<input id="scan-depth" type="number" min="1" max="${MAX_DEPTH}" value="${scanDepth()}" title="${esc(t('proj.scanDepthTitle'))}"></span></div>`
+  const depth = `<span class="rdepth"><label for="scan-depth">${esc(t('proj.scanDepth'))}</label>`
+    + `<input id="scan-depth" type="number" min="1" max="${MAX_DEPTH}" value="${scanDepth()}" title="${esc(t('proj.scanDepthTitle'))}"></span>`;
+  $('proots').innerHTML = `<div class="rhead">${esc(t('proj.foldersToScan'))}</div>`
+    + `<div class="rdesc">${esc(t('proj.scanExplain', { n: scanDepth() }))}</div>`
     + configRoots.map(root => line(root, false)).join('')
     + custom.map(root => line(root, true)).join('')
-    + add;
+    + `<div class="raction">${add}${depth}</div>`;
 }
 
 export function setCurrent(repo) {
