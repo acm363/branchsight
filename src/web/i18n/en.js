@@ -276,6 +276,8 @@ export const en = {
     'proj.addFolder': 'Add folder…',
     'proj.typePath': 'Type a path above to scan a folder',
     'proj.foldersToScan': 'Folders to scan',
+    'proj.scanDepth': 'Depth',
+    'proj.scanDepthTitle': 'How many folder levels to search for repositories (max 10)',
     'proj.chipTitle': '{path} — switch project (p)',
     'proj.noProject': 'no project',
 

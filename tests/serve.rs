@@ -46,6 +46,26 @@ fn projects_include_repositories_under_extra_request_roots() {
     assert_eq!(names, ["in-home", "outside"], "{projects}");
 }
 
+#[test]
+fn projects_scan_depth_defaults_to_three_and_clamps_at_ten() {
+    // Given.
+    let sb = Sandbox::new();
+    init(&sb.path("shallow"));
+    init(&sb.path("d1/d2/d3/d4/deep"));
+    init(&sb.path("n01/n02/n03/n04/n05/n06/n07/n08/n09/n10/n11/toodeep"));
+    let port = start(vec![sb.0.clone()], None);
+    let names = |path: &str| {
+        let mut n: Vec<String> = json(port, path).as_array().unwrap().iter().map(|p| p["name"].as_str().unwrap().to_owned()).collect();
+        n.sort();
+        n
+    };
+
+    // Then.
+    assert_eq!(names("/api/projects"), ["shallow"], "default depth 3 reaches only shallow repos");
+    assert_eq!(names("/api/projects?depth=5"), ["deep", "shallow"], "a raised depth reaches the level-5 repo");
+    assert_eq!(names("/api/projects?depth=99"), ["deep", "shallow"], "depth is clamped to 10, so the level-12 repo stays hidden");
+}
+
 #[cfg(unix)]
 #[test]
 fn projects_are_found_through_symlinked_folders() {

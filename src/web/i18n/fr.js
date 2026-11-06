@@ -276,6 +276,8 @@ export const fr = {
     'proj.addFolder': 'Ajouter un dossier…',
     'proj.typePath': 'Saisis un chemin ci-dessus pour analyser un dossier',
     'proj.foldersToScan': 'Dossiers à analyser',
+    'proj.scanDepth': 'Profondeur',
+    'proj.scanDepthTitle': 'Nombre de niveaux de dossiers explorés pour trouver des dépôts (max 10)',
     'proj.chipTitle': '{path} — changer de projet (p)',
     'proj.noProject': 'aucun projet',
 

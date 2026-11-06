@@ -13,6 +13,8 @@ use crate::url::Query;
 pub const PING: &str = "branchsight";
 const DEFAULT_LIMIT: usize = 5000;
 const MAX_LIMIT: usize = 200_000;
+const DEFAULT_DEPTH: usize = 3;
+const MAX_DEPTH: usize = 10;
 const TEXT: &str = "text/plain; charset=utf-8";
 const JSON: &str = "application/json";
 
@@ -65,7 +67,7 @@ fn route(config: &Config, post: bool, path: &str, q: &Query) -> Result<Reply, St
             "default": config.default_repo.as_ref().map(|p| p.to_string_lossy()),
             "roots": config.roots.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>(),
         })),
-        "/api/projects" => Reply::json(projects::list(&config.roots, &q.all("root"))),
+        "/api/projects" => Reply::json(projects::list(&config.roots, &q.all("root"), depth(q))),
         "/api/repo" => Reply::json(repo()?.info()?),
         "/api/refs" => Reply::json(repo()?.refs()?),
         "/api/commits" => Reply::json(repo()?.log(&q.all("ref"), limit(q))?),
@@ -103,6 +105,10 @@ fn route(config: &Config, post: bool, path: &str, q: &Query) -> Result<Reply, St
 
 fn limit(q: &Query) -> usize {
     q.get("limit").parse().unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT)
+}
+
+fn depth(q: &Query) -> usize {
+    q.get("depth").parse().unwrap_or(DEFAULT_DEPTH).clamp(1, MAX_DEPTH)
 }
 
 fn file_diff(q: &Query) -> Result<FileDiff<'_>, String> {

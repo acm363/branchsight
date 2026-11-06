@@ -8,12 +8,15 @@ import { state } from '../shared/state.js';
 
 const PATH_LIKE = /^(\/|~|[a-zA-Z]:[\\/])/;
 const MAX_RECENT = 30;
+const DEFAULT_DEPTH = 3, MAX_DEPTH = 10;
 
 let known = null;
 let configRoots = [];
 
 const dedup = list => [...new Map(list.map(p => [pathKey(p), p])).values()];
 const customRoots = () => prefs.get('roots') || [];
+const clampDepth = n => Math.min(MAX_DEPTH, Math.max(1, Math.round(n) || DEFAULT_DEPTH));
+const scanDepth = () => clampDepth(+prefs.get('depth') || DEFAULT_DEPTH);
 
 export function useRoots(roots) {
   configRoots = roots;
@@ -43,7 +46,7 @@ const menu = picker({
   empty: () => (known ? t('proj.noneUnderRoots') : t('proj.looking')),
 });
 
-const fetchProjects = () => getJson('/api/projects', customRoots().map(root => ['root', root]));
+const fetchProjects = () => getJson('/api/projects', [...customRoots().map(root => ['root', root]), ['depth', scanDepth()]]);
 
 export async function list() {
   known ??= await fetchProjects();
@@ -115,7 +118,9 @@ function renderRoots() {
   const custom = customRoots();
   const line = (path, removable) => `<div class="root">${removable ? `<button class="rx" data-root="${esc(path)}" title="${esc(t('proj.remove'))}">×</button>` : '<span class="rx"></span>'}<span class="rp">${esc(path)}</span></div>`;
   const add = inDesktopApp ? `<button id="add-folder" class="rbtn">${esc(t('proj.addFolder'))}</button>` : `<div class="rhint">${esc(t('proj.typePath'))}</div>`;
-  $('proots').innerHTML = `<div class="rhead">${esc(t('proj.foldersToScan'))}</div>`
+  $('proots').innerHTML = `<div class="rhead">${esc(t('proj.foldersToScan'))}`
+    + `<span class="rdepth"><label for="scan-depth">${esc(t('proj.scanDepth'))}</label>`
+    + `<input id="scan-depth" type="number" min="1" max="${MAX_DEPTH}" value="${scanDepth()}" title="${esc(t('proj.scanDepthTitle'))}"></span></div>`
     + configRoots.map(root => line(root, false)).join('')
     + custom.map(root => line(root, true)).join('')
     + add;
@@ -161,4 +166,12 @@ $('proots').addEventListener('click', async e => {
     const path = await pickFolder();
     if (path) await scanFolder(path);
   }
+});
+
+$('proots').addEventListener('change', e => {
+  if (e.target.id !== 'scan-depth') return;
+  const prev = scanDepth(), next = clampDepth(+e.target.value);
+  prefs.set('depth', next);
+  renderRoots();
+  if (next !== prev) refresh();
 });

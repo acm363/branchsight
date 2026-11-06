@@ -102,7 +102,10 @@ body.start #picker, body.start #headref, body.start #count, body.start #limit, b
 .pick.scan .name b, .pick.open .name b { font-family: var(--mono); font-weight: 600; }
 #proots:empty { display: none; }
 #proots { flex: none; border-top: 1px solid var(--line); padding: 6px 10px 8px; font-size: calc(var(--fs) - 2px); }
-#proots .rhead { color: var(--dim); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+#proots .rhead { display: flex; align-items: center; gap: 8px; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+#proots .rdepth { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; text-transform: none; letter-spacing: 0; }
+#proots #scan-depth { width: 44px; padding: 1px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg2); color: var(--fg); font: inherit; text-align: right; }
+#proots #scan-depth:hover, #proots #scan-depth:focus { border-color: var(--remote); outline: none; }
 #proots .root { display: flex; align-items: center; gap: 6px; padding: 1px 0; }
 #proots .rp { overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); color: var(--dim); }
 #proots .rx { flex: none; width: 16px; height: 16px; line-height: 14px; text-align: center; padding: 0; border: 0; background: none; color: var(--dim); cursor: pointer; border-radius: 3px; }
