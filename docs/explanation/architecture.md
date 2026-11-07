@@ -3,7 +3,7 @@
 BranchSight is one Rust core with two ways in, and one web page on top.
 
 ```text
-            desktop app (Tauri)                    branchsight serve
+            desktop app (Tauri)                branchsight-cli serve
    ┌──────────────────────────────────┐   ┌───────────────────────────────┐
    │ webview ── IPC: invoke("api") ──┐ │   │ browser ── HTTP on loopback ─┐ │
    └─────────────────────────────────┼─┘   └──────────────────────────────┼─┘

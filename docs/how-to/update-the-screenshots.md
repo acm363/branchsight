@@ -7,10 +7,10 @@ project. Regenerate them after a visual change:
 cargo build --release
 demo=$(mktemp -d)
 scripts/demo-repo.sh "$demo"
-node scripts/screenshots.mjs target/release/branchsight "$demo" docs/images
+node scripts/screenshots.mjs target/release/branchsight-cli "$demo" docs/images
 rm -rf "$demo"
 ```
 
-The script starts `branchsight serve` on port 7499 with the demo folder as its only root, drives a headless
+The script starts `branchsight-cli serve` on port 7499 with the demo folder as its only root, drives a headless
 Chromium (`chromium-browser` on the `PATH`) and writes one PNG per scene at twice the screen resolution. Scenes,
 window size and theme are listed at the top of `scripts/screenshots.mjs`.

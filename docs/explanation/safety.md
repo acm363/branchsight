@@ -28,7 +28,7 @@ a window of its own, is the one exception. The end-to-end tests send option-like
 
 ## Time limits and prompts
 
-These apply to the desktop app and to `branchsight serve` alike.
+These apply to the desktop app and to `branchsight-cli serve` alike.
 
 - git never prompts on a terminal or through an askpass program, and ssh runs in batch mode with a 15 s connect
   timeout unless you configured your own ssh command.
@@ -42,7 +42,7 @@ These apply to the desktop app and to `branchsight serve` alike.
 
 ## Only your own machine can talk to it
 
-The desktop app has no network port at all. `branchsight serve` listens on `127.0.0.1` and `[::1]` only and answers
+The desktop app has no network port at all. `branchsight-cli serve` listens on `127.0.0.1` and `[::1]` only and answers
 only requests whose `Host` is a loopback name, so a web page you visit cannot reach it by pointing a domain name at
 your machine (DNS rebinding). Every API call needs an `X-BranchSight` header, and actions also need `POST`. A page on
 another site cannot add that header without the browser asking the server first, and BranchSight never says yes,

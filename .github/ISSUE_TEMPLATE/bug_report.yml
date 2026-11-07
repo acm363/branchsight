@@ -34,7 +34,7 @@ body:
         - Desktop app on Linux
         - Desktop app on Windows
         - Desktop app on macOS
-        - branchsight serve, in a browser
+        - branchsight-cli serve, in a browser
     validations:
       required: true
   - type: input

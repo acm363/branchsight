@@ -27,13 +27,13 @@ jobs:
       - run: cargo test
       - run: npx -y @tauri-apps/cli@2.12.4 build
         working-directory: app
-      - run: cargo build --release --bin branchsight
+      - run: cargo build --release --bin branchsight-cli
       - shell: bash
         run: |
           mkdir dist
           cp target/release/bundle/*/*.{AppImage,deb,rpm,dmg,msi,exe} dist/ 2>/dev/null || true
-          exe=branchsight; [[ "$RUNNER_OS" == Windows ]] && exe=branchsight.exe
-          cp "target/release/$exe" "dist/branchsight-cli-$(echo "$RUNNER_OS" | tr A-Z a-z)-$(uname -m)${exe#branchsight}"
+          ext=; [[ "$RUNNER_OS" == Windows ]] && ext=.exe
+          cp "target/release/branchsight-cli$ext" "dist/branchsight-cli-$(echo "$RUNNER_OS" | tr A-Z a-z)-$(uname -m)$ext"
           ls -l dist
       - uses: actions/upload-artifact@v7
         with:

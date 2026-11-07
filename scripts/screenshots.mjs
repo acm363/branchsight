@@ -72,7 +72,7 @@ const chrome = spawn('chromium-browser', [
 ], { stdio: 'ignore' });
 
 try {
-  await waitFor(() => fetch(page('')).then(r => r.ok), 'branchsight serve');
+  await waitFor(() => fetch(page('')).then(r => r.ok), 'branchsight-cli serve');
   const target = await waitFor(async () => (await (await fetch(`http://127.0.0.1:${CDP_PORT}/json/list`)).json()).find(t => t.type === 'page'), 'chromium');
   const ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((ok, ko) => { ws.onopen = ok; ws.onerror = ko; });

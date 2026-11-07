@@ -1,7 +1,7 @@
-# `branchsight serve`
+# `branchsight-cli serve`
 
 ```text
-branchsight serve [--port N] [--root DIR]... [dir]
+branchsight-cli serve [--port N] [--root DIR]... [dir]
 ```
 
 Serves the BranchSight page for every git repository under the roots, on loopback only.
@@ -13,7 +13,7 @@ Serves the BranchSight page for every git repository under the roots, on loopbac
 | `dir` | `.` | when a repository, the one a page opens without `?repo=` |
 | `--help`, `-h` | | usage |
 
-If another `branchsight` already listens on the port, the command prints the URL of `dir`'s repository and exits.
+If another `branchsight-cli` already listens on the port, the command prints the URL of `dir`'s repository and exits.
 
 ## Which repository a page opens
 

@@ -39,13 +39,13 @@ v=0.5.9
 | Windows | download `BranchSight_<version>_x64-setup.exe` from [Releases](https://github.com/acm363/branchsight/releases/latest) and run it (More info → Run anyway) |
 | macOS | download `BranchSight_<version>_aarch64.dmg` from [Releases](https://github.com/acm363/branchsight/releases/latest), drag it to Applications, right-click → Open the first time |
 
-To serve the page to a browser instead (over SSH, in WSL, in a container), install the `branchsight` command:
+To serve the page to a browser instead (over SSH, in WSL, in a container), install the `branchsight-cli` command:
 
 ```bash
 mkdir -p ~/.local/bin
-curl -L -o ~/.local/bin/branchsight https://github.com/acm363/branchsight/releases/latest/download/branchsight-cli-linux-x86_64
-chmod +x ~/.local/bin/branchsight
-branchsight serve --root ~/code        # then open http://localhost:7420
+curl -L -o ~/.local/bin/branchsight-cli https://github.com/acm363/branchsight/releases/latest/download/branchsight-cli-linux-x86_64
+chmod +x ~/.local/bin/branchsight-cli
+branchsight-cli serve --root ~/code        # then open http://localhost:7420
 ```
 
 Other systems, upgrades and building from source: [install guide](docs/how-to/install.md).
@@ -58,7 +58,7 @@ Other systems, upgrades and building from source: [install guide](docs/how-to/in
   [check out and clean up branches](docs/how-to/checkout-and-clean-up.md),
   [use it with WSL, SSH or a container](docs/how-to/use-remotely.md),
   [customise the view](docs/how-to/customise-the-view.md).
-- Looking something up: [interface](docs/reference/interface.md), [`branchsight serve`](docs/reference/serve.md),
+- Looking something up: [interface](docs/reference/interface.md), [`branchsight-cli serve`](docs/reference/serve.md),
   [settings and defaults](docs/reference/settings.md).
 - Understanding it: [architecture](docs/explanation/architecture.md),
   [what it changes and how it stays safe](docs/explanation/safety.md).

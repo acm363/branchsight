@@ -23,7 +23,7 @@ In the webview's local storage, never in the repositories:
 | desktop, Linux | `~/.local/share/com.acm363.branchsight/localstorage/` |
 | desktop, macOS | `~/Library/WebKit/com.acm363.branchsight/` |
 | desktop, Windows | `%LOCALAPPDATA%\com.acm363.branchsight\EBWebView\` |
-| `branchsight serve` | your browser's storage for that address; `localhost:7420` and `127.0.0.1:7420` are separate |
+| `branchsight-cli serve` | your browser's storage for that address; `localhost:7420` and `127.0.0.1:7420` are separate |
 
 | Scope | Keys |
 |---|---|

@@ -5,10 +5,10 @@ use branchsight::config::{Config, canonical, expand_home};
 use branchsight::git::Repo;
 
 const DEFAULT_PORT: u16 = 7420;
-const USAGE: &str = "usage: branchsight serve [--port N] [--root DIR]... [dir]
+const USAGE: &str = "usage: branchsight-cli serve [--port N] [--root DIR]... [dir]
 Serves the BranchSight page for every git repository under the roots, on loopback only.
 dir, when a repository, is the default one; the roots default to its parent.
-If a branchsight already listens on the port, prints the URL of dir's repository and exits.";
+If a branchsight-cli already listens on the port, prints the URL of dir's repository and exits.";
 
 pub struct Args {
     pub port: u16,
@@ -24,7 +24,7 @@ pub fn parse() -> Args {
             exit(0);
         }
         Some("-V" | "--version") => {
-            println!("branchsight {}", env!("CARGO_PKG_VERSION"));
+            println!("branchsight-cli {}", env!("CARGO_PKG_VERSION"));
             exit(0);
         }
         Some(other) => fail(&format!("unknown command {other}")),
@@ -68,6 +68,6 @@ pub fn parse() -> Args {
 }
 
 fn fail(message: &str) -> ! {
-    eprintln!("branchsight: {message}\n{USAGE}");
+    eprintln!("branchsight-cli: {message}\n{USAGE}");
     exit(2);
 }

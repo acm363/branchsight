@@ -19,15 +19,15 @@ fn main() {
             return;
         }
         Err(e) => {
-            eprintln!("branchsight: cannot listen on 127.0.0.1:{port}: {e}");
+            eprintln!("branchsight-cli: cannot listen on 127.0.0.1:{port}: {e}");
             exit(1);
         }
     };
     if ipv6.is_none() {
-        eprintln!("branchsight: no IPv6 loopback on [::1]:{port}, serving 127.0.0.1 only");
+        eprintln!("branchsight-cli: no IPv6 loopback on [::1]:{port}, serving 127.0.0.1 only");
     }
     println!(
-        "branchsight: http://localhost:{port}  default {}  roots {:?}",
+        "branchsight-cli: http://localhost:{port}  default {}  roots {:?}",
         config.default_repo.as_ref().map_or("-".into(), |p| p.display().to_string()),
         config.roots
     );
