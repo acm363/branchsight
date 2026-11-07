@@ -266,8 +266,12 @@ mark.hit { background: color-mix(in srgb, var(--tag) 42%, transparent); color: i
 #main.dock-bottom { flex-direction: column; }
 #main.dock-bottom #split { width: auto; height: 5px; cursor: row-resize; }
 #main.dock-bottom #detail { width: auto; height: 40%; min-width: 0; min-height: 140px; }
+#main.dock-bottom #detail-body { flex-direction: row; }
+#main.dock-bottom #files { height: auto; width: 30%; min-width: 120px; min-height: 0; }
+#main.dock-bottom #files-split { height: auto; width: 5px; cursor: col-resize; }
 #detail-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--bg2); }
 #detail-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+#detail-body { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 #files { height: 30%; min-height: 48px; overflow: auto; padding: 4px 0; flex: none; }
 #files-split { height: 5px; cursor: row-resize; background: var(--line); flex: none; }
 .file { display: flex; gap: 8px; padding: 1px 10px 1px calc(10px + var(--d, 0) * 14px); cursor: pointer; font-family: var(--mono); font-size: calc(var(--fs) - 1px); white-space: nowrap; }
@@ -284,7 +288,7 @@ mark.hit { background: color-mix(in srgb, var(--tag) 42%, transparent); color: i
 .file .p { overflow: hidden; text-overflow: ellipsis; flex: 1; }
 .file .n { color: var(--dim); flex: none; }
 .file .n b { color: var(--add); font-weight: 400; } .file .n i { color: var(--rm); font-style: normal; }
-#diff { flex: 1; overflow: auto; margin: 0; padding: 0; font: calc(var(--fs) - 1px)/1.45 var(--mono); tab-size: 4; }
+#diff { flex: 1; min-width: 0; overflow: auto; margin: 0; padding: 0; font: calc(var(--fs) - 1px)/1.45 var(--mono); tab-size: 4; }
 #diff > span, #diff .fbody > span { display: block; padding: 0 10px; white-space: pre; min-width: max-content; }
 #detail-tools { display: flex; align-items: center; gap: 10px; padding: 4px 10px; border-bottom: 1px solid var(--line); color: var(--dim); }
 #detail-tools button { padding: 0 8px; font-size: calc(var(--fs) - 1px); }

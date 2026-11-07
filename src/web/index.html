@@ -133,9 +133,11 @@
   <aside id="detail" hidden>
     <div id="detail-head"><span id="detail-title"></span><button id="close" data-i18n-title="title.close" title="Close (esc)">✕</button></div>
     <div id="detail-tools"><button id="commit-btn" data-i18n-title="title.commitStaged" title="Commit the staged changes" hidden data-i18n="btn.commit">Commit…</button><button id="fold-all" data-i18n-title="title.foldAll" title="Fold or unfold every file" data-i18n="btn.collapseAll">Collapse all</button><button id="open-viewer" data-i18n-title="title.openViewer" title="Each file side by side, with next and previous change" data-i18n="btn.openDiffView">Open diff view</button><span id="files-count"></span></div>
-    <div id="files"></div>
-    <div id="files-split" data-i18n-title="title.filesSplit" title="Drag to resize the file list"></div>
-    <pre id="diff"></pre>
+    <div id="detail-body">
+      <div id="files"></div>
+      <div id="files-split" data-i18n-title="title.filesSplit" title="Drag to resize the file list"></div>
+      <pre id="diff"></pre>
+    </div>
   </aside>
 </div>
 <div id="viewer" hidden>

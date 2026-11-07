@@ -105,8 +105,6 @@ function restoreView(store) {
   $('limit').value = store.get('limit') ?? '5000';
   $('auto-fetch').checked = store.get('autoFetch') ?? false;
   panel.applyDock();
-  const filesHeight = store.get('filesHeight');
-  if (filesHeight) $('files').style.height = `${filesHeight}px`;
 }
 
 async function init() {

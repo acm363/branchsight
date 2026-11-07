@@ -434,15 +434,17 @@ const dockedBottom = () => $('main').classList.contains('dock-bottom');
 export function applyDock() {
   const bottom = prefs.get('dock') === 'bottom';
   $('main').classList.toggle('dock-bottom', bottom);
-  const detail = $('detail');
+  const detail = $('detail'), files = $('files');
   if (bottom) {
-    detail.style.width = '';
-    const h = state.store.get('detailHeight');
+    detail.style.width = files.style.height = '';
+    const h = state.store.get('detailHeight'), fw = state.store.get('filesWidth');
     detail.style.height = h ? `${h}px` : '';
+    files.style.width = fw ? `${fw}px` : '';
   } else {
-    detail.style.height = '';
-    const w = state.store.get('detailWidth');
+    detail.style.height = files.style.width = '';
+    const w = state.store.get('detailWidth'), fh = state.store.get('filesHeight');
     detail.style.width = w ? `${w}px` : '';
+    files.style.height = fh ? `${fh}px` : '';
   }
 }
 
@@ -455,6 +457,10 @@ $('split').addEventListener('mousedown', e => drag(e, ev => {
 }, () => state.store.set(dockedBottom() ? 'detailHeight' : 'detailWidth', dockedBottom() ? $('detail').offsetHeight : $('detail').offsetWidth)));
 
 $('files-split').addEventListener('mousedown', e => drag(e, ev => {
-  const top = $('files').getBoundingClientRect().top;
-  $('files').style.height = `${Math.max(48, Math.min(ev.clientY - top, $('detail').clientHeight - 140))}px`;
-}, () => state.store.set('filesHeight', $('files').offsetHeight)));
+  const box = $('files').getBoundingClientRect();
+  if (dockedBottom()) {
+    $('files').style.width = `${Math.max(120, Math.min(ev.clientX - box.left, $('detail').clientWidth - 160))}px`;
+  } else {
+    $('files').style.height = `${Math.max(48, Math.min(ev.clientY - box.top, $('detail').clientHeight - 140))}px`;
+  }
+}, () => state.store.set(dockedBottom() ? 'filesWidth' : 'filesHeight', dockedBottom() ? $('files').offsetWidth : $('files').offsetHeight)));
