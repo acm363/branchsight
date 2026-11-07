@@ -126,7 +126,7 @@ export const fr = {
     'merge.lead': 'Fusionner',
     'merge.mid': 'dans',
     'merge.ff': 'Fast-forward si possible, sinon créer un commit de fusion',
-    'merge.commit': 'Toujours créer un commit de fusion',
+    'merge.commit': 'Créer un commit de fusion, même si le fast-forward est possible',
     'merge.squash': "Squash : indexer tous ses changements d'un bloc, sans committer",
     'merge.noCommit': "Ne pas committer : s'arrêter pour que je vérifie le résultat d'abord",
     'btn.merge': 'Fusionner',

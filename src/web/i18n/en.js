@@ -126,7 +126,7 @@ export const en = {
     'merge.lead': 'Merge',
     'merge.mid': 'into',
     'merge.ff': 'Fast-forward when possible, otherwise create a merge commit',
-    'merge.commit': 'Always create a merge commit',
+    'merge.commit': 'Create a merge commit, even if fast-forward is possible',
     'merge.squash': 'Squash: stage all its changes as one, without committing',
     'merge.noCommit': "Don't commit: stop so I can review the result first",
     'btn.merge': 'Merge',
