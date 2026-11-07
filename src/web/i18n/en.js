@@ -18,6 +18,7 @@ export const en = {
     'menu.textSize': 'Text size',
     'menu.resetSize': 'reset',
     'menu.theme': 'Theme',
+    'menu.diffPanel': 'Diff panel',
     'menu.language': 'Language',
     'menu.help': 'Help',
     'title.smaller': 'Smaller text',
@@ -26,6 +27,8 @@ export const en = {
     'theme.system': 'System',
     'theme.light': 'Light',
     'theme.dark': 'Dark',
+    'dock.right': 'Right',
+    'dock.bottom': 'Bottom',
 
     'help.open': 'open a project',
     'help.pick': 'pick branches',

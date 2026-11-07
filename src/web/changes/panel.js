@@ -1,4 +1,5 @@
 import { getJson } from '../shared/api.js';
+import { prefs } from '../shared/prefs.js';
 import { $, copy, drag, toast } from '../shared/dom.js';
 import { SHORT_HASH, esc, fileLabel, plural, statusClass } from '../shared/format.js';
 import { t } from '../shared/i18n.js';
@@ -428,9 +429,30 @@ $('fold-all').addEventListener('click', () => {
 
 $('open-viewer').addEventListener('click', () => openViewer(shown?.files[0]?.id));
 
+const dockedBottom = () => $('main').classList.contains('dock-bottom');
+
+export function applyDock() {
+  const bottom = prefs.get('dock') === 'bottom';
+  $('main').classList.toggle('dock-bottom', bottom);
+  const detail = $('detail');
+  if (bottom) {
+    detail.style.width = '';
+    const h = state.store.get('detailHeight');
+    detail.style.height = h ? `${h}px` : '';
+  } else {
+    detail.style.height = '';
+    const w = state.store.get('detailWidth');
+    detail.style.width = w ? `${w}px` : '';
+  }
+}
+
 $('split').addEventListener('mousedown', e => drag(e, ev => {
-  $('detail').style.width = `${Math.max(240, window.innerWidth - ev.clientX)}px`;
-}, () => state.store.set('detailWidth', $('detail').offsetWidth)));
+  if (dockedBottom()) {
+    $('detail').style.height = `${Math.max(140, Math.min(window.innerHeight - ev.clientY, $('main').clientHeight - 80))}px`;
+  } else {
+    $('detail').style.width = `${Math.max(240, window.innerWidth - ev.clientX)}px`;
+  }
+}, () => state.store.set(dockedBottom() ? 'detailHeight' : 'detailWidth', dockedBottom() ? $('detail').offsetHeight : $('detail').offsetWidth)));
 
 $('files-split').addEventListener('mousedown', e => drag(e, ev => {
   const top = $('files').getBoundingClientRect().top;

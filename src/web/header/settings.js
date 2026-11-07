@@ -2,11 +2,13 @@ import { $, closeLayer, openLayer } from '../shared/dom.js';
 import { clamp } from '../shared/format.js';
 import { applyStatic, getLocale, setLocale } from '../shared/i18n.js';
 import * as log from '../history/list.js';
+import * as panel from '../changes/panel.js';
 import { prefs } from '../shared/prefs.js';
 import * as projects from './projects.js';
 import { state } from '../shared/state.js';
 
 const THEMES = ['system', 'light', 'dark'];
+const DOCKS = ['right', 'bottom'];
 const FONT_SIZES = { min: 10, max: 20, default: 13 };
 
 const fontSize = () => prefs.get('fontSize') ?? FONT_SIZES.default;
@@ -16,6 +18,17 @@ export function restore() {
   markLang();
   setTheme(prefs.get('theme'));
   setFontSize(fontSize());
+  markDock();
+  panel.applyDock();
+}
+
+const dock = () => (DOCKS.includes(prefs.get('dock')) ? prefs.get('dock') : 'right');
+const markDock = () => $('dock-seg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.dock === dock()));
+
+function setDock(choice) {
+  prefs.set('dock', DOCKS.includes(choice) ? choice : 'right');
+  markDock();
+  panel.applyDock();
 }
 
 const markLang = () => $('lang-seg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.lang === getLocale()));
@@ -82,6 +95,8 @@ $('mainmenu').addEventListener('click', e => {
   if (theme) setTheme(theme);
   const lang = e.target.closest('#lang-seg [data-lang]')?.dataset.lang;
   if (lang) setLang(lang);
+  const docked = e.target.closest('#dock-seg [data-dock]')?.dataset.dock;
+  if (docked) setDock(docked);
 });
 
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', log.render);

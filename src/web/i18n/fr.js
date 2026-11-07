@@ -18,6 +18,7 @@ export const fr = {
     'menu.textSize': 'Taille du texte',
     'menu.resetSize': 'défaut',
     'menu.theme': 'Thème',
+    'menu.diffPanel': 'Panneau de diff',
     'menu.language': 'Langue',
     'menu.help': 'Aide',
     'title.smaller': 'Réduire le texte',
@@ -26,6 +27,8 @@ export const fr = {
     'theme.system': 'Système',
     'theme.light': 'Clair',
     'theme.dark': 'Sombre',
+    'dock.right': 'À droite',
+    'dock.bottom': 'En bas',
 
     'help.open': 'ouvrir un projet',
     'help.pick': 'choisir les branches',

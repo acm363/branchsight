@@ -104,8 +104,7 @@ function restoreView(store) {
   $('opt-tag').checked = store.get('tag') ?? false;
   $('limit').value = store.get('limit') ?? '5000';
   $('auto-fetch').checked = store.get('autoFetch') ?? false;
-  const width = store.get('detailWidth');
-  if (width) $('detail').style.width = `${width}px`;
+  panel.applyDock();
   const filesHeight = store.get('filesHeight');
   if (filesHeight) $('files').style.height = `${filesHeight}px`;
 }
