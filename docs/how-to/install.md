@@ -12,10 +12,16 @@ Download the file for your system from [Releases](https://github.com/acm363/bran
 | Fedora, RHEL, openSUSE | `BranchSight-<version>-1.x86_64.rpm` | `sudo dnf install ./BranchSight-*.rpm` |
 | Debian, Ubuntu | `BranchSight_<version>_amd64.deb` | `sudo apt install ./BranchSight_*.deb` |
 | Windows | `BranchSight_<version>_x64_en-US.msi` or `…-setup.exe` | run it |
-| macOS | `BranchSight_<version>_aarch64.dmg` | open it, drag BranchSight to Applications |
+| macOS | `BranchSight_<version>_aarch64.dmg` | open it, drag BranchSight to Applications, then clear the quarantine (below) |
 
-Releases are not code-signed yet. On macOS, right-click the app and choose **Open** the first time; on Windows,
-SmartScreen asks you to choose **More info → Run anyway**.
+Releases are not code-signed yet. On macOS the download is quarantined, so Gatekeeper reports it as damaged; clear
+the quarantine once, then open the app normally:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/BranchSight.app
+```
+
+On Windows, SmartScreen asks you to choose **More info → Run anyway**.
 
 ## The `branchsight-cli` command
 

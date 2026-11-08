@@ -37,7 +37,7 @@ v=0.5.12
 | Debian, Ubuntu | `curl -LO https://github.com/acm363/branchsight/releases/download/v$v/BranchSight_${v}_amd64.deb && sudo apt install ./BranchSight_${v}_amd64.deb` |
 | Any Linux | `curl -L -o BranchSight.AppImage https://github.com/acm363/branchsight/releases/download/v$v/BranchSight_${v}_amd64.AppImage && chmod +x BranchSight.AppImage && ./BranchSight.AppImage` |
 | Windows | download `BranchSight_<version>_x64-setup.exe` from [Releases](https://github.com/acm363/branchsight/releases/latest) and run it (More info → Run anyway) |
-| macOS | download `BranchSight_<version>_aarch64.dmg` from [Releases](https://github.com/acm363/branchsight/releases/latest), drag it to Applications, right-click → Open the first time |
+| macOS | download `BranchSight_<version>_aarch64.dmg` from [Releases](https://github.com/acm363/branchsight/releases/latest), drag it to Applications, then run `xattr -dr com.apple.quarantine /Applications/BranchSight.app` once (unsigned build, otherwise macOS reports it as damaged) |
 
 To serve the page to a browser instead (over SSH, in WSL, in a container), install the `branchsight-cli` command:
 
