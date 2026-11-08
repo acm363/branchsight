@@ -30,7 +30,8 @@ async fn pick_folder(app: AppHandle) -> Option<String> {
 fn main() {
     #[cfg(target_os = "linux")]
     glib::set_prgname(Some("BranchSight"));
-    let default_repo = std::env::args().nth(1).and_then(|dir| Repo::open(&PathBuf::from(dir)).ok()).map(|repo| repo.root);
+    let dir = std::env::args().nth(1).unwrap_or_else(|| ".".to_owned());
+    let default_repo = Repo::open(&PathBuf::from(dir)).ok().map(|repo| repo.root);
     let config = Config { default_repo, ..Config::home() };
 
     tauri::Builder::default()
