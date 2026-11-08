@@ -130,6 +130,28 @@ fn repository_resolution_reports_what_is_missing() {
 }
 
 #[test]
+fn a_repository_outside_the_roots_is_refused() {
+    // Given.
+    let sb = Sandbox::new();
+    let inside = sb.path("home/inside");
+    let outside = sb.path("elsewhere/outside");
+    init(&inside);
+    commit(&inside, "a", "A");
+    init(&outside);
+    commit(&outside, "a", "A");
+    let port = start(vec![sb.path("home")], None);
+
+    // When.
+    let allowed = json(port, &format!("/api/repo?{}", repo_query(&inside)));
+    let refused = get(port, &format!("/api/repo?{}", repo_query(&outside)));
+
+    // Then.
+    assert_eq!(allowed["name"], "inside");
+    assert_eq!(refused.0, 400);
+    assert!(refused.1.contains("outside the served roots"), "{}", refused.1);
+}
+
+#[test]
 fn only_loopback_host_names_are_served() {
     // Given.
     let sb = Sandbox::new();

@@ -6,7 +6,7 @@ export const color = n => COLORS[n % COLORS.length];
 
 export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-export const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+export const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export const fileLabel = file => (file.from ? `${file.from} → ${file.path}` : file.path);
 

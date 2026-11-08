@@ -64,7 +64,7 @@ pub fn parse() -> Args {
         });
     }
     let roots = roots.into_iter().map(canonical).collect();
-    Args { port, config: Config { roots, default_repo } }
+    Args { port, config: Config { roots, default_repo, confine: true } }
 }
 
 fn fail(message: &str) -> ! {

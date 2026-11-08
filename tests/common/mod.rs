@@ -106,7 +106,7 @@ pub fn clone(sb: &Sandbox, origin: &Path, name: &str) -> PathBuf {
 pub fn start(roots: Vec<PathBuf>, default_repo: Option<PathBuf>) -> u16 {
     let server = tiny_http::Server::http("127.0.0.1:0").unwrap();
     let port = server.server_addr().to_ip().unwrap().port();
-    let config = Arc::new(Config { roots, default_repo });
+    let config = Arc::new(Config { roots, default_repo, confine: true });
     thread::spawn(move || http::serve(server, config));
     port
 }

@@ -1,15 +1,16 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::git::{Lang, Repo};
 
 pub struct Config {
     pub roots: Vec<PathBuf>,
     pub default_repo: Option<PathBuf>,
+    pub confine: bool,
 }
 
 impl Config {
     pub fn home() -> Config {
-        Config { roots: home_dir().into_iter().collect(), default_repo: None }
+        Config { roots: home_dir().into_iter().collect(), default_repo: None, confine: false }
     }
 }
 
@@ -20,8 +21,16 @@ pub fn open_repo(config: &Config, requested: &str, lang: Lang) -> Result<Repo, S
         expand_home(requested)
     };
     let mut repo = Repo::open(&dir)?;
+    if config.confine && !within_roots(&config.roots, &repo.root) {
+        return Err("repository is outside the served roots".to_owned());
+    }
     repo.lang = lang;
     Ok(repo)
+}
+
+fn within_roots(roots: &[PathBuf], dir: &Path) -> bool {
+    let dir = canonical(dir.to_path_buf());
+    roots.iter().any(|root| dir.starts_with(canonical(root.clone())))
 }
 
 pub fn canonical(path: PathBuf) -> PathBuf {
