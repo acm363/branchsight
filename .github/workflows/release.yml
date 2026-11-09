@@ -25,8 +25,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf
       - run: cargo test
-      - run: npx -y @tauri-apps/cli@2.12.4 build
+      - shell: bash
         working-directory: app
+        run: |
+          n=0
+          until npx -y @tauri-apps/cli@2.12.4 build; do
+            n=$((n+1))
+            [ "$n" -ge 3 ] && { echo "tauri build failed after $n attempts" >&2; exit 1; }
+            echo "attempt $n failed; retry in $((n*20))s" >&2
+            sleep $((n*20))
+          done
       - run: cargo build --release --bin branchsight-cli
       - shell: bash
         run: |
