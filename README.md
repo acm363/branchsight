@@ -17,6 +17,8 @@ editor.
 - **Act from the graph**: right-click to check out, merge, rebase, push (normal, with lease or forced), cherry-pick,
   revert, drop or reset, copy a name or a hash, or delete a branch on the remote; anything that rewrites history
   asks first.
+- **Open a terminal** (desktop app only): an integrated panel docked bottom, right or left with several shells in
+  tabs (`ctrl`+`j`), or your system terminal on the repository (`ctrl`+`shift`+`j`).
 - **Always current**: commits, checkouts and file edits made elsewhere show up within five seconds.
 - **Your git, your machine**: it runs your own `git`, opens no network port, and changes a repository only when you
   ask.
@@ -28,7 +30,7 @@ editor.
 BranchSight needs `git` on the `PATH`. Set the version once, then pick your system:
 
 ```bash
-v=0.5.14
+v=0.6.0
 ```
 
 | System | Desktop app |

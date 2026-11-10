@@ -4,7 +4,8 @@
 branchsight-cli serve [--port N] [--root DIR]... [dir]
 ```
 
-Serves the BranchSight page for every git repository under the roots, on loopback only.
+Serves the BranchSight page for every git repository under the roots, on loopback only. The integrated
+terminal is desktop-only: `serve` has no shell command and embeds none of its assets, so a browser never gets one.
 
 | Argument | Default | Meaning |
 |---|---|---|

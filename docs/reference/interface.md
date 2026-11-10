@@ -9,6 +9,7 @@
 | branch picker | which branches the graph shows; type to filter, `enter` or click to toggle |
 | commit count | commits shown; `(limit)` when the limit cut the history |
 | limit | 10, 20, 100, 500, 1k, 5k (default), 20k, all |
+| terminal (desktop app) | open or hide the [terminal panel](#terminal-desktop-app); next to the limit |
 | ⇣ fetch | `git fetch --all --prune` |
 | auto | fetch every 2 minutes while the window is visible |
 | ⟳ | reload now |
@@ -18,7 +19,7 @@
 | Menu | Item |
 |---|---|
 | File | Open project… · Close project (next launch starts on the picker) |
-| View | Text size `−` `+` `reset` · Theme `System` `Light` `Dark` |
+| View | Text size `−` `+` `reset` · Theme `System` `Light` `Dark` · Diff panel `Right` `Bottom` · Terminal `Bottom` `Right` `Left` (desktop app) · Language |
 | Help | keyboard and mouse shortcuts · version |
 
 ## Keyboard
@@ -33,6 +34,8 @@
 | `c` | copy the selected commit's hash |
 | `f` | fetch |
 | `r` | reload |
+| `ctrl`+`j` (`cmd`+`j`) | open a terminal, or another one (desktop app) |
+| `ctrl`+`shift`+`j` | open the system terminal on the repository (desktop app) |
 | `esc` | close the diff view, the open menu, the picker or the diff panel |
 
 ## Mouse
@@ -94,3 +97,17 @@ are still in conflict, **Continue** and **Abort**.
 | highlight inside a line | the part of a modified line that changed |
 | N unmodified lines | lines more than 3 away from a change, folded; click to unfold them |
 | `esc` or ✕ Close | back to the graph |
+
+## Terminal (desktop app)
+
+Only in the desktop app. `branchsight-cli serve` ships no terminal: a shell over HTTP would be remote code
+execution on the host, so the commands and the terminal assets are compiled into the app alone.
+
+| Element | Role |
+|---|---|
+| panel | docked bottom, right or left (View menu); drag its edge to resize; the size and side are remembered |
+| tab | one shell; click to focus, ✕ or middle-click to close; closing the last one hides the panel |
+| **+** | a new terminal with the selected shell (`ctrl`+`j` does the same) |
+| shell selector | the shells found on the `PATH` (bash, zsh, pwsh, git-bash…); choosing one opens a terminal with it; the default is your login shell |
+
+`ctrl`+`shift`+`j` opens your system terminal on the repository instead of the panel.

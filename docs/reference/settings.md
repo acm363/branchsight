@@ -27,7 +27,7 @@ In the webview's local storage, never in the repositories:
 
 | Scope | Keys |
 |---|---|
-| every project | `branchsight:theme`, `branchsight:fontSize`, `branchsight:cols`, `branchsight:recent`, `branchsight:last`, `branchsight:diffMode`, `branchsight:diffSplit` |
+| every project | `branchsight:theme`, `branchsight:fontSize`, `branchsight:cols`, `branchsight:recent`, `branchsight:last`, `branchsight:diffMode`, `branchsight:diffSplit`, `branchsight:termDock`, `branchsight:termShell`, `branchsight:termHeight`, `branchsight:termWidth` (desktop app) |
 | one project | `branchsight:<repository path>:` `sel` (branches), `limit`, `remote`, `tag`, `autoFetch`, `detailWidth` |
 
 Deleting the folder or the keys returns BranchSight to its defaults.
