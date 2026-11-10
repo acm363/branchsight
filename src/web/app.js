@@ -1,7 +1,7 @@
 import { fetchRemotes, startAutoFetch } from './actions/commands.js';
 import { openContextMenu } from './actions/context-menu.js';
 import './actions/operation.js';
-import { getJson, inDesktopApp, setRepo } from './shared/api.js';
+import { getJson, inDesktopApp, setRepo, termExternal } from './shared/api.js';
 import * as branches from './header/branches.js';
 import { $, closeLayer, copy, topLayer } from './shared/dom.js';
 import { esc, samePath } from './shared/format.js';
@@ -33,7 +33,9 @@ const shortcuts = {
   c: () => commitAt(state.cursor) && copy(commitAt(state.cursor).h),
 };
 
-const typing = target => target.closest?.('input, select');
+const terminal = () => import('./terminal/panel.js');
+
+const typing = target => target.closest?.('input, select, textarea, .xterm');
 const pressingFocusedButton = e => e.key === 'Enter' && e.target.closest?.('button');
 
 document.addEventListener('keydown', e => {
@@ -51,12 +53,23 @@ document.addEventListener('keydown', e => {
     search.openSearch();
     return;
   }
+  if (inDesktopApp && !layer && (e.ctrlKey || e.metaKey) && (e.key === 'j' || e.key === 'J')) {
+    e.preventDefault();
+    if (e.shiftKey) termExternal(state.repo.path || undefined);
+    else if (state.repo.path) terminal().then(m => m.newTerminal()).catch(() => {});
+    return;
+  }
   if (typing(e.target) || pressingFocusedButton(e) || e.ctrlKey || e.metaKey || e.altKey) return;
   const action = shortcuts[e.key];
   if (!action) return;
   action();
   e.preventDefault();
 });
+
+if (inDesktopApp) {
+  document.querySelectorAll('.desktop-only').forEach(el => { el.hidden = false; });
+  $('term-btn').addEventListener('click', () => { if (state.repo.path) terminal().then(m => m.toggleTerminal()).catch(() => {}); });
+}
 
 document.addEventListener('mousedown', e => {
   if (!e.target.closest('button') || e.target.closest('dialog')) return;

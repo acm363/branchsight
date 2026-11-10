@@ -9,6 +9,7 @@ import { state } from '../shared/state.js';
 
 const THEMES = ['system', 'light', 'dark'];
 const DOCKS = ['right', 'bottom'];
+const TERM_DOCKS = ['bottom', 'right', 'left'];
 const FONT_SIZES = { min: 10, max: 20, default: 13 };
 
 const fontSize = () => prefs.get('fontSize') ?? FONT_SIZES.default;
@@ -19,6 +20,7 @@ export function restore() {
   setTheme(prefs.get('theme'));
   setFontSize(fontSize());
   markDock();
+  markTermDock();
   panel.applyDock();
 }
 
@@ -29,6 +31,15 @@ function setDock(choice) {
   prefs.set('dock', DOCKS.includes(choice) ? choice : 'right');
   markDock();
   panel.applyDock();
+}
+
+const termDock = () => (TERM_DOCKS.includes(prefs.get('termDock')) ? prefs.get('termDock') : 'bottom');
+const markTermDock = () => $('term-seg')?.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.termDock === termDock()));
+
+function setTermDock(choice) {
+  prefs.set('termDock', TERM_DOCKS.includes(choice) ? choice : 'bottom');
+  markTermDock();
+  import('../terminal/panel.js').then(m => m.applyTermDock()).catch(() => {});
 }
 
 const markLang = () => $('lang-seg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.lang === getLocale()));
@@ -97,6 +108,8 @@ $('mainmenu').addEventListener('click', e => {
   if (lang) setLang(lang);
   const docked = e.target.closest('#dock-seg [data-dock]')?.dataset.dock;
   if (docked) setDock(docked);
+  const termDocked = e.target.closest('#term-seg [data-term-dock]')?.dataset.termDock;
+  if (termDocked) setTermDock(termDocked);
 });
 
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', log.render);

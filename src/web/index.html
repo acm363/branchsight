@@ -36,6 +36,10 @@
               <span class="spacer"></span>
               <span class="seg" id="dock-seg"><button data-dock="right" data-i18n="dock.right">Right</button><button data-dock="bottom" data-i18n="dock.bottom">Bottom</button></span>
             </div>
+            <div class="mrow desktop-only" hidden><span data-i18n="menu.terminal">Terminal</span>
+              <span class="spacer"></span>
+              <span class="seg" id="term-seg"><button data-term-dock="bottom" data-i18n="dock.bottom">Bottom</button><button data-term-dock="right" data-i18n="dock.right">Right</button><button data-term-dock="left" data-i18n="term.left">Left</button></span>
+            </div>
             <div class="mrow"><span data-i18n="menu.language">Language</span>
               <span class="spacer"></span>
               <span class="seg" id="lang-seg"><button data-lang="en">English</button><button data-lang="fr">Français</button></span>
@@ -52,6 +56,7 @@
               <kbd>c</kbd><span data-i18n="help.copyHash">copy the commit hash</span>
               <kbd>f</kbd><span data-i18n="help.fetch">fetch all remotes</span>
               <kbd>ctrl+f</kbd><span data-i18n="help.search">search the graph</span>
+              <kbd class="desktop-only" hidden>ctrl+j</kbd><span class="desktop-only" hidden data-i18n="help.terminal">integrated terminal (shift: external)</span>
               <kbd>r</kbd><span data-i18n="help.reload">reload</span>
               <kbd>esc</kbd><span data-i18n="help.esc">close a menu or the diff</span>
               <kbd>right-click</kbd><span data-i18n="help.rightClick">checkout a branch, tag or commit; copy; delete a remote branch</span>
@@ -95,6 +100,7 @@
   <span id="headref" hidden></span>
   <span id="count"></span>
   <span class="spacer"></span>
+  <button id="term-btn" class="desktop-only" hidden data-i18n-title="title.terminal" title="Terminal (Ctrl+J)"><svg viewBox="0 0 16 16" width="14" height="14"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 6l2.2 2L4 10M8.2 10.2H12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <select id="limit" data-i18n-title="title.limit" title="Max commits">
     <option value="10">10</option><option value="20">20</option><option value="100">100</option><option value="500">500</option>
     <option value="1000">1k</option><option value="5000">5k</option><option value="20000">20k</option><option value="200000" data-i18n="limit.all">all</option>
@@ -111,6 +117,7 @@
   <button id="operation-abort" class="danger" data-i18n="op.abort">Abort</button>
 </div>
 <div id="main">
+  <div id="content">
   <div id="pane">
     <div id="cols" data-i18n-title="title.cols" title="Drag a column edge to resize it, double-click to reset; right-click to show or hide columns">
       <span class="c-g" data-i18n="col.graph">Graph</span><i class="grip grip-g" data-col="graph" data-dir="1"></i>
@@ -138,6 +145,12 @@
       <div id="files-split" data-i18n-title="title.filesSplit" title="Drag to resize the file list"></div>
       <pre id="diff"></pre>
     </div>
+  </aside>
+  </div>
+  <div id="term-split" hidden></div>
+  <aside id="term" hidden>
+    <div id="term-head"><div id="term-tabs"></div><button id="term-add" data-i18n-title="title.termAdd" title="New terminal (Ctrl+J)">+</button><select id="term-shell" data-i18n-title="title.termShell" title="Shell" hidden></select><button id="term-close" data-i18n-title="title.close" title="Close (esc)">✕</button></div>
+    <div id="term-body"></div>
   </aside>
 </div>
 <div id="viewer" hidden>

@@ -3,6 +3,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+mod terminal;
+
 use branchsight::api;
 use branchsight::config::Config;
 use branchsight::git::Repo;
@@ -37,7 +39,17 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(Arc::new(config))
-        .invoke_handler(tauri::generate_handler![api, pick_folder])
+        .manage(terminal::Terminal::default())
+        .invoke_handler(tauri::generate_handler![
+            api,
+            pick_folder,
+            terminal::term_shells,
+            terminal::term_open,
+            terminal::term_write,
+            terminal::term_resize,
+            terminal::term_close,
+            terminal::term_external,
+        ])
         .run(tauri::generate_context!())
         .expect("branchsight: the desktop app failed to start");
 }

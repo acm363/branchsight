@@ -42,3 +42,11 @@ async function call(method, path, signal) {
 export const getJson = (path, params, signal) => call('GET', url(path, params), signal).then(JSON.parse);
 export const post = (path, params) => call('POST', url(path, params)).then(JSON.parse);
 export const pickFolder = () => tauri?.invoke('pick_folder') ?? Promise.resolve(null);
+
+export const newChannel = () => (tauri ? new tauri.Channel() : null);
+export const termShells = () => tauri?.invoke('term_shells') ?? Promise.resolve([]);
+export const termOpen = (id, shell, cols, rows, cwd, onData) => tauri?.invoke('term_open', { id, shell, cols, rows, cwd, onData });
+export const termWrite = (id, data) => tauri?.invoke('term_write', { id, data });
+export const termResize = (id, cols, rows) => tauri?.invoke('term_resize', { id, cols, rows });
+export const termClose = id => tauri?.invoke('term_close', { id });
+export const termExternal = cwd => tauri?.invoke('term_external', { cwd });

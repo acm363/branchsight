@@ -29,6 +29,13 @@ export const fr = {
     'theme.dark': 'Sombre',
     'dock.right': 'À droite',
     'dock.bottom': 'En bas',
+    'menu.terminal': 'Terminal',
+    'term.title': 'Terminal',
+    'term.left': 'À gauche',
+    'title.terminal': 'Terminal (Ctrl+J, Ctrl+Maj+J externe)',
+    'title.termShell': 'Shell',
+    'title.termAdd': 'Nouveau terminal (Ctrl+J)',
+    'help.terminal': 'terminal intégré (maj : externe)',
 
     'help.open': 'ouvrir un projet',
     'help.pick': 'choisir les branches',
